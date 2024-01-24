@@ -1,9 +1,10 @@
 import holoocean
 import matplotlib.pyplot as plt
+from tools import KeyBoardCmd
 import numpy as np
 
 #### GET SONAR CONFIG
-scenario = "PierHarbor-HoveringImagingSonar"
+scenario = "Dam-HoveringCamera"
 config = holoocean.packagemanager.get_scenario(scenario)
 config = config['agents'][0]['sensors'][-1]["configuration"]
 azi = config['Azimuth']
@@ -14,12 +15,12 @@ binsA = config['AzimuthBins']
 
 #### GET PLOT READY
 plt.ion()
-fig, ax = plt.subplots(subplot_kw=dict(projection='polar'), figsize=(8,5))
+fig, ax = plt.subplots(subplot_kw=dict(projection='polar'), figsize=(8, 5))
 ax.set_theta_zero_location("N")
-ax.set_thetamin(-azi/2)
-ax.set_thetamax(azi/2)
+ax.set_thetamin(-azi / 2)
+ax.set_thetamax(azi / 2)
 
-theta = np.linspace(-azi/2, azi/2, binsA)*np.pi/180
+theta = np.linspace(-azi / 2, azi / 2, binsA) * np.pi / 180
 r = np.linspace(minR, maxR, binsR)
 T, R = np.meshgrid(theta, r)
 z = np.zeros_like(T)
@@ -31,14 +32,19 @@ fig.canvas.draw()
 fig.canvas.flush_events()
 
 #### RUN SIMULATION
-command = np.array([0,0,0,0,-20,-20,-20,-20])
+kb_cmd = KeyBoardCmd(force=10)
 with holoocean.make(scenario) as env:
-    for i in range(1000):
+    for i in range(100000):
+        if 'q' in kb_cmd.pressed_keys:
+            break
+        command = kb_cmd.parse_keys()
+
+        # send to holoocean
         env.act("auv0", command)
         state = env.tick()
 
         if 'ImagingSonar' in state:
-            s = state['ImagingSonar']
+            s = state['ImagingSonar']  # (512, 512)
             plot.set_array(s.ravel())
 
             fig.canvas.draw()

@@ -3,61 +3,61 @@ import numpy as np
 from pynput import keyboard
 import cv2
 
-pressed_keys = list()
-force = 25
 
+class KeyBoardCmd:
+    """
+        实现键盘控制的类
+    """
 
-def on_press(key):
-    global pressed_keys
-    if hasattr(key, 'char'):
-        pressed_keys.append(key.char)
-        pressed_keys = list(set(pressed_keys))
+    def __init__(self, force=25):
+        self.force = force
+        self.pressed_keys = list()
+        self.listener = keyboard.Listener(
+            on_press=self.on_press,
+            on_release=self.on_release)
+        self.listener.start()
 
+    def on_press(self, key):
+        if hasattr(key, 'char'):
+            self.pressed_keys.append(key.char)
+            self.pressed_keys = list(set(self.pressed_keys))
 
-def on_release(key):
-    global pressed_keys
-    if hasattr(key, 'char'):
-        pressed_keys.remove(key.char)
+    def on_release(self, key):
+        if hasattr(key, 'char'):
+            self.pressed_keys.remove(key.char)
 
+    def parse_keys(self):
+        command = np.zeros(8)
+        if 'i' in self.pressed_keys:
+            command[0:4] += self.force
+        if 'k' in self.pressed_keys:
+            command[0:4] -= self.force
+        if 'j' in self.pressed_keys:
+            command[[4, 7]] += self.force
+            command[[5, 6]] -= self.force
+        if 'l' in self.pressed_keys:
+            command[[4, 7]] -= self.force
+            command[[5, 6]] += self.force
 
-listener = keyboard.Listener(
-    on_press=on_press,
-    on_release=on_release)
-listener.start()
-
-
-def parse_keys(keys, val):
-    command = np.zeros(8)
-    if 'i' in keys:
-        command[0:4] += val
-    if 'k' in keys:
-        command[0:4] -= val
-    if 'j' in keys:
-        command[[4, 7]] += val
-        command[[5, 6]] -= val
-    if 'l' in keys:
-        command[[4, 7]] -= val
-        command[[5, 6]] += val
-
-    if 'w' in keys:
-        command[4:8] += val
-    if 's' in keys:
-        command[4:8] -= val
-    if 'a' in keys:
-        command[[4, 6]] += val
-        command[[5, 7]] -= val
-    if 'd' in keys:
-        command[[4, 6]] -= val
-        command[[5, 7]] += val
-
-    return command
+        if 'w' in self.pressed_keys:
+            command[4:8] += self.force
+        if 's' in self.pressed_keys:
+            command[4:8] -= self.force
+        if 'a' in self.pressed_keys:
+            command[[4, 6]] += self.force
+            command[[5, 7]] -= self.force
+        if 'd' in self.pressed_keys:
+            command[[4, 6]] -= self.force
+            command[[5, 7]] += self.force
+        return command
 
 
 with holoocean.make("Dam-HoveringCamera") as env:
+    kb = KeyBoardCmd(force=25)
     for _ in range(20000):
-        if 'q' in pressed_keys:
+        if 'q' in kb.pressed_keys:
             break
-        command = parse_keys(pressed_keys, force)
+        command = kb.parse_keys()
 
         # send to holoocean
         env.act("auv0", command)
