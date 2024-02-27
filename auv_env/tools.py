@@ -46,11 +46,11 @@ class KeyBoardCmd:
         if 'k' in self.pressed_keys:
             command[0:4] -= self.force
         if 'j' in self.pressed_keys:
-            command[[4, 7]] += self.force/2
-            command[[5, 6]] -= self.force/2
+            command[[4, 7]] += self.force / 2
+            command[[5, 6]] -= self.force / 2
         if 'l' in self.pressed_keys:
-            command[[4, 7]] -= self.force/2
-            command[[5, 6]] += self.force/2
+            command[[4, 7]] -= self.force / 2
+            command[[5, 6]] += self.force / 2
 
         if 'w' in self.pressed_keys:
             command[4:8] += self.force
@@ -63,7 +63,8 @@ class KeyBoardCmd:
             command[[4, 6]] -= self.force
             command[[5, 7]] += self.force
         return command
-    
+
+
 class ImagingSonar:
     """
         成像声呐进行进一步算法处理的类
@@ -74,15 +75,16 @@ class ImagingSonar:
         |
         |x
     """
+
     def __init__(self, scenario="Dam-HoveringCamera"):
         config = holoocean.packagemanager.get_scenario(scenario)
         config = config['agents'][0]['sensors'][-1]["configuration"]
         self.azi = config['Azimuth']
         self.minR = config['RangeMin']
         self.maxR = config['RangeMax']
-        self.binsR = config['RangeBins'] # 256
-        self.binsA = config['AzimuthBins'] # 256
-        self.zmax = (self.binsR-10)/self.binsR * (self.maxR-self.minR) + self.minR # 选取一个合适的更新范围
+        self.binsR = config['RangeBins']  # 256
+        self.binsA = config['AzimuthBins']  # 256
+        self.zmax = (self.binsR - 10) / self.binsR * (self.maxR - self.minR) + self.minR  # 选取一个合适的更新范围
         self.getimage = False  # world初始化成功，开始收到声呐数据之后为True
         self.__get_plot_ready()
 
@@ -92,7 +94,7 @@ class ImagingSonar:
         self.ax.set_theta_zero_location("N")
         self.ax.set_thetamin(-self.azi / 2)
         self.ax.set_thetamax(self.azi / 2)
-        self.theta = np.linspace(-self.azi/2,self.azi/2,self.binsA)*np.pi/180
+        self.theta = np.linspace(-self.azi / 2, self.azi / 2, self.binsA) * np.pi / 180
         self.r = np.linspace(self.minR, self.maxR, self.binsR)
         self.T, self.R = np.meshgrid(self.theta, self.r)
         self.z = np.zeros_like(self.T)
@@ -141,14 +143,14 @@ class ImagingSonar:
             # self.s[128:255,:] = 0
             self.s = state['ImagingSonar']
             x_coordinates, y_coordinates = np.where(self.s)
-            self.distance = x_coordinates/self.binsR*(self.maxR-self.minR)+self.minR
-            self.angle = -self.azi / 2 +y_coordinates/self.binsA*(self.azi)
-            self.x_world = pose[0] + self.distance*np.cos((angle+self.angle)*np.pi/180)
-            self.y_world = pose[1] + self.distance*np.sin((angle+self.angle)*np.pi/180)
+            self.distance = x_coordinates / self.binsR * (self.maxR - self.minR) + self.minR
+            self.angle = -self.azi / 2 + y_coordinates / self.binsA * (self.azi)
+            self.x_world = pose[0] + self.distance * np.cos((angle + self.angle) * np.pi / 180)
+            self.y_world = pose[1] + self.distance * np.sin((angle + self.angle) * np.pi / 180)
             # self.borderline_world = list(zip(x_coordinates, y_coordinates))
 
             ax1.scatter(self.x_world, self.y_world)
-            ax1.scatter(pose[0],pose[1],color='red')
+            ax1.scatter(pose[0], pose[1], color='red')
             plt.show()
 
     def scan(self, state, pose, angle):
@@ -163,25 +165,25 @@ class ImagingSonar:
             self.s2map = np.empty(self.s.shape, dtype=object)
             for i in range(self.s.shape[0]):
                 for j in range(self.s.shape[1]):
-                    self.s2map[i, j] = ((i/self.binsR * (self.maxR-self.minR) + self.minR,
-                                     -self.azi / 2 + j/self.binsA*(self.azi)))
+                    self.s2map[i, j] = ((i / self.binsR * (self.maxR - self.minR) + self.minR,
+                                         -self.azi / 2 + j / self.binsA * (self.azi)))
 
             x_coordinates, y_coordinates = np.where(self.s)  # x是距离变化，y是角度变换
             # 映射图像中每一个障碍物的坐标到机器人物理坐标
-            self.distance = x_coordinates/self.binsR * (self.maxR-self.minR) + self.minR
-            self.angle = -self.azi / 2 + y_coordinates/self.binsA*(self.azi)
-            distances_x = pose[0] + self.distance*np.cos((angle+self.angle)*np.pi/180)
-            distances_y = pose[1] + self.distance*np.sin((angle+self.angle)*np.pi/180)
+            self.distance = x_coordinates / self.binsR * (self.maxR - self.minR) + self.minR
+            self.angle = -self.azi / 2 + y_coordinates / self.binsA * (self.azi)
+            distances_x = pose[0] + self.distance * np.cos((angle + self.angle) * np.pi / 180)
+            distances_y = pose[1] + self.distance * np.sin((angle + self.angle) * np.pi / 180)
 
             # 生成每个角度下最近的障碍物坐标,如果没有识别出障碍物，则假设最远位置有障碍物
             for i in range(self.s.shape[1]):
-                dis_index = np.argmax(self.s[:,i] > 0.1)
-                if dis_index == 0 :
+                dis_index = np.argmax(self.s[:, i] > 0.1)
+                if dis_index == 0:
                     dis_index = self.binsR
-                nearest_distance = dis_index/self.binsR * (self.maxR-self.minR) + self.minR
-                nearest_angle = -self.azi / 2 + i/self.binsA*(self.azi)
-                nearest_distance_x = pose[0] + nearest_distance*np.cos((angle+nearest_angle)*np.pi/180)
-                nearest_distance_y = pose[1] + nearest_distance*np.sin((angle+nearest_angle)*np.pi/180)
+                nearest_distance = dis_index / self.binsR * (self.maxR - self.minR) + self.minR
+                nearest_angle = -self.azi / 2 + i / self.binsA * (self.azi)
+                nearest_distance_x = pose[0] + nearest_distance * np.cos((angle + nearest_angle) * np.pi / 180)
+                nearest_distance_y = pose[1] + nearest_distance * np.sin((angle + nearest_angle) * np.pi / 180)
                 nearest_distances_x.append(nearest_distance_x)
                 nearest_distances_y.append(nearest_distance_y)
                 nearest_distances.append(nearest_distance)
@@ -195,7 +197,7 @@ class PoseLocation:
         self.locationxy = np.zeros(2)
         self.direction = 0
 
-    def update(self,state):
+    def update(self, state):
         self.s = state['PoseSensor']
         self.location = np.array([self.s[0][3], self.s[1][3], self.s[2][3]])
         self.truelocation = state['LocationSensor']
@@ -204,4 +206,75 @@ class PoseLocation:
         self.angle = np.degrees(np.arctan2(self.s[1, 0], self.s[0, 0]))
         if self.angle < 0:
             self.angle = 360 + self.angle
-        self.direction = self.angle*np.pi/180 # 用rad表示的方位角
+        self.direction = self.angle * np.pi / 180  # 用rad表示的方位角
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.spatial.transform import Rotation
+import seaborn as sns
+
+sns.set(context="paper", style="whitegrid", font_scale=0.8)
+
+
+"""
+    绘图类的使用
+"""
+class Plotter:
+    def __init__(self, names):
+        # Where all the data is stored
+        self.t = []
+        self.data = None
+
+        self.num_row = 5
+        self.num_col = 3
+        self.num_items = len(names)
+
+        # Setup figure
+        self.fig, self.ax = plt.subplots(
+            self.num_row, self.num_col, figsize=(6, 8), sharex=True
+        )
+
+        # Setup all lines
+        self.lines = [[[] for _ in range(self.num_row)] for _ in range(len(names))]
+        for i in range(self.num_row):
+            for j in range(self.num_col):
+                for k, n in enumerate(names):
+                    (p,) = self.ax[i, j].plot([], [], label=n)
+
+                    self.lines[k][i].append(p)
+
+        self.ax[-1, 2].legend()
+
+        # Add axes labels
+        titles = ["Position", "Velocity", "RPY", "Bias - Omega", "Bias - Acceleration"]
+        for i in range(self.num_row):
+            self.ax[i, 1].set_title(titles[i])
+        self.fig.tight_layout()
+        plt.show(block=False)
+
+    def add_timestep(self, t, states):
+        # Keep the time
+        self.t.append(t)
+
+        # Plop our data at the end of the other data
+        new_state = np.stack([s.data_plot for s in states])
+        if self.data is None:
+            self.data = new_state
+        else:
+            self.data = np.dstack((self.data, new_state))
+
+    def _rot_to_rpy(self, mat):
+        return Rotation.from_matrix(mat).as_euler("xyz")
+
+    def update_plots(self):
+        # Update all lines
+        for i in range(self.num_row):
+            for j in range(self.num_col):
+                for k in range(self.num_items):
+                    self.lines[k][i][j].set_data(self.t, self.data[k,self.num_col*i+j])
+
+                self.ax[i, j].relim()
+                self.ax[i, j].autoscale_view()
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()

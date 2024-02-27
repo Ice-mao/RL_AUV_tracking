@@ -1,25 +1,13 @@
 #!/usr/bin/env python
 
-import rospy
-import rosbag
-
-import numpy as np
-import matplotlib.pyplot as plt
 from time import perf_counter
 
-import sys
-
 import holoocean
-import numpy as np
 import matplotlib.pyplot as plt
-import cv2
-from pynput import keyboard
 
 from gridmap.grid_map import *
-from gridmap.message_handler import *
-from gridmap.utils import *
 
-from tools import KeyBoardCmd, ImagingSonar, PoseLocation
+from auv_env.tools import KeyBoardCmd, ImagingSonar, PoseLocation
 
 P_prior = 0.5  # Prior occupancy probability
 P_occ = 0.9  # Probability that cell is occupied with total confidence

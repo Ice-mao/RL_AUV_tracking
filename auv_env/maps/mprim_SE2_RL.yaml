@@ -1,0 +1,60 @@
+controls:
+  - [3.000, 1.571]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [3.000, 0.000]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [3.000, -1.571]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [2.000, 1.571]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [2.000, 0.000]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [2.000, -1.571]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [1.000, 1.571]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [1.000, 0.000]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [1.000, -1.571]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [0.000, 1.571]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [0.000, 0.000]
+durations: [1]
+costs: [3.000]
+---
+controls:
+  - [0.000, -1.571]
+durations: [1]
+costs: [3.000]
+

@@ -1,0 +1,9 @@
+datatype: t
+mapdim: [181, 181]
+mapmax: [36.2, 36.2]
+mapmin: [0.0, 0.0]
+mappath: obstacles04.cfg
+mapres: [0.2, 0.2]
+origin: [18.1, 18.1] #Location SE2
+origincells: [90, 90]
+storage: colmajor

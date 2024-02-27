@@ -1,0 +1,9 @@
+datatype: t
+mapdim: [181, 181]
+mapmax: [72.4, 72.4]
+mapmin: [0.0, 0.0]
+mappath: empty05.cfg
+mapres: [0.4, 0.4]
+origin: [36.2, 36.2] #Location SE2
+origincells: [90, 90]
+storage: colmajor

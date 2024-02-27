@@ -1,7 +1,6 @@
 import numpy as np
 import holoocean
 from tqdm import tqdm
-import cv2
 
 from auv_control.estimation import InEKF
 from auv_control.control import LQR
@@ -11,7 +10,10 @@ from auv_env.tools import Plotter
 # from plotter import Plotter
 from auv_control import scenario
 import argparse
-
+import os
+os.environ[
+    "QT_QPA_PLATFORM_PLUGIN_PATH"
+] = "/home/anaconda3/envs/RL/lib/python3.8/site-packages/PyQt5/Qt5/plugins/platforms"
 np.set_printoptions(suppress=True, formatter={"float_kind": f"{{:0.2f}}".format})
 
 def main(num_seconds, show, plot, verbose, route):
@@ -67,12 +69,6 @@ def main(num_seconds, show, plot, verbose, route):
                 if i % 10 == 0:
                     planner.draw_step(env, t, ts*10)
 
-            if 'LeftCamera' in sensors:
-                pixels = sensors["LeftCamera"]
-                cv2.namedWindow("Camera Output")
-                cv2.imshow("Camera Output", pixels[:, :, 0:3])
-                cv2.waitKey(1)
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run AUV simulation.')
     parser.add_argument('-s', '--show', action='store_true', help='Show viewport')
@@ -83,4 +79,3 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(**vars(args))
-    cv2.destroyAllWindows()
