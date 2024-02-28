@@ -22,6 +22,7 @@ class KeyBoardCmd:
     def __init__(self, force=25):
         self.force = force
         self.pressed_keys = list()
+
         self.listener = keyboard.Listener(
             on_press=self.on_press,
             on_release=self.on_release)
@@ -208,14 +209,41 @@ class PoseLocation:
             self.angle = 360 + self.angle
         self.direction = self.angle * np.pi / 180  # 用rad表示的方位角
 
+class RangeFinder:
+    """
+        Returns distances to nearest collisions in the directions specified by the parameters.
+    """
+
+    def __init__(self, scenario):
+        # init config
+        self.LaserMaxDistance = 1
+        self.LaserCount = 1
+        self.LaserDebug = 1
+        for sensor in scenario['agents'][0]['sensors']:
+            if 'sensor_type' in sensor:
+                if sensor['sensor_type'] == 'RangeFinderSensor':
+                    config = sensor["configuration"]
+                    self.LaserMaxDistance = config['LaserMaxDistance']
+                    self.LaserCount = config['LaserCount']
+                    self.LaserDebug = config['LaserDebug']
+
+    def update(self, state):
+        if 'RangeFinderSensor' in state:
+            range_data = state['RangeFinderSensor']
+            # update the minimum distance and its angle to nearest obstacle
+            if np.min(range_data) < self.LaserMaxDistance:
+                self.min_distance = np.min(range_data)
+                self.angle = (360 / self.LaserCount) * np.argmin(range_data)
+            else:
+                self.min_distance = None
+                self.angle = None
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
 import seaborn as sns
 
 sns.set(context="paper", style="whitegrid", font_scale=0.8)
-
-
 """
     绘图类的使用
 """

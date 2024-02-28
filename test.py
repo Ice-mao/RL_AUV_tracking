@@ -47,6 +47,7 @@ def main(num_seconds, show, plot, verbose, route):
 
             # Pluck true state from sensors
             t = sensors["t"]
+            sensors = sensors['auv0']
             true_state = State(sensors)
 
             # Estimate State
@@ -72,6 +73,14 @@ def main(num_seconds, show, plot, verbose, route):
                 cv2.namedWindow("Camera Output")
                 cv2.imshow("Camera Output", pixels[:, :, 0:3])
                 cv2.waitKey(1)
+
+            if 'RangeFinderSensor' in sensors:
+                range_data = sensors['RangeFinderSensor']
+                # 获得数组中的最小值及其索引
+                min_value = np.min(range_data)
+                angle = (360/24)*np.argmin(range_data)
+                print(min_value, angle)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run AUV simulation.')

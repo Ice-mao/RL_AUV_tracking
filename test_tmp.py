@@ -1,14 +1,37 @@
 import holoocean, cv2
+import numpy as np
+from auv_control import scenario
+from auv_env.tools import KeyBoardCmd
+from pynput import keyboard
+from auv_env.obstacle import Obstacle
+from pynput import keyboard
 
-env = holoocean.make("SimpleUnderwater-Hovering")
-env.act('auv0', [10,10,10,10,0,0,0,0])
+# env = holoocean.make(scenario_cfg=scenario)
+env = holoocean.make('PierHarbor-Hovering')
+state = env.tick()
+current_time = state['t']
+last_control_time = current_time
+target_action = np.random.randint(0, 3)
 
-for _ in range(2000):
+kb_cmd = KeyBoardCmd(force=15)
+obstacles = Obstacle(env, -12)
+# obstacles.draw_obstacle()
+# TODO bug here
+env.spawn_prop(prop_type="box", scale=[3, 2, 1], location=[10, 0, -12], rotation=[0.0, 10000.0, 0.0], material='gold')
+# env.spawn_prop(prop_type="box", location=[10.5, 0, -12], material='gold')
+
+for _ in range(20000):
+    if 'q' in kb_cmd.pressed_keys:
+        break
+    command = kb_cmd.parse_keys()
+    env.act("auv0", command)
+
+    target_action = np.random.randint(0, 3)
+    # env.act("target", target_action)
     state = env.tick()
 
-    if "LeftCamera" in state:
-        pixels = state["LeftCamera"]
-        cv2.namedWindow("Camera Output")
-        cv2.imshow("Camera Output", pixels[:, :, 0:3])
-        cv2.waitKey(1)
-cv2.destroyAllWindows()
+    current_time = state['t']
+    # if current_time - last_control_time >= 1.0:
+    #     last_control_time = current_time
+    #     target_action = np.random.randint(0, 3)
+

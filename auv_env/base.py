@@ -45,7 +45,7 @@ class TargetTrackingBase(gym.Env):
         # init some params
         self.num_targets = num_targets
         self.is_training = is_training
-        self.sampling_period = 0.5  # 采样间隔，需要进一步考虑确定
+        self.sampling_period = 0.1  # 控制周期
         self.sensor_r_sd = METADATA['sensor_r_sd']
         self.sensor_b_sd = METADATA['sensor_b_sd']
         self.sensor_r = METADATA['sensor_r']
@@ -62,7 +62,7 @@ class TargetTrackingBase(gym.Env):
                 map_path=os.path.join(map_dir_path, map_name),
                 margin2wall=METADATA['margin2wall'])
         # init the scenario
-        self.world = World(scenario=scenario, show=True, verbose=True)
+        self.world = World(scenario=scenario, show=show, verbose=verbose, num_targets=self.num_targets)
         self.agent_init_pos = np.array([self.MAP.origin[0], self.MAP.origin[1], 0.0]) # init agent's position
         self.target_init_pos = np.array(self.MAP.origin)
         self.target_init_cov = METADATA['target_init_cov']
@@ -70,16 +70,13 @@ class TargetTrackingBase(gym.Env):
 
     def reset(self, **kwargs):
         self.MAP.generate_map(**kwargs)
-        self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         self.state = []
-        self.num_collisions = 0
         return self.get_init_pose(**kwargs)
 
     def step(self, action):
         # The agent performs an action (t -> t+1)
         action_vw = self.action_map[action.item()]
-        is_col = self.agent.update(action_vw, [t.state[:2] for t in self.targets])
-        self.num_collisions += int(is_col)
+        self.world.step(action_vw=action_vw)
 
         # The targets move (t -> t+1)
         for i in range(self.num_targets):

@@ -5,7 +5,7 @@ scenario = {
     "main_agent": "auv0",
     "ticks_per_sec": 100,
     "frames_per_sec": False,
-    "agents":[
+    "agents": [
         {
             "agent_name": "auv0",
             "agent_type": "HoveringAUV",
@@ -41,7 +41,7 @@ scenario = {
                     "sensor_type": "GPSSensor",
                     "socket": "COM",
                     "Hz": 2,
-                    "configuration":{
+                    "configuration": {
                         "Sigma": 0.3,
                         "Depth": 3,
                         "DepthSigma": 1
@@ -52,7 +52,7 @@ scenario = {
                     "sensor_name": "CompassSensor",
                     "socket": "COM",
                     "Hz": 50,
-                    "configuration":{
+                    "configuration": {
                         "Sigma": 0.05
                     }
                 },
@@ -83,7 +83,7 @@ scenario = {
                     "configuration": {
                         "LaserMaxDistance": 10,
                         "LaserCount": 24,
-                        "LaserDebug": True
+                        "LaserDebug": False
                     }
                 },
                 {
@@ -130,9 +130,22 @@ scenario = {
             "control_scheme": 0,
             "location": [0.0, 0.0, -5.0],
             "rotation": [0.0, 0.0, 0.0]
+        },
+        {
+            "agent_name": "target",
+            "agent_type": "SphereAgent",
+            "sensors": [
+                {
+                    "sensor_type": "PoseSensor",
+                    "socket": "COM"
+                },
+            ],
+            "control_scheme": 1,
+            "location": [2, 0.0, -5.0],
+            "rotation": [0.0, 0.0, 0.0]
         }
     ],
 
-    "window_width":  1280,
+    "window_width": 1280,
     "window_height": 720
 }
