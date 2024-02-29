@@ -15,9 +15,8 @@ target_action = np.random.randint(0, 3)
 
 kb_cmd = KeyBoardCmd(force=15)
 obstacles = Obstacle(env, -12)
-# obstacles.draw_obstacle()
-# TODO bug here
-env.spawn_prop(prop_type="box", scale=[3, 2, 1], location=[10, 0, -12], rotation=[0.0, 10000.0, 0.0], material='gold')
+obstacles.draw_obstacle()
+# env.spawn_prop(prop_type="box", scale=[3, 2, 1], location=[10, 0, -12], rotation=[np.tan(np.radians(-120)), 1, 0.0], material='gold')
 # env.spawn_prop(prop_type="box", location=[10.5, 0, -12], material='gold')
 
 for _ in range(20000):

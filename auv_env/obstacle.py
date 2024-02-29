@@ -24,8 +24,9 @@ def rotate_point(point, center, angle):
     offset = np.array(point) - np.array(center)
 
     # 构建旋转矩阵
-    rotation_matrix = np.array([[np.cos(angle_rad), -np.sin(angle_rad)],
-                                [np.sin(angle_rad), np.cos(angle_rad)]])
+    # In HoloOcean,x and y is contrary to the Cartesian coordinate system
+    rotation_matrix = np.array([[np.sin(angle_rad), np.cos(angle_rad)],
+                                [np.cos(angle_rad), -np.sin(angle_rad)]])
 
     # 计算旋转后的偏移量
     new_offset = np.dot(rotation_matrix, offset)
@@ -45,7 +46,8 @@ class Obstacle:
         self.sub_center = [25*self.res, 25*self.res]  # m subobstacle rotate center
         self.sub_coordinates = [np.array([45, -45]) * self.res, np.array([45, 45]) * self.res,
                                 np.array([-45, -45]) * self.res, np.array([-45, 45]) * self.res]  # m
-        self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=True)
+        # self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=True)
+        self.chosen_idx = np.array([4,5,6,7])
         self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
 
     def draw_obstacle(self):
@@ -59,5 +61,5 @@ class Obstacle:
                 obstacle['scale'][j][1] *= self.res
                 obstacle['scale'][j][2] *= 3  # 3m depth
                 self.env.spawn_prop(prop_type="box", scale=obstacle['scale'][j], location=loc.tolist(),
-                                    rotation=[0, self.rot_angs[i], 0],  # it's annoy to be pitch?
+                                    rotation=[np.tan(np.radians(self.rot_angs[i])), 1, 0],  # it's annoy to be pitch?
                                     material='gold')
