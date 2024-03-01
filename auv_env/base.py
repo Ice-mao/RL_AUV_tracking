@@ -71,7 +71,7 @@ class TargetTrackingBase(gym.Env):
     def reset(self, **kwargs):
         self.MAP.generate_map(**kwargs)
         self.state = []
-        return self.get_init_pose(**kwargs)
+        return self.get_init_pose_random(**kwargs)
 
     def step(self, action):
         # The agent performs an action (t -> t+1)
@@ -98,28 +98,6 @@ class TargetTrackingBase(gym.Env):
 
         return self.state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
 
-    def get_init_pose(self, init_pose_list=[], target_path=[], **kwargs):
-        """Generates initial positions for the agent, targets, and target beliefs.
-        Parameters
-        ---------
-        init_pose_list : a list of dictionaries with pre-defined initial positions.
-        lin_dist_range : a tuple of the minimum and maximum distance of a target
-                        and a belief target from the agent.
-        ang_dist_range_target : a tuple of the minimum and maximum angular
-                            distance (counter clockwise) of a target from the
-                            agent. -pi <= x <= pi
-        ang_dist_range_belief : a tuple of the minimum and maximum angular
-                            distance (counter clockwise) of a belief from the
-                            agent. -pi <= x <= pi
-        blocked : True if there is an obstacle between a target and the agent.
-        """
-        if init_pose_list != []:
-            if target_path != []:
-                self.set_target_path(target_path[self.reset_num])
-            self.reset_num += 1
-            return init_pose_list[self.reset_num - 1]
-        else:
-            return self.get_init_pose_random(**kwargs)
 
     def gen_rand_pose(self, frame_xy, frame_theta, min_lin_dist, max_lin_dist,
                       min_ang_dist, max_ang_dist, additional_frame=None):
@@ -155,16 +133,8 @@ class TargetTrackingBase(gym.Env):
         is_agent_valid = False
         while (not is_agent_valid):
             init_pose = {}
-            if self.MAP.map is None:
-                blocked = None
-                if 'blocked' in METADATA:
-                    blocked = METADATA['blocked']
-                a_init = self.agent_init_pos[:2]
-                is_agent_valid = True
-            else:
-                while (not is_agent_valid):
-                    a_init = np.random.random((2,)) * (self.MAP.mapmax - self.MAP.mapmin) + self.MAP.mapmin
-                    is_agent_valid = not (self.MAP.is_collision(a_init))
+            a_init = np.random.random((2,)) * (self.MAP.mapmax - self.MAP.mapmin) + self.MAP.mapmin
+            is_agent_valid = not (self.MAP.is_collision(a_init))
 
             init_pose['agent'] = [a_init[0], a_init[1], np.random.random() * 2 * np.pi - np.pi]
             init_pose['targets'], init_pose['belief_targets'] = [], []

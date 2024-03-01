@@ -30,21 +30,22 @@ class Agent(object):
 
 
 class AgentAuv(Agent):
-    def __init__(self, dim, sampling_period, init_state):
+    def __init__(self, dim, sampling_period, sensor):
         Agent.__init__(self, dim, sampling_period)
         # init the control part of Auv
         self.controller = LQR()
         self.observer = InEKF()
         self.keyboard = KeyBoardCmd(10)
+
         # init the sensor part of AUV
         # to see if it is useful
         # self.imagesonar = ImagingSonar(scenario=scenario)  # to see if it is useful
         self.rangefinder = RangeFinder(scenario=scenario)
-        self.state = State(init_state)
+        self.state = State(sensor)
         # self.planner = RRT()
 
-    def reset(self, init_state):
-        super().reset(init_state)
+    def reset(self, sensor):
+        self.state = State(sensor)
         self.vw = [0.0, 0.0]
 
     def update(self, action_vw, sensors):
@@ -67,18 +68,19 @@ class AgentSphere(Agent):
     """
         use for target
     """
-    def __init__(self, dim, sampling_period, init_state):
+    def __init__(self, dim, sampling_period, init_state, fixed_depth):
         Agent.__init__(self, dim, sampling_period)
         # init the control part of Auv
+        self.init_pos = init_state
+        self.target_pos
+        self.planner = RRT(start=self.init_pos, )
         self.controller = LQR()
         self.observer = InEKF()
-        self.keyboard = KeyBoardCmd(10)
         # init the sensor part of AUV
         # to see if it is useful
         # self.imagesonar = ImagingSonar(scenario=scenario)  # to see if it is useful
         self.rangefinder = RangeFinder(scenario=scenario)
         self.state = State(init_state)
-        # self.planner = RRT()
 
     def reset(self, init_state):
         super().reset(init_state)

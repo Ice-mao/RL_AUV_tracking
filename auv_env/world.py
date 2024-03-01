@@ -5,14 +5,18 @@ from auv_control.control import LQR
 from auv_control.planning import Traj, RRT
 from auv_control import State
 from tools import Plotter
-from auv_env.agent import AgentAuv
+from auv_env import util
+from auv_env.agent import AgentAuv, AgentSphere
 from auv_env.obstacle import Obstacle
+from auv_env.metadata import METADATA
+
 
 class World:
     """
     build a 3d scenario in HoloOcean to use the more real engine
     """
-    def __init__(self, scenario, show, verbose,num_targets, **kwargs):
+
+    def __init__(self, scenario, show, verbose, num_targets, **kwargs):
         # define the entity
         self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
         self.agent = None
@@ -21,113 +25,150 @@ class World:
         self.num_targets = num_targets  # num of target
 
         # Setup environment
-        self.size = np.array([72.4, 72.4, 25])
-        self.bottom_corner = np.array([0, 0, -25])
+        self.size = np.array([45, 45, 25])
+        self.bottom_corner = np.array([-22.5, -22.5, -25])
         self.fix_depth = -5
-        self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30, lifetime=0) # draw the area
-
-        # Tick the scenario
-        self.u = np.zeros(8)
-        self.ocean.act("auv0", self.u)
-        self.sensors = self.ocean.tick()
+        self.margin = METADATA['margin']
+        self.margin2wall = METADATA['margin2wall']
+        self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
+                            lifetime=0)  # draw the area
 
         # Setup obstacles
         # rule is obstacles combined will rotate from their own center
         self.obstacles = Obstacle(self.ocean, self.fix_depth)
         self.obstacles.draw_obstacle()
 
-        self.obstacle_center_loc = np.random.beta(1.5, 1.5, (num_obstacles, 3)) * self.size + self.bottom_corner
-        # Make sure there's none too close to our start or end
-        for i in range(self.num_obstacles):
-            while np.linalg.norm(self.obstacle_loc[i] - self.start) < 10 or \
-                    np.linalg.norm(self.obstacle_loc[i] - self.end) < 10:
-                self.obstacle_loc[i] = np.random.beta(2, 2, 3) * self.size + self.bottom_corner
-
-        # Setup agent and target
-        self.build_models(sampling_period=self.sampling_period, init_state=self.sensors)
-
-    def build_models(self, sampling_period, init_state, **kwargs):
-        # Build a robot
-        self.agent = AgentAuv(dim=3, sampling_period=sampling_period, init_state=init_state)
-        self.targets = [AgentDoubleInt2D_Nonlinear(self.target_dim,
-                                                   self.sampling_period, self.limit['target'],
-                                                   lambda x: self.MAP.is_collision(x),
-                                                   W=self.target_true_noise_sd, A=self.targetA,
-                                                   obs_check_func=lambda x: self.MAP.get_closest_obstacle(
-                                                       x, fov=2 * np.pi, r_max=10e2))
-                        for _ in range(self.num_targets)]
-        # self.targets = [AgentDoubleInt2D_Nonlinear(self.target_dim,
-        #                                            self.sampling_period, self.limit['target'],
-        #                                            lambda x: self.MAP.is_collision(x),
-        #                                            W=self.target_true_noise_sd, A=self.targetA,
-        #                                            obs_check_func=lambda x: self.MAP.get_closest_obstacle(
-        #                                                x, fov=2 * np.pi, r_max=10e2))
-        #                 for _ in range(self.num_targets)]
-
-    def step(self, action_vw):
-        self.u = self.agent.update(action_vw, self.sensors)
+        # Cal random  pos of agent and target
+        self.agent_init_pos = None
+        self.agent_init_yaw = None
+        self.target_init_pos = None
+        self.target_init_yaw = None
+        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw = self.get_init_pose_random()
+        # Set the pos and tick the scenario
+        self.ocean.agents['auv0'].set_physics_state(location=[self.agent_init_pos])
+        self.u = np.zeros(8)
         self.ocean.act("auv0", self.u)
+        self.ocean.agents['target'].set_physics_state(location=[self.target_init_pos])
+        self.target_u = [0, 0]
+        self.ocean.act("target", self.target_u)
         self.sensors = self.ocean.tick()
 
-    def draw_world(self):
-        """
+        self.build_models(sampling_period=self.sampling_period,
+                          agent_init_state=self.sensors['auv0']
+                          , target_init_state=self.sensors['target'])
 
+    def build_models(self, sampling_period, agent_init_state, target_init_state, **kwargs):
+        """
+        :param sampling_period:
+        :param agent_init_state:list [[x,y,z],yaw(theta)]
+        :param target_init_state:list [[x,y,z],yaw(theta)]
+        :param kwargs:
         :return:
         """
-        # Setup environment
-        env.draw_box(self.center.tolist(), (self.size/2).tolist(), color=[0,0,255], thickness=30, lifetime=0)
-        for i in range(self.num_obstacles):
-            loc = self.obstacle_loc[i].tolist()
-            loc[1] *= -1
-            env.spawn_prop('sphere', loc, [0,0,0], self.obstacle_size[i], False, "white")
+        # Build a robot
+        self.agent = AgentAuv(dim=3, sampling_period=sampling_period, init_state=agent_init_state)
+        self.targets = [AgentSphere(dim=3, sampling_period=sampling_period, init_state=target_init_state
+                                    , fixed_depth=self.fix_depth)
+                        for _ in range(self.num_targets)]
 
-        for p in self.path:
-            env.draw_point(p.tolist(), color=[255,0,0], thickness=20, lifetime=0)
+    def step(self, action_vw):
+        self.u = self.agent.update(action_vw, self.sensors['auv0'])
+        self.ocean.act("auv0", self.u)
+        self.target_u = self.agent.update(self.sensors['target'])
+        self.ocean.act("target", self.target_u)
+        self.sensors = self.ocean.tick()
 
-        super().draw_traj(env, t)
+    def reset(self):
+        self.ocean.reset()
+        self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
+                            lifetime=0)  # draw the area
+        self.obstacles.reset()
+        self.obstacles.draw_obstacle()
 
     @property
     def center(self):
-        return self.bottom_corner + self.size/2
+        return self.bottom_corner + self.size / 2
+
+    def get_init_pose_random(self,
+                             lin_dist_range_a2t=METADATA['lin_dist_range_a2t'],
+                             ang_dist_range_a2t=METADATA['ang_dist_range_a2t'],
+                             blocked=None, ):
+        is_agent_valid = False
+        blocked = False
+        if 'blocked' in METADATA:
+            blocked = METADATA['blocked']
+        while not is_agent_valid:
+            init_pose = {}
+            # generatr an init pos around the map
+            a_init = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+            # satisfy the in bound and no collision conditions ----> True(is valid)
+            is_agent_valid = self.in_bound(a_init) and self.obstacles.check_obstacle_collision(a_init, self.margin2wall)
+            agent_init_pos = [a_init[0], a_init[1], self.fix_depth]
+            agent_init_yaw = np.random.uniform(-np.pi, np.pi)
+            if is_agent_valid is True:
+                for i in range(self.num_targets):
+                    count, is_target_valid, target_init_pos, target_init_yaw = 0, False, np.zeros((2,)), np.zeros((1,))
+                    while not is_target_valid:
+                        is_target_valid, target_init_pos, target_init_yaw = self.gen_rand_pose(
+                            agent_init_pos,
+                            agent_init_yaw,
+                            lin_dist_range_a2t[0], lin_dist_range_a2t[1],
+                            ang_dist_range_a2t[0], ang_dist_range_a2t[1]
+                        )
+
+                        if is_target_valid:  # check the blocked condition
+                            is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos)
+                            flag = not is_no_blocked
+                            is_target_valid = (blocked == flag)
+                        count += 1
+                        if count > 100:
+                            is_agent_valid = False
+                            break
+        return [agent_init_pos, self.fix_depth], agent_init_yaw, [target_init_pos, self.fix_depth], target_init_yaw
+
+    def in_bound(self, pos):
+        """
+        :param pos:
+        :return: True: in area, False: out area
+        """
+        return not ((pos[0] < self.bottom_corner[0] + self.margin2wall)
+                    or (pos[0] > self.size[0] + self.bottom_corner[0] - self.margin2wall)
+                    or (pos[1] < self.bottom_corner[1] + self.margin2wall)
+                    or (pos[1] > self.size[1] + self.bottom_corner[1] - self.margin2wall))
+
+    def gen_rand_pose(self, frame_xy, frame_theta, min_lin_dist, max_lin_dist,
+                      min_ang_dist, max_ang_dist):
+        """Genertes random position and yaw.
+        Parameters
+        --------
+        frame_xy, frame_theta : xy and theta coordinate of the frame you want to compute a distance from.
+        min_lin_dist : the minimum linear distance from o_xy to a sample point.
+        max_lin_dist : the maximum linear distance from o_xy to a sample point.
+        min_ang_dist : the minimum angular distance (counter clockwise direction) from c_theta to a sample point.
+        max_ang_dist : the maximum angular distance (counter clockwise direction) from c_theta to a sample point.
+        """
+        if max_ang_dist < min_ang_dist:
+            max_ang_dist += 2 * np.pi
+        rand_ang = util.wrap_around(np.random.rand() * \
+                                    (max_ang_dist - min_ang_dist) + min_ang_dist)
+
+        rand_r = np.random.rand() * (max_lin_dist - min_lin_dist) + min_lin_dist
+        rand_xy = np.array([rand_r * np.sin(rand_ang), rand_r * np.cos(rand_ang)])  # set in HoloOcean,opposite
+        rand_xy_global = util.transform_2d_inv(rand_xy, frame_theta, np.array(frame_xy))[::-1]  # the same opposite
+        is_valid = (self.in_bound(rand_xy_global) and self.obstacles.check_obstacle_collision(rand_xy_global,
+                                                                                              self.margin2wall))
+        return is_valid, rand_xy_global, rand_ang + frame_theta
 
 
+if __name__ == '__main__':
+    from auv_control import scenario
 
+    print("Test World")
+    world = World(scenario, show=True, verbose=True, num_targets=1)
+    print(world.size)
+    for _ in range(20000):
+        world.ocean.act("auv0", 0)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        target_action = (0.01, 0.1)
+        world.ocean.act("target", target_action)
+        state = world.ocean.tick()

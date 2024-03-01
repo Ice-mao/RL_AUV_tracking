@@ -139,6 +139,10 @@ scenario = {
                     "sensor_type": "PoseSensor",
                     "socket": "COM"
                 },
+                {
+                    "sensor_type": "LocationSensor",
+                    "socket": "COM"
+                },
             ],
             "control_scheme": 1,
             "location": [2, 0.0, -5.0],

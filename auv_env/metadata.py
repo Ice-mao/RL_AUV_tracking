@@ -35,12 +35,10 @@ METADATA_v1 = {
     'target_init_cov': 30.0,  # initial target diagonal Covariance.
     'target_init_vel': [0.0, 0.0],  # target's initial velocity.
     'target_speed_limit': 3.5,  # velocity limit of targets.
-    'lin_dist_range_a2b': (5.0, 20.0),
-    'ang_dist_range_a2b': (-np.pi, np.pi),
-    'lin_dist_range_b2t': (0.0, 20.0),
-    'ang_dist_range_b2t': (-np.pi / 2, np.pi / 2),
-    'margin': 1.0,  # a marginal distance btw targets and the agent.
-    'margin2wall': 1.0,  # a marginal distance from a wall.
+    'lin_dist_range_a2t': (1.0, 10.0),
+    'ang_dist_range_a2t': (-np.pi/3, np.pi/3),
+    'margin': 1,  # a marginal distance btw targets and the agent.
+    'margin2wall': 0.5,  # a marginal distance from a wall.
     'action_v': [3, 2, 1, 0],  # action primitives - linear velocities.
     'action_w': [np.pi / 2, 0, -np.pi / 2],  # action primitives - angular velocities.
     'const_q': 0.5,  # target noise constant in beliefs.
