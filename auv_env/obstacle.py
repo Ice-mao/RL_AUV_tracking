@@ -116,30 +116,31 @@ class Obstacle:
                                           self.rot_angs[i], self.sub_coordinates[i])
                 # drew the obstacle's boundary
                 # need the -1 factor, because the coordinates of line is opposite
-                self.env.draw_line([points[0][0], -points[0][1], self.fix_depth],
-                                   [points[1][0], -points[1][1], self.fix_depth],
+                self.env.draw_line([points[0][0], points[0][1], self.fix_depth],
+                                   [points[1][0], points[1][1], self.fix_depth],
                                    thickness=5.0, lifetime=0.0)
-                self.env.draw_line([points[1][0], -points[1][1], self.fix_depth],
-                                   [points[2][0], -points[2][1], self.fix_depth],
+                self.env.draw_line([points[1][0], points[1][1], self.fix_depth],
+                                   [points[2][0], points[2][1], self.fix_depth],
                                    thickness=5.0, lifetime=0.0)
-                self.env.draw_line([points[2][0], -points[2][1], self.fix_depth],
-                                   [points[3][0], -points[3][1], self.fix_depth],
+                self.env.draw_line([points[2][0], points[2][1], self.fix_depth],
+                                   [points[3][0], points[3][1], self.fix_depth],
                                    thickness=5.0, lifetime=0.0)
-                self.env.draw_line([points[3][0], -points[3][1], self.fix_depth],
-                                   [points[0][0], -points[0][1], self.fix_depth],
+                self.env.draw_line([points[3][0], points[3][1], self.fix_depth],
+                                   [points[0][0], points[0][1], self.fix_depth],
                                    thickness=5.0, lifetime=0.0)
                 self.polygons.append(Polygon(points))
 
                 loc_center = rotate_point(obstacle['center'][j], self.sub_center, self.rot_angs[i])
                 loc = loc_center + np.array(self.sub_coordinates[i])
                 loc = np.append(loc, self.fix_depth)
+                loc[1] *= -1
                 _scale = [obstacle['scale'][j][0] * self.res, obstacle['scale'][j][1] * self.res,
                           obstacle['scale'][j][2] * 3]
                 # _scale[0] = obstacle['scale'][j][0] * self.res
                 # _scale[1] = obstacle['scale'][j][1] * self.res
                 # _scale[2] = obstacle['scale'][j][2] * 3  # 3m depth
                 self.env.spawn_prop(prop_type="box", scale=_scale, location=loc.tolist(),
-                                    rotation=[np.tan(np.radians(self.rot_angs[i])), 1, 0],  # it's annoy to be pitch?
+                                    rotation=[np.tan(np.radians(-self.rot_angs[i])), 1, 0],  # it's annoy to be pitch?
                                     material='gold')
 
     def check_obstacle_collision(self, point, margin):
