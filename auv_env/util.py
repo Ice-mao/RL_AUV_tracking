@@ -46,12 +46,12 @@ def transform_2d(vec, theta_base, xy_base=[0.0, 0.0]):
     这是一个向量从世界坐标系到agent坐标系的坐标变换函数
     """
     assert (len(vec) == 2)
-    return np.matmul([[np.cos(theta_base), np.sin(theta_base)],
-                      [-np.sin(theta_base), np.cos(theta_base)]],
+    return np.matmul([[np.cos(theta_base), -np.sin(theta_base)],
+                      [np.sin(theta_base), np.cos(theta_base)]],
                      vec - np.array(xy_base))
 
 
-def transform_2d_inv(vec, theta_base, xy_base=[0.0, 0.0]):
+def transform_2d_inv(vec, theta_base, xy_base):
     """
     Both vec and frame_xy are in the global coordinate. vec is a vector
     you want to transform with respect to a certain frame which is located at
@@ -59,10 +59,11 @@ def transform_2d_inv(vec, theta_base, xy_base=[0.0, 0.0]):
     R^T * (vec - frame_xy).
     R is a rotation matrix of the frame w.r.t the global frame.
     这是一个向量经过旋转角度和平移之后得到新向量的坐标逆变换函数
+    attention: is useful in HoloOcean,the xy is opposite
     """
     assert (len(vec) == 2)
-    return np.matmul([[np.cos(theta_base), -np.sin(theta_base)],
-                      [np.sin(theta_base), np.cos(theta_base)]],
+    return np.matmul([[np.cos(theta_base), np.sin(theta_base)],
+                      [-np.sin(theta_base), np.cos(theta_base)]],
                      vec) + np.array(xy_base)
 
 

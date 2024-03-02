@@ -143,6 +143,10 @@ scenario = {
                     "sensor_type": "LocationSensor",
                     "socket": "COM"
                 },
+                {
+                    "sensor_type": "VelocitySensor",
+                    "socket": "COM"
+                },
             ],
             "control_scheme": 1,
             "location": [2, 0.0, -5.0],

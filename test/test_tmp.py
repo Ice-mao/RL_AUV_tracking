@@ -21,10 +21,14 @@ bottom_corner = np.array([-22.5, -22.5, -25])
 fix_depth = -5
 center = bottom_corner + size / 2
 env.draw_box(center.tolist(), (size / 2).tolist(), color=[0, 0, 255], thickness=30, lifetime=0) # draw the area
+env.draw_line([0, 0,-5], [10, 10, -5], thickness=5.0, lifetime=0.0)
 # np.tan(np.radians(-120))
 # env.spawn_prop(prop_type="box", scale=[10, 2, 1], location=[10, -10, -12], rotation=[0, 0, 0.0], material='gold')
 # env.spawn_prop(prop_type="box", location=[10.5, 0, -12], material='gold')
-
+env.agents['auv0'].set_physics_state(location=[0, 0, -5],
+                                            rotation=[0.0, 0.0, 0.0],
+                                            velocity=[0.0, 0.0, 0.0],
+                                            angular_velocity=[0.0, 0.0, 0.0])
 for _ in range(20000000):
     if 'q' in kb_cmd.pressed_keys:
         break

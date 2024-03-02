@@ -31,6 +31,8 @@ def rotate_point(point, center, angle):
     # In HoloOcean,x and y is contrary to the Cartesian coordinate system
     rotation_matrix = np.array([[np.sin(angle_rad), np.cos(angle_rad)],
                                 [np.cos(angle_rad), -np.sin(angle_rad)]])
+    # rotation_matrix = np.array([[np.cos(angle_rad), np.sin(angle_rad)],
+    #                             [-np.sin(angle_rad), -np.cos(angle_rad)]])
 
     # 计算旋转后的偏移量
     new_offset = np.dot(rotation_matrix, offset)
@@ -89,8 +91,8 @@ class Obstacle:
         self.num_obstacles = 4
         self.res = 0.2  # m remeber to * with scale
         self.sub_center = [25 * self.res, 25 * self.res]  # m sub obstacle rotate center
-        self.sub_coordinates = [np.array([35, -45]) * self.res, np.array([35, 45]) * self.res,
-                                np.array([-55, -45]) * self.res, np.array([-55, 45]) * self.res]  # m
+        self.sub_coordinates = [np.array([25, -45]) * self.res, np.array([25, 45]) * self.res,
+                                np.array([-65, -45]) * self.res, np.array([-65, 45]) * self.res]  # m
         np.random.seed()
         self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=False)
         print(self.chosen_idx)
@@ -140,7 +142,7 @@ class Obstacle:
                                     rotation=[np.tan(np.radians(self.rot_angs[i])), 1, 0],  # it's annoy to be pitch?
                                     material='gold')
 
-    def check_obstacle_collision(self, point, margin=0.5):
+    def check_obstacle_collision(self, point, margin):
         """
         :param point: the target point
         :param margin: the distance with obstacle
@@ -156,21 +158,24 @@ class Obstacle:
         for polygon in self.polygons:
             if circle_polygon.intersects(polygon) or circle_polygon.within(polygon):
                 return False  # collision
-            else:
-                print("Circle does not intersect with or is not within the polygon.")
+        return True
 
-    def check_obstacle_block(self, point1, point2):
+    def check_obstacle_block(self, point1, point2, margin=1):
         """
         check if any obstacles blocked between the two points
         :param point1:
         :param point2:
         :return:False:blocked, True: no blocked
         """
-        # 定义线段
-        line = LineString([point1, point2])
+        for _ in range(50):
+            theta = np.random.uniform(-np.pi, np.pi)
+            point1 + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
+            theta = np.random.uniform(-np.pi, np.pi)
+            point2 + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
+            # 定义线段
+            line = LineString([point1, point2])
 
-        for polygon in self.polygons:
-            if line.intersects(polygon):
-                return False  # blocked
-            else:
-                print("Circle does not intersect with or is not within the polygon.")
+            for polygon in self.polygons:
+                if line.intersects(polygon):
+                    return False  # blocked
+        return True
