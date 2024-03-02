@@ -36,7 +36,7 @@ for _ in range(20000000):
     env.act("auv0", command)
 
     target_action = (0.01, 0.1)
-    # env.act("target", target_action)
+    env.act("target", target_action)
     state = env.tick()
 
     current_time = state['t']

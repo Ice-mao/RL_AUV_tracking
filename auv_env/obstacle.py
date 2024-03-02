@@ -168,7 +168,7 @@ class Obstacle:
         :param point2:
         :return:False:blocked, True: no blocked
         """
-        for _ in range(50):
+        for _ in range(20):
             theta = np.random.uniform(-np.pi, np.pi)
             point1 + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
             theta = np.random.uniform(-np.pi, np.pi)

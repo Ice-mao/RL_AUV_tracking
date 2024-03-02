@@ -4,22 +4,40 @@ from .base import BasePlanner
 
 
 class RRT_2d(BasePlanner):
-    def __init__(self, num_seconds, fix_depth,  start=None, end=None, speed=None):
+    def __init__(self, num_seconds=10, start=None, end=None, speed=None, obstacles=None, margin=None,
+                 fixed_depth=None, bottom_corner=None, size=None, start_time=None):
         # setup goal
         self.start = np.array([0, 0, -5]) if start is None else start
-        self.end = np.array([40, 40, fix_depth]) if end is None else end
+        self.end = np.array([20, 20, -5]) if end is None else end
+        self.start = self.start[:2]
+        self.end = self.end[:2]
         self.num_seconds = num_seconds
         self.speed = speed
+        self.obstacles = obstacles
+        self.margin = margin
+        self.fixed_depth = fixed_depth
+        self.bottom_corner = bottom_corner
+        self.size = size
 
         # setup RRT
-        self.step_size = 5
-        self.tree = self.start.reshape(1, -1)
+        self.start_time = start_time
+        self.step_size = 3
+        self.tree = self.start[0:2].reshape(1, -1)
         self.dist = [0]
         self.parent = [0]
         self.finish = [False]
         self._run_rrt()
 
-    def reset(self):
+    def reset(self, time, start, end):
+        # setup RRT
+        self.start = start
+        self.end = end
+        self.start_time = time
+        self.step_size = 3
+        self.tree = self.start[0:2].reshape(1, -1)
+        self.dist = [0]
+        self.parent = [0]
+        self.finish = [False]
         self._run_rrt()
 
     def _run_rrt(self):
@@ -36,7 +54,8 @@ class RRT_2d(BasePlanner):
         else:
             idx = connecting_nodes[np.argmin(np.array(self.dist)[connecting_nodes])].item(0)
 
-        # construct lowest cost path order
+        # construct the lowest cost path order
+        # from the last node to get the start node
         path = [idx]
         parent = np.inf
         while parent != 0:
@@ -47,31 +66,34 @@ class RRT_2d(BasePlanner):
         self.path = self.tree[path[::-1]]
         self.path = np.vstack((self.path, self.end))
 
-        # smooth the waypoint path
-        smooth = [0]
-
-        # Go til the last or second to last waypoint is in smooth
-        while smooth[-1] < len(self.path) - 1:
-            # iterate through all waypoints that are left
-            for i in range(smooth[-1] + 1, len(self.path)):
-                # Check if there's a collision, if there is add in the previous waypoint
-                if self._collision(self.path[smooth[-1]:smooth[-1] + 1], self.path[i:i + 1]):
-                    smooth.append(i - 1)
-                    break
-                # If we're at the last element of our path, add it in so we can be done
-                if i == len(self.path) - 1:
-                    smooth.append(len(self.path) - 1)
-                    break
-
-        # Remove unneeded nodes from our path
-        self.path = self.path[smooth]
+        # # smooth the waypoint path
+        # smooth = [0]
+        #
+        # # Go til the last or second to last waypoint is in smooth
+        # while smooth[-1] < len(self.path) - 1:
+        #     # iterate through all waypoints that are left
+        #     for i in range(smooth[-1] + 1, len(self.path)):
+        #         # Check if there's a collision, if there is add in the previous waypoint
+        #         # if self._collision(self.path[smooth[-1]:smooth[-1] + 1], self.path[i:i + 1]):
+        #         if self.obstacles.check_obstacle_block(self.path[smooth[-1]:smooth[-1] + 1].flatten(),
+        #                                                self.path[i:i + 1].flatten(),
+        #                                                self.margin):
+        #             smooth.append(i - 1)
+        #             break
+        #         # If we're at the last element of our path, add it in so we can be done
+        #         if i == len(self.path) - 1:
+        #             smooth.append(len(self.path) - 1)
+        #             break
+        #
+        # # Remove unneeded nodes from our path
+        # self.path = self.path[smooth]
 
         # make rot and pos functions
         distance = np.linalg.norm(np.diff(self.path, axis=0), axis=1)
         if self.speed is None:
             self.speed = np.sum(distance) / (self.num_seconds - 3)
         times = np.cumsum(distance / self.speed)
-
+        times = times + self.start_time
         def rot(t):
             step = np.searchsorted(times, t)
 
@@ -85,9 +107,11 @@ class RRT_2d(BasePlanner):
 
                 m = self.speed * (p_next - p_prev) / np.linalg.norm(p_next - p_prev)
 
-                yaw = np.arctan2(m[1], m[0]) * 180 / np.pi
-                pitch = -np.arctan2(m[2], np.sqrt(m[0] ** 2 + m[1] ** 2)) * 180 / np.pi
-                pitch = np.clip(pitch, -15, 15)
+                yaw = np.arctan2(m[1], m[0])
+                # pitch = -np.arctan2(m[2], np.sqrt(m[0] ** 2 + m[1] ** 2)) * 180 / np.pi
+                # pitch = np.clip(pitch, -15, 15)
+
+                pitch = 0
 
                 return np.array([0, pitch, yaw])
 
@@ -109,9 +133,24 @@ class RRT_2d(BasePlanner):
 
         self.pos_func = np.vectorize(pos, signature='()->(n)')
 
+    def tick(self, t):
+        """Gets desired trajectory at time t, only as a state"""
+        if not isinstance(t, float):
+            raise ValueError("Can't tick with an array")
+
+        if t < self.start_time:
+            return np.array([self.start[:2], 0])
+        pos = self.pos_func(t)
+        yaw_rad = self.rot_func(t)[2]
+        return np.array([pos[0], pos[1], yaw_rad])
+
     def _add_node(self):
-        # make random pose
-        pose = np.random.uniform(self.bottom_corner, self.top_corner)
+        # make random pose :(get the pose of xy)
+        min_xy = np.array([self.bottom_corner[0], self.bottom_corner[1]])
+        max_xy = np.array([self.top_corner[0], self.top_corner[1]])
+        pose = np.random.uniform(min_xy, max_xy)
+        # pose = np.concatenate((pose_xy, [self.fix_depth]), axis=-1)
+        # pose = np.random.uniform(self.bottom_corner, self.top_corner)
 
         # find closest tree element
         dist = np.linalg.norm(self.tree - pose, axis=1)
@@ -124,7 +163,8 @@ class RRT_2d(BasePlanner):
         pose = close_pose + direction * self.step_size
 
         # Save everything if we don't collide
-        if not self._collision(close_pose, pose):
+        if (self.obstacles.check_obstacle_block(close_pose, pose)
+                and self.obstacles.check_obstacle_collision(pose, self.margin)):
             self.tree = np.vstack((self.tree, pose))
             self.dist.append(close_dist + self.step_size)
             self.parent.append(close_idx)
@@ -139,7 +179,6 @@ class RRT_2d(BasePlanner):
             dist = np.linalg.norm(self.obstacle_loc - v, axis=1)
             if np.any(dist < self.obstacle_size + 1):
                 return True
-
         return False
 
     @property
@@ -152,14 +191,13 @@ class RRT_2d(BasePlanner):
 
     def draw_traj(self, env, t):
         """Override super class to also make environment appear"""
-        # Setup environment
-        env.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30, lifetime=0)
-        for i in range(self.num_obstacles):
-            loc = self.obstacle_loc[i].tolist()
-            loc[1] *= -1
-            env.spawn_prop('sphere', loc, [0, 0, 0], self.obstacle_size[i], False, "white")
-
         for p in self.path:
             env.draw_point(p.tolist(), color=[255, 0, 0], thickness=20, lifetime=0)
+        # Get all positions
+        t = np.arange(0, t, 0.5)
+        des_state = self._traj(t)
+        des_pos = des_state[:, 0:3]
 
-        super().draw_traj(env, t)
+        # Draw line between each
+        for i in range(len(des_pos) - 1):
+            env.draw_line(des_pos[i].tolist(), des_pos[i + 1].tolist(), thickness=5.0, lifetime=0.0)

@@ -34,6 +34,9 @@ env = holoocean.make(scenario_cfg=scenario)
 # planner.draw_traj(env, num_seconds)
 
 # for i in tqdm(range(num_ticks)):
+env.draw_point([-5, 3, -5], color=[0,255,0], thickness=20, lifetime=0)
+env.draw_line([-5, 3, -5], [0, 0, -5], color=[0,0,255], thickness=20, lifetime=0)
+env.spawn_prop('sphere', [-5, 3, -5], [0, 0, 0])
 for _ in range(20000):
     # Tick environment
     env.act("auv0", u)
@@ -50,6 +53,6 @@ for _ in range(20000):
     # des_state = planner.tick(t)
 
     # Autopilot Commands
-    des_state = State(np.array([-5, 3, -5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, - 0.00, - 0.00, 0.00]))
+    des_state = State(np.array([-5, -3, -5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, - 0.00, - 0.00, 0.00]))
     # des_state.vec = [-5, 3, -5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, - 0.00, - 0.00, 0.00]
     u = controller.u(true_state, des_state)

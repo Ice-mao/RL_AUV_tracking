@@ -67,9 +67,9 @@ class World:
 
         self.build_models(sampling_period=self.sampling_period,
                           agent_init_state=self.sensors['auv0']
-                          , target_init_state=self.sensors['target'])
+                          , target_init_state=self.sensors['target'], time=self.sensors['t'])
 
-    def build_models(self, sampling_period, agent_init_state, target_init_state, **kwargs):
+    def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
         """
         :param sampling_period:
         :param agent_init_state:list [[x,y,z],yaw(theta)]
@@ -80,17 +80,17 @@ class World:
         # Build a robot
         self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state)
         self.targets = [AgentSphere(dim=3, sampling_period=sampling_period, sensor=target_init_state
-                                    , fixed_depth=self.fix_depth,size = self.size,
-                                    bottom_corner = self.bottom_corner)
+                                    , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
+                                    bottom_corner=self.bottom_corner, start_time=time)
                         for _ in range(self.num_targets)]
 
     def step(self, action_vw):
         for target in self.targets:
-            self.target_u = target.update(self.sensors['target'])
+            self.target_u = target.update(self.sensors['target'], self.sensors['t'])
             self.ocean.act("target", self.target_u)
 
-        self.u = self.agent.update(action_vw, self.sensors['auv0'])
-        self.ocean.act("auv0", self.u)
+        # self.u = self.agent.update(action_vw, self.sensors['auv0'])
+        # self.ocean.act("auv0", self.u)
         self.sensors = self.ocean.tick()
 
     def reset(self):
@@ -201,11 +201,16 @@ if __name__ == '__main__':
     print("Test World")
     world = World(scenario, show=True, verbose=True, num_targets=1)
     print(world.size)
+    # world.targets[0].planner.draw_traj(world.ocean, 30)
     for _ in range(20000):
         if 'q' in world.agent.keyboard.pressed_keys:
             break
         command = world.agent.keyboard.parse_keys()
+        for target in world.targets:
+            world.target_u = target.update(world.sensors['target'], world.sensors['t'])
+            # world.target_u = [0.1, 1]
+            # world.ocean.act("target", world.target_u * 0.01)
+            world.ocean.act("target", tuple(x * 0.01 for x in world.target_u))
+        # self.u = self.agent.update(action_vw, self.sensors['auv0'])
         world.ocean.act("auv0", command)
-        target_action = (0.0, 0.0)
-        world.ocean.act("target", target_action)
-        state = world.ocean.tick()
+        world.sensors = world.ocean.tick()
