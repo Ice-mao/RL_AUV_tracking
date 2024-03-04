@@ -109,11 +109,11 @@ class AgentSphere(Agent):
         self.vec[0:3] = sensor["PoseSensor"][:3, 3]
         self.vec[3:6] = sensor["VelocitySensor"]
         self.vec[6:9] = rot_to_rpy(sensor["PoseSensor"][:3, :3])
+        true_state = np.array([self.vec[0], self.vec[1], np.radians(self.vec[8])])
         # desire state
-        des_state = self.planner.tick(self.time)
+        des_state = self.planner.tick(true_state)  # only x, y
         # TODO then check the des_state if is_col
         # Autopilot Commands
-        true_state = np.array([self.vec[0], self.vec[1], np.radians(self.vec[8])])
         u = self.controller.u(true_state, des_state, self.sampling_period)
         return u
 

@@ -29,17 +29,21 @@ env.agents['auv0'].set_physics_state(location=[0, 0, -5],
                                             rotation=[0.0, 0.0, 0.0],
                                             velocity=[0.0, 0.0, 0.0],
                                             angular_velocity=[0.0, 0.0, 0.0])
+from auv_control.state import rot_to_rpy
 for _ in range(20000000):
     if 'q' in kb_cmd.pressed_keys:
         break
     command = kb_cmd.parse_keys()
     env.act("auv0", command)
 
-    target_action = (0.01, 0.1)
+    target_action = (0, 0.1)
     env.act("target", target_action)
     state = env.tick()
 
     current_time = state['t']
+    pose = rot_to_rpy(state['target']['PoseSensor'][:3, :3])
+    yaw = np.radians(pose[2])
+    print(yaw)
     # if current_time - last_control_time >= 1.0:
     #     last_control_time = current_time
     #     target_action = np.random.randint(0, 3)

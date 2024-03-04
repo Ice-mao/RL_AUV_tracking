@@ -21,11 +21,13 @@ class RRT_2d(BasePlanner):
 
         # setup RRT
         self.start_time = start_time
+        self.desire_path_num = 0
         self.step_size = 3
         self.tree = self.start[0:2].reshape(1, -1)
         self.dist = [0]
         self.parent = [0]
         self.finish = [False]
+        self.finish_flag = False # use for path finish
         self._run_rrt()
 
     def reset(self, time, start, end):
@@ -91,7 +93,8 @@ class RRT_2d(BasePlanner):
         # make rot and pos functions
         distance = np.linalg.norm(np.diff(self.path, axis=0), axis=1)
         if self.speed is None:
-            self.speed = np.sum(distance) / (self.num_seconds - 3)
+            # self.speed = np.sum(distance) / (self.num_seconds - 3)
+            self.speed = np.sum(distance) / (self.num_seconds)
         times = np.cumsum(distance / self.speed)
         times = times + self.start_time
         def rot(t):
@@ -133,16 +136,29 @@ class RRT_2d(BasePlanner):
 
         self.pos_func = np.vectorize(pos, signature='()->(n)')
 
-    def tick(self, t):
-        """Gets desired trajectory at time t, only as a state"""
-        if not isinstance(t, float):
-            raise ValueError("Can't tick with an array")
+    def tick(self, true_state):
+        """get the path point replace the time"""
+        # if not isinstance(t, float):
+        #     raise ValueError("Can't tick with an array")
+        # 
+        # if t < self.start_time:
+        #     return np.array([self.start[:2], 0])
+        # pos = self.pos_func(t)
+        # yaw_rad = self.rot_func(t)[2]
+        # return np.array([pos[0], pos[1], yaw_rad])
+        # if arrived, return the next path point
+        dis = np.linalg.norm(self.path[self.desire_path_num][: 2] - true_state[:2])
+        print(dis)
+        if self.finish_flag:
+            return self.path[self.desire_path_num]
 
-        if t < self.start_time:
-            return np.array([self.start[:2], 0])
-        pos = self.pos_func(t)
-        yaw_rad = self.rot_func(t)[2]
-        return np.array([pos[0], pos[1], yaw_rad])
+        if np.linalg.norm(self.path[self.desire_path_num][: 2] - true_state[:2]) < 0.2:
+            self.desire_path_num += 1
+            print(self.desire_path_num)
+        if self.desire_path_num == len(self.path)-1:
+            self.finish_flag = 1
+            print('finish')
+        return self.path[self.desire_path_num]
 
     def _add_node(self):
         # make random pose :(get the pose of xy)
@@ -192,12 +208,13 @@ class RRT_2d(BasePlanner):
     def draw_traj(self, env, t):
         """Override super class to also make environment appear"""
         for p in self.path:
+            p = np.append(p, self.fixed_depth)
             env.draw_point(p.tolist(), color=[255, 0, 0], thickness=20, lifetime=0)
-        # Get all positions
-        t = np.arange(0, t, 0.5)
-        des_state = self._traj(t)
-        des_pos = des_state[:, 0:3]
-
-        # Draw line between each
-        for i in range(len(des_pos) - 1):
-            env.draw_line(des_pos[i].tolist(), des_pos[i + 1].tolist(), thickness=5.0, lifetime=0.0)
+        # # Get all positions
+        # t = np.arange(0, t, 0.5)
+        # des_state = self._traj(t)
+        # des_pos = des_state[:, 0:3]
+        #
+        # # Draw line between each
+        # for i in range(len(des_pos) - 1):
+        #     env.draw_line(des_pos[i].tolist(), des_pos[i + 1].tolist(), thickness=5.0, lifetime=0.0)

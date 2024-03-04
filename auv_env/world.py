@@ -53,14 +53,14 @@ class World:
                                                     angular_velocity=[0.0, 0.0, 0.0])
         # self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
         #                                    rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
-        self.u = np.zeros(8)
-        self.ocean.act("auv0", self.u)
         self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
                                                       rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)],
                                                       velocity=[0.0, 0.0, 0.0],
                                                       angular_velocity=[0.0, 0.0, 0.0])
         # self.ocean.agents['target'].teleport(location=self.target_init_pos,
         #                                    rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
+        self.u = np.zeros(8)
+        self.ocean.act("auv0", self.u)
         self.target_u = [0, 0]
         self.ocean.act("target", self.target_u)
         self.sensors = self.ocean.tick()
@@ -201,7 +201,7 @@ if __name__ == '__main__':
     print("Test World")
     world = World(scenario, show=True, verbose=True, num_targets=1)
     print(world.size)
-    # world.targets[0].planner.draw_traj(world.ocean, 30)
+    world.targets[0].planner.draw_traj(world.ocean, 30)
     for _ in range(20000):
         if 'q' in world.agent.keyboard.pressed_keys:
             break
@@ -209,8 +209,10 @@ if __name__ == '__main__':
         for target in world.targets:
             world.target_u = target.update(world.sensors['target'], world.sensors['t'])
             # world.target_u = [0.1, 1]
+            world.target_u = list(world.target_u)
+            # world.target_u[0] = 0.01
             # world.ocean.act("target", world.target_u * 0.01)
-            world.ocean.act("target", tuple(x * 0.01 for x in world.target_u))
+            world.ocean.act("target", world.target_u)
         # self.u = self.agent.update(action_vw, self.sensors['auv0'])
         world.ocean.act("auv0", command)
         world.sensors = world.ocean.tick()
