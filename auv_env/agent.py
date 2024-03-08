@@ -43,7 +43,7 @@ class AgentAuv(Agent):
         # init the sensor part of AUV
         # to see if it is useful
         # self.imagesonar = ImagingSonar(scenario=scenario)  # to see if it is useful
-        self.rangefinder = RangeFinder(scenario=scenario)
+        # self.rangefinder = RangeFinder(scenario=scenario)
         self.state = State(sensor)
         # self.planner = RRT()
 
@@ -71,7 +71,7 @@ class AgentSphere(Agent):
     """
         use for target
     """
-    def __init__(self, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time,scene):
+    def __init__(self, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time, scene):
         Agent.__init__(self, dim, sampling_period)
         self.size = size
         self.bottom_corner = bottom_corner
@@ -99,9 +99,23 @@ class AgentSphere(Agent):
         self.vec[3:6] = sensor["VelocitySensor"]
         self.vec[6:9] = rot_to_rpy(sensor["PoseSensor"][:3, :3])
 
-    def reset(self, init_state):
-        super().reset(init_state)
-        self.vw = [0.0, 0.0]
+    def reset(self, sensor, obstacles, scene, start_time):
+        self.obstacles = obstacles
+        self.scene = scene  # have a check if is changed
+        # init the control part of AUV
+        self.init_pos = sensor['LocationSensor']
+        _target = None
+        is_end_valid = False
+        while not is_end_valid:
+            _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+            is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target, self.margin2wall)
+        self.target_pos = np.append(_target, self.fix_depth)
+        self.planner.reset(start=self.init_pos, end=self.target_pos, time=start_time)
+        self.controller.reset()
+        self.vec = []
+        self.vec[0:3] = sensor["PoseSensor"][:3, 3]
+        self.vec[3:6] = sensor["VelocitySensor"]
+        self.vec[6:9] = rot_to_rpy(sensor["PoseSensor"][:3, :3])
 
     def update(self, sensor, t):
         # update time

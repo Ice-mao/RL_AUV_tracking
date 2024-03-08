@@ -74,8 +74,15 @@ class TargetTrackingBase(gym.Env):
         return self.get_init_pose_random(**kwargs)
 
     def step(self, action):
+        """
+        I want to get a waypoint to guidance the learning,and make the action command
+        every 0.5s or more time, so how do I calculate the reward?W
+        :param action:
+        :return:
+        """
         # The agent performs an action (t -> t+1)
         action_vw = self.action_map[action.item()]
+        # TODO:determine the frequency of the action and the reward from(every step or the last)
         self.world.step(action_vw=action_vw)
 
         # The targets move (t -> t+1)

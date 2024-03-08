@@ -2,7 +2,7 @@ import numpy as np
 from auv_env.util import wrap_around
 class SE2PIDController:
     def __init__(self):
-        self.kp_linear = 0.006
+        self.kp_linear = 0.008
         self.ki_linear = 0.0
         self.kd_linear = 0.0
 
@@ -16,7 +16,7 @@ class SE2PIDController:
         self.prev_angular_error = 0        # Previous angular error (theta)
         self.integral_linear_error = [0, 0]  # Integral of linear error (x, y)
         self.integral_angular_error = 0       # Integral of angular error (theta)
-    def clear(self):
+    def reset(self):
         self.prev_linear_error = [0, 0]
         self.prev_angular_error = 0
         self.integral_linear_error = [0, 0]
@@ -100,10 +100,10 @@ class SE2PIDController:
         # v = np.sqrt(linear_control[0] ** 2 + linear_control[1] ** 2)
         dis = np.sqrt(linear_error[0] ** 2 + linear_error[1] ** 2)
         if np.abs(angular_error) > 1.57:
-            v = 0.001
+            v = 0.003
         elif dis >= 3:
-            v = 0.001
+            v = 0.003
         else:
             v = self.kp_linear * dis
-
+        # v = 0.01
         return v, angular_control
