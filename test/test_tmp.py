@@ -25,10 +25,14 @@ env.draw_line([0, 0,-5], [10, 10, -5], thickness=5.0, lifetime=0.0)
 # np.tan(np.radians(-120))
 # env.spawn_prop(prop_type="box", scale=[10, 2, 1], location=[10, -10, -12], rotation=[0, 0, 0.0], material='gold')
 # env.spawn_prop(prop_type="box", location=[10.5, 0, -12], material='gold')
-env.agents['auv0'].set_physics_state(location=[0, 0, -5],
-                                            rotation=[0.0, 0.0, 0.0],
-                                            velocity=[0.0, 0.0, 0.0],
-                                            angular_velocity=[0.0, 0.0, 0.0])
+env.agents['auv0'].set_physics_state(location=[-20.41332375,  -0.3027992  , -5.        ],
+                                    rotation=[0.0, 0.0, np.rad2deg(1.4958537957633062)],
+                                    velocity=[0.0, 0.0, 0.0],
+                                    angular_velocity=[0.0, 0.0, 0.0])
+env.agents['target'].set_physics_state(location=[-19.65225727 ,  7.03218074 , -5.        ],
+                                              rotation=[0.0, 0.0, np.rad2deg(1.467407793510139)],
+                                              velocity=[0.0, 0.0, 0.0],
+                                              angular_velocity=[0.0, 0.0, 0.0])
 from auv_control.state import rot_to_rpy
 for _ in range(20000000):
     if 'q' in kb_cmd.pressed_keys:
@@ -36,7 +40,7 @@ for _ in range(20000000):
     command = kb_cmd.parse_keys()
     env.act("auv0", command)
 
-    target_action = (0, 0.1)
+    target_action = (0, 0)
     env.act("target", target_action)
     state = env.tick()
 
@@ -44,6 +48,9 @@ for _ in range(20000000):
     pose = rot_to_rpy(state['target']['PoseSensor'][:3, :3])
     yaw = np.radians(pose[2])
     print(yaw)
+
+    env.agents['auv0'].teleport(location=[state['t'], 0, -5],
+                                rotation=[0.0, 0.0, 0.0])
     # if current_time - last_control_time >= 1.0:
     #     last_control_time = current_time
     #     target_action = np.random.randint(0, 3)

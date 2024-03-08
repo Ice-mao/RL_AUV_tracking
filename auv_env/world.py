@@ -43,22 +43,24 @@ class World:
         self.agent_init_yaw = None
         self.target_init_pos = None
         self.target_init_yaw = None
-        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw = self.get_init_pose_random()
+        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw\
+            = self.get_init_pose_random()
         print(self.agent_init_pos, self.agent_init_yaw)
         print(self.target_init_pos, self.target_init_yaw)
         # Set the pos and tick the scenario
-        self.ocean.agents['auv0'].set_physics_state(location=self.agent_init_pos,
-                                                    rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)],
-                                                    velocity=[0.0, 0.0, 0.0],
-                                                    angular_velocity=[0.0, 0.0, 0.0])
-        # self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
-        #                                    rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
-        self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
-                                                      rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)],
-                                                      velocity=[0.0, 0.0, 0.0],
-                                                      angular_velocity=[0.0, 0.0, 0.0])
-        # self.ocean.agents['target'].teleport(location=self.target_init_pos,
-        #                                    rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
+        # self.ocean.agents['auv0'].set_physics_state(location=self.agent_init_pos,
+        #                                             rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)],
+        #                                             velocity=[0.0, 0.0, 0.0],
+        #                                             angular_velocity=[0.0, 0.0, 0.0])
+        self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
+                                           rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
+        # self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
+        #                                               rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)],
+        #                                               velocity=[0.0, 0.0, 0.0],
+        #                                               angular_velocity=[0.0, 0.0, 0.0])
+        self.ocean.agents['target'].teleport(location=self.target_init_pos,
+                                           rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)])
+        print('init')
         self.u = np.zeros(8)
         self.ocean.act("auv0", self.u)
         self.target_u = [0, 0]
@@ -81,7 +83,7 @@ class World:
         self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state)
         self.targets = [AgentSphere(dim=3, sampling_period=sampling_period, sensor=target_init_state
                                     , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
-                                    bottom_corner=self.bottom_corner, start_time=time)
+                                    bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean)
                         for _ in range(self.num_targets)]
 
     def step(self, action_vw):
@@ -128,36 +130,38 @@ class World:
                              blocked=None, ):
         is_agent_valid = False
         blocked = False
+        count = 0
         if 'blocked' in METADATA:
             blocked = METADATA['blocked']
         while not is_agent_valid:
             init_pose = {}
+            np.random.seed()
             # generatr an init pos around the map
             a_init = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
             # satisfy the in bound and no collision conditions ----> True(is valid)
             is_agent_valid = self.in_bound(a_init) and self.obstacles.check_obstacle_collision(a_init, self.margin2wall)
-            agent_init_pos = np.array([a_init[0], a_init[1]])
-            agent_init_yaw = np.random.uniform(-np.pi/2, np.pi/2)
-            for i in range(self.num_targets):
-                count, is_target_valid, target_init_pos, target_init_yaw = 0, False, np.zeros((2,)), np.zeros((1,))
-                while not is_target_valid:
-                    is_target_valid, target_init_pos, target_init_yaw = self.gen_rand_pose(
-                        agent_init_pos,
-                        agent_init_yaw,
-                        lin_dist_range_a2t[0], lin_dist_range_a2t[1],
-                        ang_dist_range_a2t[0], ang_dist_range_a2t[1]
-                    )
-
-                    if is_target_valid:  # check the blocked condition
-                        is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
-                                                                            self.margin)
-                        flag = not is_no_blocked
-                        is_target_valid = (blocked == flag)
-                    count += 1
-                    if count > 50:
-                        is_agent_valid = False
-                        is_target_valid = False
-                        count = 0
+            if is_agent_valid:
+                agent_init_pos = np.array([a_init[0], a_init[1]])
+                agent_init_yaw = np.random.uniform(-np.pi/2, np.pi/2)
+                for i in range(self.num_targets):
+                    is_target_valid, target_init_pos, target_init_yaw = False, np.zeros((2,)), np.zeros((1,))
+                    while not is_target_valid:
+                        is_target_valid, target_init_pos, target_init_yaw = self.gen_rand_pose(
+                            agent_init_pos,
+                            agent_init_yaw,
+                            lin_dist_range_a2t[0], lin_dist_range_a2t[1],
+                            ang_dist_range_a2t[0], ang_dist_range_a2t[1]
+                        )
+                        if is_target_valid:  # check the blocked condition
+                            is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
+                                                                                self.margin)
+                            flag = not is_no_blocked
+                            is_target_valid = (blocked == flag)
+                        count += 1
+                        if count > 50:
+                            is_agent_valid = False
+                            count = 0
+                            break
         return (np.append(agent_init_pos, self.fix_depth), agent_init_yaw,
                 np.append(target_init_pos, self.fix_depth), target_init_yaw)
 
@@ -188,8 +192,8 @@ class World:
                                     (max_ang_dist - min_ang_dist) + min_ang_dist)
 
         rand_r = np.random.rand() * (max_lin_dist - min_lin_dist) + min_lin_dist
-        rand_xy = np.array([rand_r * np.cos(rand_ang), rand_r * np.sin(rand_ang)])  # set in HoloOcean,opposite
-        rand_xy_global = util.transform_2d_inv(rand_xy, -frame_theta, np.array(frame_xy))  # the same opposite
+        rand_xy = np.array([rand_r * np.cos(rand_ang), rand_r * np.sin(rand_ang)])
+        rand_xy_global = util.transform_2d_inv(rand_xy, frame_theta, np.array(frame_xy))
         is_valid = (self.in_bound(rand_xy_global) and self.obstacles.check_obstacle_collision(rand_xy_global,
                                                                                               self.margin2wall))
         return is_valid, rand_xy_global, util.wrap_around(rand_ang + frame_theta)
@@ -208,11 +212,23 @@ if __name__ == '__main__':
         command = world.agent.keyboard.parse_keys()
         for target in world.targets:
             world.target_u = target.update(world.sensors['target'], world.sensors['t'])
-            # world.target_u = [0.1, 1]
-            world.target_u = list(world.target_u)
-            # world.target_u[0] = 0.01
-            # world.ocean.act("target", world.target_u * 0.01)
+        #     # world.target_u = [0.1, 1]
+        #     world.target_u = list(world.target_u)
+        #     # world.target_u[0] = 0.01
+        #     world.ocean.act("target", world.target_u * 0.01)
             world.ocean.act("target", world.target_u)
         # self.u = self.agent.update(action_vw, self.sensors['auv0'])
+
         world.ocean.act("auv0", command)
         world.sensors = world.ocean.tick()
+
+        print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
+
+        # test for camera
+        # import cv2
+        # if "LeftCamera" in world.sensors['auv0']:
+        #     pixels = world.sensors['auv0']["LeftCamera"]
+        #     cv2.namedWindow("Camera Output")
+        #     cv2.imshow("Camera Output", pixels[:, :, 0:3])
+        #     cv2.waitKey(0)
+        #     cv2.destroyAllWindows()

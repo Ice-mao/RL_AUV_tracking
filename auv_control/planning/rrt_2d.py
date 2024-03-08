@@ -14,7 +14,7 @@ class RRT_2d(BasePlanner):
         self.num_seconds = num_seconds
         self.speed = speed
         self.obstacles = obstacles
-        self.margin = margin
+        self.margin = margin + 1.0  # get enough space to move
         self.fixed_depth = fixed_depth
         self.bottom_corner = bottom_corner
         self.size = size
@@ -22,24 +22,28 @@ class RRT_2d(BasePlanner):
         # setup RRT
         self.start_time = start_time
         self.desire_path_num = 0
-        self.step_size = 3
+        self.step_size = 2
         self.tree = self.start[0:2].reshape(1, -1)
         self.dist = [0]
         self.parent = [0]
         self.finish = [False]
-        self.finish_flag = False # use for path finish
+        self.finish_flag = 0 # use for path finish
         self._run_rrt()
 
     def reset(self, time, start, end):
         # setup RRT
         self.start = start
         self.end = end
+        self.start = self.start[:2]
+        self.end = self.end[:2]
         self.start_time = time
         self.step_size = 3
         self.tree = self.start[0:2].reshape(1, -1)
+        self.desire_path_num = 0
         self.dist = [0]
         self.parent = [0]
         self.finish = [False]
+        self.finish_flag = 0  # use for path finish
         self._run_rrt()
 
     def _run_rrt(self):
@@ -147,17 +151,17 @@ class RRT_2d(BasePlanner):
         # yaw_rad = self.rot_func(t)[2]
         # return np.array([pos[0], pos[1], yaw_rad])
         # if arrived, return the next path point
+        # if self.finish_flag:
+        #     self.reset(true_state)
         dis = np.linalg.norm(self.path[self.desire_path_num][: 2] - true_state[:2])
         print(dis)
-        if self.finish_flag:
-            return self.path[self.desire_path_num]
-
-        if np.linalg.norm(self.path[self.desire_path_num][: 2] - true_state[:2]) < 0.2:
+        if dis < 0.35:
             self.desire_path_num += 1
             print(self.desire_path_num)
-        if self.desire_path_num == len(self.path)-1:
+        if self.desire_path_num == len(self.path):
             self.finish_flag = 1
             print('finish')
+            return self.path[self.desire_path_num-1]
         return self.path[self.desire_path_num]
 
     def _add_node(self):

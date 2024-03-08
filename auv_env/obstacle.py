@@ -94,12 +94,12 @@ class Obstacle:
         self.sub_coordinates = [np.array([25, -45]) * self.res, np.array([25, 45]) * self.res,
                                 np.array([-65, -45]) * self.res, np.array([-65, 45]) * self.res]  # m
         np.random.seed()
-        self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=False)
+        self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=True)
         print(self.chosen_idx)
         # self.chosen_idx = np.array([1,1,1,1])
         self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         self.polygons = []  # ready for collision detection
-
+        print('finish obstacles')
     def reset(self):
         np.random.seed()
         self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=False)
@@ -136,9 +136,6 @@ class Obstacle:
                 loc[1] *= -1
                 _scale = [obstacle['scale'][j][0] * self.res, obstacle['scale'][j][1] * self.res,
                           obstacle['scale'][j][2] * 3]
-                # _scale[0] = obstacle['scale'][j][0] * self.res
-                # _scale[1] = obstacle['scale'][j][1] * self.res
-                # _scale[2] = obstacle['scale'][j][2] * 3  # 3m depth
                 self.env.spawn_prop(prop_type="box", scale=_scale, location=loc.tolist(),
                                     rotation=[np.tan(np.radians(-self.rot_angs[i])), 1, 0],  # it's annoy to be pitch?
                                     material='gold')

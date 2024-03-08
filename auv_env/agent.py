@@ -71,12 +71,13 @@ class AgentSphere(Agent):
     """
         use for target
     """
-    def __init__(self, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time):
+    def __init__(self, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time,scene):
         Agent.__init__(self, dim, sampling_period)
         self.size = size
         self.bottom_corner = bottom_corner
         self.fix_depth = fixed_depth
         self.obstacles = obstacles
+        self.scene = scene
         # init the control part of Auv
         self.init_pos = sensor['LocationSensor']
         _target = None
@@ -111,6 +112,15 @@ class AgentSphere(Agent):
         self.vec[6:9] = rot_to_rpy(sensor["PoseSensor"][:3, :3])
         true_state = np.array([self.vec[0], self.vec[1], np.radians(self.vec[8])])
         # desire state
+        if self.planner.finish_flag == 1:
+            is_end_valid = False
+            while not is_end_valid:
+                _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+                is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
+                                                                                                  self.margin2wall)
+            self.target_pos = np.append(_target, self.fix_depth)
+            self.planner.reset(start=true_state, end=self.target_pos, time=t)
+            self.planner.draw_traj(self.scene, 30)
         des_state = self.planner.tick(true_state)  # only x, y
         # TODO then check the des_state if is_col
         # Autopilot Commands

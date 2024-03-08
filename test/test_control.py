@@ -29,7 +29,7 @@ def main(num_seconds, show, plot, verbose, route):
 
     # Set everything up
     controller = LQR()
-    # observer = InEKF()
+    observer = InEKF()
     # if route == "rrt":
     #     planner = RRT(num_seconds)
     # # elif route == "RL":
@@ -55,7 +55,7 @@ def main(num_seconds, show, plot, verbose, route):
             true_state = State(sensors['auv0'])
 
             # Estimate State
-            # est_state = observer.tick(sensors, ts)
+            est_state = observer.tick(sensors, ts)
 
             # Path planner
             # des_state = planner.tick(t)

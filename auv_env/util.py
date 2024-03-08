@@ -46,8 +46,8 @@ def transform_2d(vec, theta_base, xy_base=[0.0, 0.0]):
     这是一个向量从世界坐标系到agent坐标系的坐标变换函数
     """
     assert (len(vec) == 2)
-    return np.matmul([[np.cos(theta_base), -np.sin(theta_base)],
-                      [np.sin(theta_base), np.cos(theta_base)]],
+    return np.matmul([[np.cos(theta_base), np.sin(theta_base)],
+                      [-np.sin(theta_base), np.cos(theta_base)]],
                      vec - np.array(xy_base))
 
 
@@ -62,8 +62,8 @@ def transform_2d_inv(vec, theta_base, xy_base):
     attention: is useful in HoloOcean,the xy is opposite
     """
     assert (len(vec) == 2)
-    return np.matmul([[np.cos(theta_base), np.sin(theta_base)],
-                      [-np.sin(theta_base), np.cos(theta_base)]],
+    return np.matmul([[np.cos(theta_base), -np.sin(theta_base)],
+                      [np.sin(theta_base), np.cos(theta_base)]],
                      vec) + np.array(xy_base)
 
 
