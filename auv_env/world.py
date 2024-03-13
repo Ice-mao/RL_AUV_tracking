@@ -1,19 +1,23 @@
 import holoocean
 import numpy as np
-from auv_control.estimation import InEKF
+from numpy import linalg as LA
+from auv_control.estimation import InEKF, KFbelief, UKFbelief
 from auv_control.control import LQR
 from auv_control.planning import Traj, RRT
 from auv_control import State
 from tools import Plotter
 from auv_env import util
-from auv_env.agent import AgentAuv, AgentSphere
+from auv_env.agent import AgentAuv, AgentSphere, SE2Dynamics
 from auv_env.obstacle import Obstacle
 from auv_env.metadata import METADATA
 
+from gymnasium import spaces
 
 class World:
     """
     build a 3d scenario in HoloOcean to use the more real engine
+
+    RL state: [d, alpha, logdet(Sigma), observed] * nb_targets, [o_d, o_alpha]
     """
 
     def __init__(self, scenario, show, verbose, num_targets, **kwargs):
@@ -22,7 +26,14 @@ class World:
         self.agent = None
         # init the param
         self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time
-        self.num_targets = num_targets  # num of target
+        self.sensor_r = METADATA['sensor_r']
+        self.fov = METADATA['fov']
+        self.sensor_r_sd = METADATA['sensor_r_sd']
+        self.sensor_b_sd = METADATA['sensor_b_sd']
+        self.num_targets = METADATA['target_num']  # num of target
+        self.target_dim = METADATA['target_dim']
+
+        self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
 
         # Setup environment
         self.size = np.array([45, 45, 25])
@@ -43,6 +54,7 @@ class World:
         self.agent_init_yaw = None
         self.target_init_pos = None
         self.target_init_yaw = None
+        self.target_init_cov = METADATA['target_init_cov']
         self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw\
             = self.get_init_pose_random()
         print(self.agent_init_pos, self.agent_init_yaw)
@@ -66,6 +78,7 @@ class World:
         self.ocean.act("target", self.target_u)
         self.sensors = self.ocean.tick()
 
+        self.set_limits()
         self.build_models(sampling_period=self.sampling_period,
                           agent_init_state=self.sensors['auv0']
                           , target_init_state=self.sensors['target'], time=self.sensors['t'])
@@ -84,15 +97,44 @@ class World:
                                     , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
                                     bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean)
                         for _ in range(self.num_targets)]
+        # Build target beliefs.
+        self.const_q = METADATA['const_q']
+        self.target_noise_cov = self.const_q * self.sampling_period * np.eye(self.target_dim)
+        self.belief_targets = [UKFbelief(dim=self.target_dim,
+                                         limit=self.limit['target'], fx=SE2Dynamics,
+                                         W=self.target_noise_cov,
+                                         obs_noise_func=self.observation_noise)
+                                         for _ in range(self.num_targets)]
 
-    def step(self, action_vw):
-        for target in self.targets:
-            self.target_u = target.update(self.sensors['target'], self.sensors['t'])
-            self.ocean.act("target", self.target_u)
+    def step(self, action_waypoint):
+        global_waypoint = np.zeros(3)
+        global_waypoint[0] = self.agent.est_state.vec[0] + action_waypoint[0]
+        global_waypoint[1] = self.agent.est_state.vec[1] + action_waypoint[1]
+        global_waypoint[2] = self.agent.est_state.vec[8] + action_waypoint[2]
+        is_col = self.obstacles.check_obstacle_collision(global_waypoint[:2], self.margin2wall)
+        for _ in range(50):
+            for i in range(self.num_targets):
+                if self.has_discovered[i]:
+                    self.target_u = self.targets[i].update(self.sensors['target'], self.sensors['t'])
+                    self.ocean.act("target", self.target_u)
 
-        # self.u = self.agent.update(action_vw, self.sensors['auv0'])
-        # self.ocean.act("auv0", self.u)
-        self.sensors = self.ocean.tick()
+            self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
+            self.ocean.act("auv0", self.u)
+            self.sensors = self.ocean.tick()
+
+        # The targets are observed by the agent (z_t+1) and the beliefs are updated.
+        observed = self.observe_and_update_belief()
+        # Compute a reward from b_t+1|t+1 or b_t+1|t.
+        reward, done, mean_nlogdetcov, std_nlogdetcov = self.get_reward(is_col=is_col)
+        # Predict the target for the next step, b_t+2|t+1
+        for i in range(self.num_targets):
+            self.belief_targets[i].predict()
+
+        # Compute the RL state.
+        self.state_func(observed)
+
+        return self.state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
+
 
     def reset(self):
         self.ocean.reset()
@@ -100,6 +142,7 @@ class World:
                             lifetime=0)  # draw the area
         self.obstacles.reset()
         self.obstacles.draw_obstacle()
+        self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         # reset the random position
         self.agent_init_pos = None
         self.agent_init_yaw = None
@@ -119,13 +162,33 @@ class World:
         self.sensors = self.ocean.tick()
         # reset model
         self.agent.reset(self.sensors['auv0'])
-        for target in self.targets:
-            target.reset(self.sensors['target'], obstacles=self.obstacles,
+        for i in range(self.num_targets):
+            self.targets[i].reset(self.sensors['target'], obstacles=self.obstacles,
                          scene=self.ocean, start_time=self.sensors['t'])
+            self.belief_targets[i].reset(
+                init_state=np.array([self.targets[i].vec[0], self.targets[i].vec[1],
+                                     np.radians(self.targets[i].vec[8])]),
+                init_cov=self.target_init_cov)
+
+        # The targets are observed by the agent (z_0) and the beliefs are updated (b_0).
+        observed = self.observe_and_update_belief()
+
+        # Predict the target for the next step, b_1|0.
+        for i in range(self.num_targets):
+            self.belief_targets[i].predict()
+
+        observed = [True]
+        # Compute the RL state.
+        self.state_func(observed)
+        return self.state, 0
 
     @property
     def center(self):
         return self.bottom_corner + self.size / 2
+
+    @property
+    def top_corner(self):
+        return self.bottom_corner + self.size
 
     def get_init_pose_random(self,
                              lin_dist_range_a2t=METADATA['lin_dist_range_a2t'],
@@ -201,6 +264,90 @@ class World:
                                                                                               self.margin2wall))
         return is_valid, rand_xy_global, util.wrap_around(rand_ang + frame_theta)
 
+    def set_limits(self):
+        # LIMIT
+        self.limit = {}  # 0: low, 1:highs
+        self.limit['agent'] = [np.concatenate((self.bottom_corner[:2], [-np.pi])),
+                               np.concatenate((self.top_corner[:2], [np.pi]))]
+        self.limit['target'] = [np.concatenate((self.bottom_corner[:2], [-np.pi])),
+                                np.concatenate((self.top_corner[:2], [np.pi]))]
+        self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
+                               np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
+        self.observation_space = spaces.Box(self.limit['state'][0], self.limit['state'][1], dtype=np.float32)
+
+    def observation_noise(self, z):
+        # 测量噪声矩阵，假设独立
+        obs_noise_cov = np.array([[self.sensor_r_sd * self.sensor_r_sd, 0.0],
+                                  [0.0, self.sensor_b_sd * self.sensor_b_sd]])
+        return obs_noise_cov
+
+    def observation(self, target):
+        """
+        返回是否观测到目标，以及测量值
+        """
+        r, alpha = util.relative_distance_polar(target.vec[:2],
+                                                xy_base=self.agent.est_state.vec[:2],
+                                                theta_base=np.radians(self.agent.est_state.vec[8]))
+        # 判断是否观察到目标
+        observed = (r <= self.sensor_r) \
+                   & (abs(alpha) <= self.fov / 2 / 180 * np.pi) \
+                   & self.obstacles.check_obstacle_block(target.vec[:2], self.agent.est_state.vec[:2],
+                                                         self.margin)
+        z = None
+        if observed:
+            z = np.array([r, alpha])
+            z += np.random.multivariate_normal(np.zeros(2, ), self.observation_noise(z))  # 加入噪声
+        return observed, z
+
+    def observe_and_update_belief(self):
+        observed = []
+        for i in range(self.num_targets):
+            observation = self.observation(self.targets[i])
+            observed.append(observation[0])
+            if observation[0]:  # if observed, update the target belief.
+                self.belief_targets[i].update(observation[1], np.array([self.agent.est_state.vec[0],self.agent.est_state.vec[1],
+                                                                       np.radians(self.agent.est_state.vec[8])]))
+                if not (self.has_discovered[i]):
+                    self.has_discovered[i] = 1
+        return observed
+
+    def get_reward(self, is_col, is_training=True, c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
+                   c_penalty=METADATA['c_penalty']):
+        detcov = [LA.det(b_target.cov) for b_target in self.belief_targets]
+        r_detcov_mean = - np.mean(np.log(detcov))
+        r_detcov_std = - np.std(np.log(detcov))
+
+        reward = c_mean * r_detcov_mean + c_std * r_detcov_std
+        if is_col:
+            reward = min(0.0, reward) - c_penalty * 1.0
+        return reward, False, r_detcov_mean, r_detcov_std
+
+    def state_func(self, observed):
+        '''
+        在父类的step中调用该函数对self.state进行更新
+        RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
+        '''
+        # Find the closest obstacle coordinate.
+        if self.agent.rangefinder.min_distance < self.sensor_r:
+            obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
+        else:
+            obstacles_pt = (self.sensor_r, np.pi)
+
+        self.state = []
+        for i in range(self.num_targets):
+            r_b, alpha_b = util.relative_distance_polar(
+                self.belief_targets[i].state[:2],
+                xy_base=self.agent.est_state.vec[:2],
+                theta_base=np.radians(self.agent.est_state.vec[8]))
+            self.state.extend([r_b, alpha_b,
+                               np.log(LA.det(self.belief_targets[i].cov)),
+                               float(observed[i])])
+        self.state.extend([obstacles_pt[0], obstacles_pt[1]])
+        self.state = np.array(self.state)
+
+        # Update the visit map for the evaluation purpose.
+        # if self.MAP.visit_map is not None:
+        #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
 
 if __name__ == '__main__':
     from auv_control import scenario
@@ -222,7 +369,7 @@ if __name__ == '__main__':
             #     # world.target_u[0] = 0.01
             #     world.ocean.act("target", world.target_u * 0.01)
                 world.ocean.act("target", world.target_u)
-            # self.u = self.agent.update(action_vw, self.sensors['auv0'])
+            u = world.agent.update(0, world.sensors['auv0'])
 
             world.ocean.act("auv0", command)
             world.sensors = world.ocean.tick()

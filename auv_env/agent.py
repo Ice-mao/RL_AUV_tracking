@@ -43,28 +43,29 @@ class AgentAuv(Agent):
         # init the sensor part of AUV
         # to see if it is useful
         # self.imagesonar = ImagingSonar(scenario=scenario)  # to see if it is useful
-        # self.rangefinder = RangeFinder(scenario=scenario)
+        self.rangefinder = RangeFinder(scenario=scenario)
         self.state = State(sensor)
+        self.est_state = State(sensor)
         # self.planner = RRT()
 
     def reset(self, sensor):
         self.state = State(sensor)
+        self.est_state = State(sensor)
         self.vw = [0.0, 0.0]
 
-    def update(self, action_vw, sensors):
-        self.vw = action_vw
-
+    def update(self, action_waypoint, depth, sensors):
+        self.rangefinder.update(sensors)
         # Estimate State
-        est_state = self.observer.tick(sensors, self.sampling_period)
+        self.est_state = self.observer.tick(sensors, self.sampling_period)
 
         # Path planner
-        # TODO get a new planner to get des_state from vw
-        des_state = self.planner.tick(self.vw)
-
-        # TODO then check the des_state if is_col
+        des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,
+                                    0.00, 0.00, 0.00,
+                                    0.00, 0.00, action_waypoint[2],
+                                    -0.00, -0.00, 0.00]))
 
         # Autopilot Commands
-        u = self.controller.u(est_state, des_state)
+        u = self.controller.u(self.est_state, des_state)
         return u
 
 class AgentSphere(Agent):
@@ -150,3 +151,26 @@ class AgentSphere(Agent):
                     or (pos[0] > self.size[0] + self.bottom_corner[0] - self.margin2wall)
                     or (pos[1] < self.bottom_corner[1] + self.margin2wall)
                     or (pos[1] > self.size[1] + self.bottom_corner[1] - self.margin2wall))
+
+
+#########################
+# agent model:
+def SE2Dynamics(x, dt, u):
+    """
+    update dynamics function with a control input -- linear, angular velocities
+    """
+    assert (len(x) == 3)
+    tw = dt * u[1]  # tau * w
+
+    # Update the agent state
+    if abs(tw) < 0.001:
+        diff = np.array([dt * u[0] * np.cos(x[2] + tw / 2),
+                         dt * u[0] * np.sin(x[2] + tw / 2),
+                         tw])
+    else:
+        diff = np.array([u[0] / u[1] * (np.sin(x[2] + tw) - np.sin(x[2])),
+                         u[0] / u[1] * (np.cos(x[2]) - np.cos(x[2] + tw)),
+                         tw])
+    new_x = x + diff
+    new_x[2] = util.wrap_around(new_x[2])
+    return new_x

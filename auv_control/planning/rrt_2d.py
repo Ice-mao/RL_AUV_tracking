@@ -154,7 +154,7 @@ class RRT_2d(BasePlanner):
         # if self.finish_flag:
         #     self.reset(true_state)
         dis = np.linalg.norm(self.path[self.desire_path_num][: 2] - true_state[:2])
-        print(dis)
+        # print(dis)
         if dis < 0.4:
             self.desire_path_num += 1
             print(self.desire_path_num)

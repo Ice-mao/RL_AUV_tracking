@@ -36,13 +36,24 @@ METADATA_v1 = {
     'target_init_vel': [0.0, 0.0],  # target's initial velocity.
     'target_speed_limit': 3.5,  # velocity limit of targets.
     'lin_dist_range_a2t': (4.0, 10.0),
-    'ang_dist_range_a2t': (-np.pi/4, np.pi/4),
+    'ang_dist_range_a2t': (-np.pi / 4, np.pi / 4),
     'margin': 1,  # a marginal distance btw targets and the agent.
     'margin2wall': 2.0,  # a marginal distance from a wall.
     'action_v': [3, 2, 1, 0],  # action primitives - linear velocities.
     'action_w': [np.pi / 2, 0, -np.pi / 2],  # action primitives - angular velocities.
     'const_q': 0.5,  # target noise constant in beliefs.
     'const_q_true': 0.01,  # target noise constant of actual targets.
+    'action_range_high': [5, 5, 90, 1, 1, 1],
+    'action_range_low': [-5, -5, -90, 0.01, 0.01, 0.01],
+    'action_dim': 6,
+
+    'target_num': 1,
+    'target_dim': 3,  # for no speed estimation
+    # reward setting
+    'c_mean': 0.1,
+    'c_std': 0.0,
+    'c_penalty': 1.0
+
 }
 
 METADATA_multi_v1 = {
@@ -90,7 +101,7 @@ TTENV_EVAL_SET = [
     },
     {  # Navigation
         'lin_dist_range_a2b': (35.0, 40.0),
-        'ang_dist_range_a2b': (-np.pi/4, np.pi/4),
+        'ang_dist_range_a2b': (-np.pi / 4, np.pi / 4),
         'lin_dist_range_b2t': (0.0, 3.0),
         'ang_dist_range_b2t': (-np.pi / 4, np.pi / 4),
         'blocked': True,

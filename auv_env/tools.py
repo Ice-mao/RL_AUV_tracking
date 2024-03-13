@@ -226,17 +226,19 @@ class RangeFinder:
                     self.LaserMaxDistance = config['LaserMaxDistance']
                     self.LaserCount = config['LaserCount']
                     self.LaserDebug = config['LaserDebug']
+        self.min_distance = self.LaserMaxDistance
+        self.angle = 0
 
     def update(self, state):
         if 'RangeFinderSensor' in state:
             range_data = state['RangeFinderSensor']
             # update the minimum distance and its angle to nearest obstacle
-            if np.min(range_data) < self.LaserMaxDistance:
-                self.min_distance = np.min(range_data)
-                self.angle = (360 / self.LaserCount) * np.argmin(range_data)
-            else:
-                self.min_distance = None
-                self.angle = None
+            # if np.min(range_data) < self.LaserMaxDistance:
+            self.min_distance = np.min(range_data)
+            self.angle = (360 / self.LaserCount) * np.argmin(range_data)
+            # else:
+            #     self.min_distance = None
+            #     self.angle = None
 
 import matplotlib.pyplot as plt
 import numpy as np
