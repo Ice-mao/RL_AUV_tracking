@@ -29,31 +29,34 @@ METADATA_v0 = {
 METADATA_v1 = {
     'version': 1,
     'sensor_r': 10.0,
-    'fov': 120,
+    'fov': 100,
     'sensor_r_sd': 0.2,  # sensor range noise.
     'sensor_b_sd': 0.01,  # sensor bearing noise.
     'target_init_cov': 30.0,  # initial target diagonal Covariance.
     'target_init_vel': [0.0, 0.0],  # target's initial velocity.
     'target_speed_limit': 3.5,  # velocity limit of targets.
-    'lin_dist_range_a2t': (4.0, 10.0),
-    'ang_dist_range_a2t': (-np.pi / 4, np.pi / 4),
+    'lin_dist_range_a2t': (3.0, 8.0),
+    'ang_dist_range_a2t': (-np.pi / 5, np.pi / 5),
     'margin': 1,  # a marginal distance btw targets and the agent.
-    'margin2wall': 2.0,  # a marginal distance from a wall.
+    'margin2wall': 1.0,  # a marginal distance from a wall.
     'action_v': [3, 2, 1, 0],  # action primitives - linear velocities.
     'action_w': [np.pi / 2, 0, -np.pi / 2],  # action primitives - angular velocities.
-    'const_q': 0.5,  # target noise constant in beliefs.
+    'const_q': 1.0,  # target noise constant in beliefs.
     'const_q_true': 0.01,  # target noise constant of actual targets.
-    'action_range_high': [5, 5, 90, 1, 1, 1],
-    'action_range_low': [-5, -5, -90, 0.01, 0.01, 0.01],
+    'action_range_high': [5, 5, np.pi, 1, 1, 1],
+    'action_range_low': [-5, -5, -np.pi, 0.001, 0.001, 0.001],
     'action_dim': 6,
 
     'target_num': 1,
-    'target_dim': 3,  # for no speed estimation
+    'target_dim': 4,  # x, y, xdot, ydot
     # reward setting
     'c_mean': 0.1,
     'c_std': 0.0,
-    'c_penalty': 1.0
-
+    'c_penalty': 1.0,
+    # render setting
+    'render': False,
+    # control_period
+    'control_period': 0.5
 }
 
 METADATA_multi_v1 = {

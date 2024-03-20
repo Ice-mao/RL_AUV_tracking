@@ -11,7 +11,6 @@ from auv_control import State
 from auv_control import scenario
 
 
-
 class Agent(object):
     def __init__(self, dim, sampling_period):
         self.dim = dim
@@ -38,7 +37,8 @@ class AgentAuv(Agent):
         # init the control part of Auv
         self.controller = LQR()
         self.observer = InEKF()
-        self.keyboard = KeyBoardCmd(20)
+        if METADATA['render']:
+            self.keyboard = KeyBoardCmd(20)
 
         # init the sensor part of AUV
         # to see if it is useful
@@ -56,6 +56,7 @@ class AgentAuv(Agent):
     def update(self, action_waypoint, depth, sensors):
         self.rangefinder.update(sensors)
         # Estimate State
+        self.state = State(sensors)
         self.est_state = self.observer.tick(sensors, self.sampling_period)
 
         # Path planner
@@ -68,10 +69,12 @@ class AgentAuv(Agent):
         u = self.controller.u(self.est_state, des_state)
         return u
 
+
 class AgentSphere(Agent):
     """
         use for target
     """
+
     def __init__(self, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time, scene):
         Agent.__init__(self, dim, sampling_period)
         self.size = size
@@ -135,9 +138,14 @@ class AgentSphere(Agent):
                                                                                                   self.margin2wall)
             self.target_pos = np.append(_target, self.fix_depth)
             self.planner.reset(start=true_state, end=self.target_pos, time=t)
-            self.planner.draw_traj(self.scene, 30)
+            if METADATA['render']:
+                self.planner.draw_traj(self.scene, 30)
+        if self.planner.desire_path_num == 0:
+            self.scene.agents['target'].teleport(rotation=[0.0, 0.0,
+                                                           -np.rad2deg(np.arctan2(
+                                                               self.planner.path[1, 1] - self.planner.path[1, 0],
+                                                               self.planner.path[0, 1] - self.planner.path[0, 0]))])
         des_state = self.planner.tick(true_state)  # only x, y
-        # TODO then check the des_state if is_col
         # Autopilot Commands
         u = self.controller.u(true_state, des_state, self.sampling_period)
         return u

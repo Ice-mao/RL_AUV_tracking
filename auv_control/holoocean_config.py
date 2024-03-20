@@ -86,26 +86,26 @@ scenario = {
                         "LaserDebug": False
                     }
                 },
-                {
-                    "sensor_type": "RGBCamera",
-                    "sensor_name": "LeftCamera",
-                    "socket": "CameraLeftSocket",
-                    "Hz": 15,
-                    "configuration": {
-                        "CaptureWidth": 512,
-                        "CaptureHeight": 512
-                    }
-                },
-                {
-                    "sensor_type": "RGBCamera",
-                    "sensor_name": "RightCamera",
-                    "socket": "CameraRightSocket",
-                    "Hz": 15,
-                    "configuration": {
-                        "CaptureWidth": 512,
-                        "CaptureHeight": 512
-                    }
-                },
+                # {
+                #     "sensor_type": "RGBCamera",
+                #     "sensor_name": "LeftCamera",
+                #     "socket": "CameraLeftSocket",
+                #     "Hz": 15,
+                #     "configuration": {
+                #         "CaptureWidth": 512,
+                #         "CaptureHeight": 512
+                #     }
+                # },
+                # {
+                #     "sensor_type": "RGBCamera",
+                #     "sensor_name": "RightCamera",
+                #     "socket": "CameraRightSocket",
+                #     "Hz": 15,
+                #     "configuration": {
+                #         "CaptureWidth": 512,
+                #         "CaptureHeight": 512
+                #     }
+                # },
                 # {
                 #     "sensor_type": "ImagingSonar",
                 #     "socket": "SonarSocket",

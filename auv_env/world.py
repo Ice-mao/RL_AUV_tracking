@@ -1,17 +1,19 @@
 import holoocean
 import numpy as np
 from numpy import linalg as LA
-from auv_control.estimation import InEKF, KFbelief, UKFbelief
+from auv_control.estimation import KFbelief, UKFbelief
 from auv_control.control import LQR
 from auv_control.planning import Traj, RRT
 from auv_control import State
-from tools import Plotter
+
 from auv_env import util
 from auv_env.agent import AgentAuv, AgentSphere, SE2Dynamics
 from auv_env.obstacle import Obstacle
 from auv_env.metadata import METADATA
 
 from gymnasium import spaces
+import logging
+
 
 class World:
     """
@@ -22,7 +24,9 @@ class World:
 
     def __init__(self, scenario, show, verbose, num_targets, **kwargs):
         # define the entity
-        self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
+        # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
+        self.ocean = holoocean.make(scenario_cfg=scenario)
+        self.ocean.should_render_viewport(METADATA['render'])
         self.agent = None
         # init the param
         self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time
@@ -55,7 +59,7 @@ class World:
         self.target_init_pos = None
         self.target_init_yaw = None
         self.target_init_cov = METADATA['target_init_cov']
-        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw\
+        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw \
             = self.get_init_pose_random()
         print(self.agent_init_pos, self.agent_init_yaw)
         print(self.target_init_pos, self.target_init_yaw)
@@ -71,7 +75,7 @@ class World:
         #                                               velocity=[0.0, 0.0, 0.0],
         #                                               angular_velocity=[0.0, 0.0, 0.0])
         self.ocean.agents['target'].teleport(location=self.target_init_pos,
-                                           rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)])
+                                             rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)])
         self.u = np.zeros(8)
         self.ocean.act("auv0", self.u)
         self.target_u = [0, 0]
@@ -99,19 +103,26 @@ class World:
                         for _ in range(self.num_targets)]
         # Build target beliefs.
         self.const_q = METADATA['const_q']
-        self.target_noise_cov = self.const_q * self.sampling_period * np.eye(self.target_dim)
-        self.belief_targets = [UKFbelief(dim=self.target_dim,
-                                         limit=self.limit['target'], fx=SE2Dynamics,
-                                         W=self.target_noise_cov,
-                                         obs_noise_func=self.observation_noise)
-                                         for _ in range(self.num_targets)]
+        self.targetA = np.concatenate((np.concatenate((np.eye(2),
+                                                       self.sampling_period * np.eye(2)), axis=1),
+                                       [[0, 0, 1, 0], [0, 0, 0, 1]]))
+        self.target_noise_cov = self.const_q * np.concatenate((
+            np.concatenate((self.sampling_period ** 3 / 3 * np.eye(2),
+                            self.sampling_period ** 2 / 2 * np.eye(2)), axis=1),
+            np.concatenate((self.sampling_period ** 2 / 2 * np.eye(2),
+                            self.sampling_period * np.eye(2)), axis=1)))
+        self.belief_targets = [KFbelief(dim=self.target_dim,
+                                        limit=self.limit['target'], A=self.targetA,
+                                        W=self.target_noise_cov,
+                                        obs_noise_func=self.observation_noise)
+                               for _ in range(self.num_targets)]
 
     def step(self, action_waypoint):
         global_waypoint = np.zeros(3)
+        observed = []
         global_waypoint[0] = self.agent.est_state.vec[0] + action_waypoint[0]
         global_waypoint[1] = self.agent.est_state.vec[1] + action_waypoint[1]
-        global_waypoint[2] = self.agent.est_state.vec[8] + action_waypoint[2]
-        is_col = self.obstacles.check_obstacle_collision(global_waypoint[:2], self.margin2wall)
+        global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(action_waypoint[2])
         for _ in range(50):
             for i in range(self.num_targets):
                 if self.has_discovered[i]:
@@ -122,8 +133,12 @@ class World:
             self.ocean.act("auv0", self.u)
             self.sensors = self.ocean.tick()
 
-        # The targets are observed by the agent (z_t+1) and the beliefs are updated.
-        observed = self.observe_and_update_belief()
+            # The targets are observed by the agent (z_t+1) and the beliefs are updated.
+            observed = self.observe_and_update_belief()
+        is_col = not (self.obstacles.check_obstacle_collision(self.agent.state.vec[:2], self.margin2wall)
+                      and self.in_bound(self.agent.state.vec[:2])
+                      and np.linalg.norm(self.agent.state.vec[:2] - self.targets[0].vec[:2]) > self.margin)
+
         # Compute a reward from b_t+1|t+1 or b_t+1|t.
         reward, done, mean_nlogdetcov, std_nlogdetcov = self.get_reward(is_col=is_col)
         # Predict the target for the next step, b_t+2|t+1
@@ -132,9 +147,9 @@ class World:
 
         # Compute the RL state.
         self.state_func(observed)
-
+        if METADATA['render']:
+            print(is_col, observed[0], reward)
         return self.state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
-
 
     def reset(self):
         self.ocean.reset()
@@ -148,7 +163,7 @@ class World:
         self.agent_init_yaw = None
         self.target_init_pos = None
         self.target_init_yaw = None
-        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw\
+        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw \
             = self.get_init_pose_random()
         # Reset the pos and tick the scenario
         self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
@@ -164,10 +179,9 @@ class World:
         self.agent.reset(self.sensors['auv0'])
         for i in range(self.num_targets):
             self.targets[i].reset(self.sensors['target'], obstacles=self.obstacles,
-                         scene=self.ocean, start_time=self.sensors['t'])
+                                  scene=self.ocean, start_time=self.sensors['t'])
             self.belief_targets[i].reset(
-                init_state=np.array([self.targets[i].vec[0], self.targets[i].vec[1],
-                                     np.radians(self.targets[i].vec[8])]),
+                init_state=np.concatenate((np.array(self.targets[i].vec[:2]), np.zeros(2))),
                 init_cov=self.target_init_cov)
 
         # The targets are observed by the agent (z_0) and the beliefs are updated (b_0).
@@ -208,7 +222,7 @@ class World:
             is_agent_valid = self.in_bound(a_init) and self.obstacles.check_obstacle_collision(a_init, self.margin2wall)
             if is_agent_valid:
                 agent_init_pos = np.array([a_init[0], a_init[1]])
-                agent_init_yaw = np.random.uniform(-np.pi/2, np.pi/2)
+                agent_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
                 for i in range(self.num_targets):
                     is_target_valid, target_init_pos, target_init_yaw = False, np.zeros((2,)), np.zeros((1,))
                     while not is_target_valid:
@@ -269,11 +283,21 @@ class World:
         self.limit = {}  # 0: low, 1:highs
         self.limit['agent'] = [np.concatenate((self.bottom_corner[:2], [-np.pi])),
                                np.concatenate((self.top_corner[:2], [np.pi]))]
-        self.limit['target'] = [np.concatenate((self.bottom_corner[:2], [-np.pi])),
-                                np.concatenate((self.top_corner[:2], [np.pi]))]
-        self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
-                               np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
-        self.observation_space = spaces.Box(self.limit['state'][0], self.limit['state'][1], dtype=np.float32)
+        self.limit['target'] = [np.concatenate((self.bottom_corner[:2], np.array([-3, -3]))),
+                                np.concatenate((self.top_corner[:2], np.array([3, 3])))]
+        # STATE:
+        # target distance、angle、协方差行列式值、bool;agent 自身定位; 声呐图像
+        # target distance、angle、协方差行列式值、bool;agent 自身定位; 最近障碍物的位置
+        self.limit['state'] = [np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
+                                                               [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
+                                               [0.0, -np.pi])),
+                               np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
+                                                              [self.top_corner[0], self.top_corner[1], np.pi])),
+                                              [self.sensor_r, np.pi]))]
+        # target distance、angle、协方差行列式值、bool;agent 自身定位;
+        # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
+        #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
+        self.observation_space = spaces.Box(self.limit['state'][0], self.limit['state'][1], dtype=np.float64)
 
     def observation_noise(self, z):
         # 测量噪声矩阵，假设独立
@@ -286,12 +310,12 @@ class World:
         返回是否观测到目标，以及测量值
         """
         r, alpha = util.relative_distance_polar(target.vec[:2],
-                                                xy_base=self.agent.est_state.vec[:2],
-                                                theta_base=np.radians(self.agent.est_state.vec[8]))
+                                                xy_base=self.agent.state.vec[:2],
+                                                theta_base=np.radians(self.agent.state.vec[8]))
         # 判断是否观察到目标
         observed = (r <= self.sensor_r) \
                    & (abs(alpha) <= self.fov / 2 / 180 * np.pi) \
-                   & self.obstacles.check_obstacle_block(target.vec[:2], self.agent.est_state.vec[:2],
+                   & self.obstacles.check_obstacle_block(target.vec[:2], self.agent.state.vec[:2],
                                                          self.margin)
         z = None
         if observed:
@@ -305,8 +329,9 @@ class World:
             observation = self.observation(self.targets[i])
             observed.append(observation[0])
             if observation[0]:  # if observed, update the target belief.
-                self.belief_targets[i].update(observation[1], np.array([self.agent.est_state.vec[0],self.agent.est_state.vec[1],
-                                                                       np.radians(self.agent.est_state.vec[8])]))
+                self.belief_targets[i].update(observation[1],
+                                              np.array([self.agent.est_state.vec[0], self.agent.est_state.vec[1],
+                                                        np.radians(self.agent.est_state.vec[8])]))
                 if not (self.has_discovered[i]):
                     self.has_discovered[i] = 1
         return observed
@@ -331,7 +356,7 @@ class World:
         if self.agent.rangefinder.min_distance < self.sensor_r:
             obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
         else:
-            obstacles_pt = (self.sensor_r, np.pi)
+            obstacles_pt = (self.sensor_r, 0)
 
         self.state = []
         for i in range(self.num_targets):
@@ -342,12 +367,15 @@ class World:
             self.state.extend([r_b, alpha_b,
                                np.log(LA.det(self.belief_targets[i].cov)),
                                float(observed[i])])
-        self.state.extend([obstacles_pt[0], obstacles_pt[1]])
+        self.state.extend([self.agent.est_state.vec[0], self.agent.est_state.vec[1],
+                           np.radians(self.agent.est_state.vec[8])])
+        self.state.extend(obstacles_pt)
         self.state = np.array(self.state)
 
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
+
 
 if __name__ == '__main__':
     from auv_control import scenario
@@ -358,30 +386,30 @@ if __name__ == '__main__':
     print(world.size)
     world.targets[0].planner.draw_traj(world.ocean, 30)
     while True:
-        for _ in range(1000):
+        for _ in range(10000):
             if 'q' in world.agent.keyboard.pressed_keys:
                 break
             command = world.agent.keyboard.parse_keys()
             for target in world.targets:
                 world.target_u = target.update(world.sensors['target'], world.sensors['t'])
-            #     # world.target_u = [0.1, 1]
-            #     world.target_u = list(world.target_u)
-            #     # world.target_u[0] = 0.01
-            #     world.ocean.act("target", world.target_u * 0.01)
+                #     # world.target_u = [0.1, 1]
+                #     world.target_u = list(world.target_u)
+                #     # world.target_u[0] = 0.01
+                #     world.ocean.act("target", world.target_u * 0.01)
                 world.ocean.act("target", world.target_u)
-            u = world.agent.update(0, world.sensors['auv0'])
+            # u = world.agent.update(0, world.sensors['auv0'])
 
             world.ocean.act("auv0", command)
             world.sensors = world.ocean.tick()
 
-            print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
+            # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
         world.reset()
         world.targets[0].planner.draw_traj(world.ocean, 30)
-            # test for camera
-            # import cv2
-            # if "LeftCamera" in world.sensors['auv0']:
-            #     pixels = world.sensors['auv0']["LeftCamera"]
-            #     cv2.namedWindow("Camera Output")
-            #     cv2.imshow("Camera Output", pixels[:, :, 0:3])
-            #     cv2.waitKey(0)
-            #     cv2.destroyAllWindows()
+        # test for camera
+        # import cv2
+        # if "LeftCamera" in world.sensors['auv0']:
+        #     pixels = world.sensors['auv0']["LeftCamera"]
+        #     cv2.namedWindow("Camera Output")
+        #     cv2.imshow("Camera Output", pixels[:, :, 0:3])
+        #     cv2.waitKey(0)
+        #     cv2.destroyAllWindows()

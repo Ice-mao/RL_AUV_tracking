@@ -42,11 +42,12 @@ class TargetTrackingBase(gym.Env):
         self.action_range_high = METADATA['action_range_high']
         self.action_range_low = METADATA['action_range_low']
         self.action_dim = METADATA['action_dim']
+        # init the scenario
+        self.world = World(scenario=scenario, show=show, verbose=verbose, num_targets=self.num_targets)
         # init the action space
         self.action_space = spaces.Box(low=np.float32(self.action_range_low), high=np.float32(self.action_range_high)
                                        , shape=(6,))  # 6维控制 分别是x y theta 的均值和标准差
-        # init the scenario
-        self.world = World(scenario=scenario, show=show, verbose=verbose, num_targets=self.num_targets)
+        self.observation_space = self.world.observation_space
         self.target_init_cov = METADATA['target_init_cov']
         self.reset_num = 0
 
@@ -73,9 +74,10 @@ class TargetTrackingBase(gym.Env):
 
 if __name__ == '__main__':
     env = TargetTrackingBase()
+    env.world.ocean.should_render_viewport(False)
     obs, _ = env.reset()
     while True:
         action = [1*np.random.rand(), 1*np.random.rand(), 0.1*np.random.rand(),
-                  1*np.random.rand(), 1*np.random.rand(), 1*np.random.rand()]
+                  0.01*np.random.rand(), 0.01*np.random.rand(), 0.01*np.random.rand()]
         obs, reward, done, _, inf = env.step(action)
         print(reward)

@@ -1,7 +1,9 @@
 import numpy as np
 from auv_control import State
 from .base import BasePlanner
-
+import matplotlib.pyplot as plt
+import bezier
+from auv_env.metadata import METADATA
 
 class RRT_2d(BasePlanner):
     def __init__(self, num_seconds=10, start=None, end=None, speed=None, obstacles=None, margin=None,
@@ -27,8 +29,15 @@ class RRT_2d(BasePlanner):
         self.dist = [0]
         self.parent = [0]
         self.finish = [False]
-        self.finish_flag = 0 # use for path finish
+        self.finish_flag = 0  # use for path finish
+        # self.Visualization()
+
+        # setup plotter.
+        plt.ion()
+        self.fig, self.ax = plt.subplots()
+
         self._run_rrt()
+
 
     def reset(self, time, start, end):
         # setup RRT
@@ -37,18 +46,19 @@ class RRT_2d(BasePlanner):
         self.start = self.start[:2]
         self.end = self.end[:2]
         self.start_time = time
-        self.step_size = 3
         self.tree = self.start[0:2].reshape(1, -1)
         self.desire_path_num = 0
         self.dist = [0]
         self.parent = [0]
         self.finish = [False]
         self.finish_flag = 0  # use for path finish
+        self.path = [0]
         self._run_rrt()
+        # self.Visualization()
 
     def _run_rrt(self):
         # Make tree till we have a connecting path
-        while np.sum(self.finish) < 20:
+        while np.sum(self.finish) < 15:
             self._add_node()
 
         # find nodes that connect to end_node
@@ -72,27 +82,53 @@ class RRT_2d(BasePlanner):
         self.path = self.tree[path[::-1]]
         self.path = np.vstack((self.path, self.end))
 
-        # # smooth the waypoint path
-        # smooth = [0]
-        #
-        # # Go til the last or second to last waypoint is in smooth
-        # while smooth[-1] < len(self.path) - 1:
-        #     # iterate through all waypoints that are left
-        #     for i in range(smooth[-1] + 1, len(self.path)):
-        #         # Check if there's a collision, if there is add in the previous waypoint
-        #         # if self._collision(self.path[smooth[-1]:smooth[-1] + 1], self.path[i:i + 1]):
-        #         if self.obstacles.check_obstacle_block(self.path[smooth[-1]:smooth[-1] + 1].flatten(),
-        #                                                self.path[i:i + 1].flatten(),
-        #                                                self.margin):
-        #             smooth.append(i - 1)
-        #             break
-        #         # If we're at the last element of our path, add it in so we can be done
-        #         if i == len(self.path) - 1:
-        #             smooth.append(len(self.path) - 1)
-        #             break
-        #
-        # # Remove unneeded nodes from our path
-        # self.path = self.path[smooth]
+        # smooth:
+        num_point = len(self.path)
+        path = self.path.T
+        count = 0
+        self.curves = []
+        if num_point < 6:
+            self.curves.append(bezier.Curve(path, degree=num_point - 1))
+        else:
+            # get the first curve
+            count = 6
+            nodes = path[:, :count]
+            self.curves.append(bezier.Curve(nodes, degree=5))
+            while count < num_point:
+                # pick the last node of the last curve
+                q0 = path[:, count - 1]
+                # create the new helper node
+                q1 = q0 + (q0 - path[:, count - 2]) / 2
+                tmp = np.stack((q0, q1), axis=-1)
+                if num_point - count >= 4:
+                    count += 4
+                    # pick the new node
+                    nodes = path[:, count - 4:count]
+                    nodes = np.hstack((tmp, nodes))
+                    self.curves.append(bezier.Curve(nodes, degree=5))
+                else:
+                    tmp_num = num_point - count
+                    nodes = path[:, count:num_point]
+                    nodes = np.hstack((tmp, nodes))
+                    count = num_point
+                    self.curves.append(bezier.Curve(nodes, degree=tmp_num + 1))
+
+        # 定义控制点
+
+        # 在曲线上采样点
+        num_sample_points = 2 * num_point
+        num_curve = len(self.curves)
+        pick_point = int(num_sample_points / num_curve) + 1
+        point_on_curves = None
+        for curve in self.curves:
+            s_vals = np.linspace(0, 1, pick_point)
+            point_on_curve = curve.evaluate_multi(s_vals[:-1])
+            if point_on_curves is None:
+                point_on_curves = point_on_curve
+            else:
+                point_on_curves = np.hstack((point_on_curves, point_on_curve))
+        self.control_points = path
+        self.path = np.hstack((point_on_curves, path[:, -1].reshape(-1, 1)))
 
         # make rot and pos functions
         distance = np.linalg.norm(np.diff(self.path, axis=0), axis=1)
@@ -153,16 +189,21 @@ class RRT_2d(BasePlanner):
         # if arrived, return the next path point
         # if self.finish_flag:
         #     self.reset(true_state)
-        dis = np.linalg.norm(self.path[self.desire_path_num][: 2] - true_state[:2])
+        dis = np.linalg.norm(self.path[:, self.desire_path_num][: 2] - true_state[:2])
         # print(dis)
-        if dis < 0.4:
+        if dis < 0.3:
+            # 到达
             self.desire_path_num += 1
-            print(self.desire_path_num)
-        if self.desire_path_num == len(self.path):
+            if METADATA['render']:
+                print(self.desire_path_num)
+            # tmp = self.path[self.desire_path_num] - self.path[self.desire_path_num-1]
+            # theta = np.arctan2(tmp[1], tmp[0])
+        if self.desire_path_num == len(self.path.T):
             self.finish_flag = 1
-            print('finish')
-            return self.path[self.desire_path_num-1]
-        return self.path[self.desire_path_num]
+            if METADATA['render']:
+                print('finish')
+            return self.path[:, self.desire_path_num-1]
+        return self.path[:, self.desire_path_num]
 
     def _add_node(self):
         # make random pose :(get the pose of xy)
@@ -211,9 +252,20 @@ class RRT_2d(BasePlanner):
 
     def draw_traj(self, env, t):
         """Override super class to also make environment appear"""
-        for p in self.path:
+        for p in self.path.T:
             p = np.append(p, self.fixed_depth)
-            env.draw_point(p.tolist(), color=[255, 0, 0], thickness=20, lifetime=0)
+            env.draw_point(p.tolist(), color=[255, 0, 0], thickness=15, lifetime=0)
+        self.ax.clear()
+        self.ax.plot(self.path[0], self.path[1], label='Bezier Curve')
+        self.ax.scatter(self.control_points[0], self.control_points[1], label='ControlPoints')
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_title('Bezier Curve')
+        self.ax.legend()
+        self.ax.grid(True)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
         # # Get all positions
         # t = np.arange(0, t, 0.5)
         # des_state = self._traj(t)
@@ -222,3 +274,36 @@ class RRT_2d(BasePlanner):
         # # Draw line between each
         # for i in range(len(des_pos) - 1):
         #     env.draw_line(des_pos[i].tolist(), des_pos[i + 1].tolist(), thickness=5.0, lifetime=0.0)
+
+    def Visualization(self):
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from scipy.interpolate import splev, splprep
+
+        # 假设已有的路径点
+        # self.path.save
+        # 进行样条插值拟合
+        x = self.path[:, 0]
+        y = self.path[:, 1]
+        tck, u = splprep([x, y], s=0)
+        x1, y1 = splev(u, tck)
+        plt.plot(x1, y1, 'r-', x, y, 'bo')
+        # # 从拟合的曲线上采样得到路径点
+        # num_samples = 100
+        # sample_points = np.linspace(0, self.path.shape[0] - 1, num_samples)
+        # sampled_path_points = np.column_stack((cs(sample_points), cs(sample_points, 1)))
+        #
+        # # 绘制贝塞尔曲线和采样得到的路径点
+        # plt.figure()
+        # plt.plot(x, y, 'o', label='Original Path Points')
+        # plt.plot(cs(sample_points), cs(sample_points, 1), '-', label='Cubic Spline')
+        # plt.plot(sampled_path_points[:, 0], sampled_path_points[:, 1], 'x', label='Sampled Path Points')
+        # plt.xlabel('X')
+        # plt.ylabel('Y')
+        # plt.title('Bezier Curve Fitting and Sampling')
+        # plt.legend()
+        # plt.grid(True)
+        # plt.show()
+
+# if __name__ == '__main__':
+#     return 1

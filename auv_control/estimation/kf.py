@@ -1,8 +1,8 @@
 import numpy as np
 from numpy import linalg as LA
-import auv_env.util as util
 
 from filterpy.kalman import JulierSigmaPoints, UnscentedKalmanFilter, ExtendedKalmanFilter
+
 
 class KFbelief(object):
     """
@@ -52,7 +52,7 @@ class KFbelief(object):
         dim==4 加入对速度的估计
         """
         # Kalman Filter Update
-        r_pred, alpha_pred = util.relative_distance_polar(
+        r_pred, alpha_pred = relative_distance_polar(
             self.state[:2], x_t[:2], x_t[2])
         diff_pred = np.array(self.state[:2]) - np.array(x_t[:2])
         if self.dim == 2:
@@ -65,7 +65,7 @@ class KFbelief(object):
         else:
             raise ValueError('target dimension for KF must be either 2 or 4')
         innov = z_t - np.array([r_pred, alpha_pred])
-        innov[1] = util.wrap_around(innov[1])
+        innov[1] = wrap_around(innov[1])
 
         R = np.matmul(np.matmul(Hmat, self.cov), Hmat.T) \
             + self.obs_noise_func((r_pred, alpha_pred))
@@ -74,6 +74,7 @@ class KFbelief(object):
 
         self.cov = np.matmul(C, self.cov)
         self.state = np.clip(self.state + np.matmul(K, innov), self.limit[0], self.limit[1])
+
 
 class UKFbelief(object):
     """
@@ -100,7 +101,7 @@ class UKFbelief(object):
         self.obs_noise_func = obs_noise_func
         self.collision_func = collision_func
 
-        def hx(y, agent_state, measure_func=util.relative_distance_polar):
+        def hx(y, agent_state, measure_func=relative_distance_polar):
             r_pred, alpha_pred = measure_func(y[:2], agent_state[:2],
                                               agent_state[2])
             return np.array([r_pred, alpha_pred])
@@ -155,7 +156,7 @@ class UKFbelief(object):
             """
             if dim == 3 or dim == 5:
                 r_x = x - xp
-                r_x[2] = util.wrap_around(r_x[2])
+                r_x[2] = wrap_around(r_x[2])
                 return r_x
             else:
                 return None
@@ -166,7 +167,7 @@ class UKFbelief(object):
             zp : predicted observation
             """
             r_z = z - zp
-            r_z[1] = util.wrap_around(r_z[1])
+            r_z[1] = wrap_around(r_z[1])
             return r_z
 
         sigmas = JulierSigmaPoints(n=dim, kappa=kappa)
@@ -184,7 +185,7 @@ class UKFbelief(object):
 
     def predict(self, u_t=None):
         if u_t is None:
-            u_t = np.array([0.1*np.random.random(),
+            u_t = np.array([0.1 * np.random.random(),
                             np.pi * np.random.random() - 0.5 * np.pi])
 
         # Kalman Filter Update
@@ -198,9 +199,47 @@ class UKFbelief(object):
         x_t:agent.state(x,y,theta)
         """
         # Kalman Filter Update
-        r_pred, alpha_pred = util.relative_distance_polar(self.ukf.x[:2], x_t[:2], x_t[2])
+        r_pred, alpha_pred = relative_distance_polar(self.ukf.x[:2], x_t[:2], x_t[2])
         self.ukf.update(z_t, R=self.obs_noise_func((r_pred, alpha_pred)),
                         agent_state=x_t)
 
         self.cov = self.ukf.P
         self.state = np.clip(self.ukf.x, self.limit[0], self.limit[1])
+
+
+def relative_distance_polar(xy_target, xy_base, theta_base):
+    xy_target_base = transform_2d(xy_target, theta_base, xy_base)
+    return cartesian2polar(xy_target_base)
+
+def transform_2d(vec, theta_base, xy_base=[0.0, 0.0]):
+    """
+    Both vec and frame_xy are in the global coordinate. vec is a vector
+    you want to transform with respect to a certain frame which is located at
+    frame_xy with ang.
+    R^T * (vec - frame_xy).
+    R is a rotation matrix of the frame w.r.t the global frame.
+    这是一个向量从世界坐标系到agent坐标系的坐标变换函数
+    """
+    assert (len(vec) == 2)
+    return np.matmul([[np.cos(theta_base), np.sin(theta_base)],
+                      [-np.sin(theta_base), np.cos(theta_base)]],
+                     vec - np.array(xy_base))
+
+
+def cartesian2polar(xy):
+    """
+    笛卡尔坐标系坐标转极坐标系坐标
+    """
+    r = np.sqrt(np.sum(xy ** 2))
+    alpha = np.arctan2(xy[1], xy[0])
+    return r, alpha
+
+
+def wrap_around(x):
+    # x \in [-pi,pi)
+    if x >= np.pi:
+        return x - 2 * np.pi
+    elif x < -np.pi:
+        return x + 2 * np.pi
+    else:
+        return x

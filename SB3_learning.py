@@ -10,7 +10,9 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.results_plotter import load_results, ts2xy
 
-import ttenv
+# from stable_baselines3.common.logger
+
+import auv_env
 import torch
 import numpy as np
 import argparse
@@ -21,12 +23,12 @@ import os
 import datetime
 
 current_time = datetime.datetime.now()
-time_string = current_time.strftime('%Y-%m-%d_%H')
+time_string = current_time.strftime('%m-%d_%H')
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--env', help='environment ID', type=str, default='TargetTracking-v5')
+parser.add_argument('--env', help='environment ID', type=str, default='TargetTracking')
 # TargetTracking-v1
-parser.add_argument('--render', help='whether to render', type=int, default=1)
+parser.add_argument('--render', help='whether to render', type=int, default=0)
 parser.add_argument('--record', help='whether to record', type=int, default=0)
 parser.add_argument('--ros', help='whether to use ROS', type=int, default=0)
 parser.add_argument('--nb_targets', help='the number of targets', type=int, default=1)
@@ -37,17 +39,7 @@ parser.add_argument('--map', type=str, default="dynamic_map")  # dynamic_map
 parser.add_argument('--repeat', type=int, default=1)
 parser.add_argument('--im_size', type=int, default=28)
 parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--max_episode_step', type=int, default=500)
-
-
-# 自定义类型函数，将输入的字符串解析为矩阵
-def matrix_type(matrix_string):
-    matrix = np.array(eval(matrix_string))  # 将字符串解析为矩阵
-    return matrix
-
-
-parser.add_argument('--target_path', type=matrix_type, default=[[1, 2], [3, 4]])  # episode*T*4
-
+parser.add_argument('--max_episode_step', type=int, default=400)
 args = parser.parse_args()
 
 
@@ -107,52 +99,64 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 
 
 def main():
-    env = ttenv.make(args.env,
-                     render=args.render,
-                     record=args.record,
-                     ros=args.ros,
-                     map_name=args.map,
-                     directory=args.log_dir,
-                     num_targets=args.nb_targets,
-                     is_training=False,
-                     im_size=args.im_size,
-                     t_steps=args.max_episode_step
-                     )
-    monitor_dir = './models/monitor/'
+    # log_dir = args.log_dir
+    log_dir = './log/dqn_' + time_string + '/'
+    model_dir = './models/dqn_' + time_string + '/'
+    env = auv_env.make(args.env,
+                       render=args.render,
+                       record=args.record,
+                       ros=args.ros,
+                       map_name=args.map,
+                       directory=model_dir,
+                       num_targets=args.nb_targets,
+                       is_training=True,
+                       im_size=args.im_size,
+                       t_steps=args.max_episode_step
+                       )
+    monitor_dir = log_dir
     os.makedirs(monitor_dir, exist_ok=True)
     env = Monitor(env, monitor_dir)
     set_seed(41)
     # env = make_vec_env(env, n_envs=4)
     # env = Monitor(env, monitor_dir)
 
-    # learn(env, monitor_dir)
-    evaluate(env)
+    learn(env, model_dir, log_dir)
+    # keep_learn(env, monitor_dir, log_dir)
+    # evaluate(env)
     # env_test(env)
 
 
-def learn(env, monitor_dir):
+def learn(env, model_dir, log_dir):
     # 获取当前时间
-    os.makedirs(args.log_dir, exist_ok=True)
-    callback = SaveOnBestTrainingRewardCallback(check_freq=2000, log_dir=monitor_dir, save_path=args.log_dir)
+    os.makedirs(log_dir, exist_ok=True)
+    callback = SaveOnBestTrainingRewardCallback(check_freq=2000, log_dir=log_dir, save_path=model_dir)
 
-    # policy_kwargs = dict(net_arch=[128, 128, 128])  # 设置网络结构为3层128节点的感知机
-    # model = DQN("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, buffer_size=1000,
-    #             batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string))
-    policy_kwargs = dict(
-        features_extractor_class=CustomCNN,
-        features_extractor_kwargs=dict(features_dim=512),
-        net_arch=[512, 512]
-        # net_arch=[dict(pi=[512, 512], vf=[512, 512])],  # for AC policy
-        # shared_lstm=True,  # use for RNNPPO
-        # enable_critic_lstm=False  # use for RNNPPO
-    )  # 设置网络结构为自定义的网络架构（支持自定义输入）
+    # 网络架构选择
+    policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
+    # policy_kwargs = dict(
+    #     features_extractor_class=CustomCNN,
+    #     features_extractor_kwargs=dict(features_dim=512),
+    #     net_arch=[512, 512]
+    #     # net_arch=[dict(pi=[512, 512], vf=[512, 512])],  # for AC policy
+    #     # shared_lstm=True,  # use for RNNPPO
+    #     # enable_critic_lstm=False  # use for RNNPPO
+    # )  # 设置网络结构为自定义的网络架构（支持自定义输入）
 
     # 算法选择
-    model = DQN("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
-                batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
-                exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
+    # DQN
+    # model = DQN("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
+    #             batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
+    #             exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
+    # model = DQN("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
+    #             batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
+    #             exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
     # model = DQN.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
 
+    # PPO
+    model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=64, n_epochs=10,
+                gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
+                policy_kwargs=policy_kwargs,
+                tensorboard_log=log_dir, device="cpu", seed=41)
     # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
     #             clip_range_vf=0.1,
     #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
@@ -162,8 +166,16 @@ def learn(env, monitor_dir):
     #                      learning_rate=0.001, clip_range=0.2, batch_size=64,
     #                      tensorboard_log=("./log/PPO_LSTM_" + time_string), device="cuda")
 
-    model.learn(total_timesteps=2000000, log_interval=5, callback=callback)
+    model.learn(total_timesteps=500000, tb_log_name="first_run", log_interval=5, callback=callback)
     model.save(args.log_dir + 'final_model')
+
+
+def keep_learn(env, monitor_dir, log_dir):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = DQN.load("./models/dqn_cnn-2023-12-13_14/final_model.zip", device='cuda', env=env,
+                     custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+    model.learn(total_timesteps=10_000, tb_log_name="second_run", reset_num_timesteps=False)
+    # model.learn(total_timesteps=10_000, tb_log_name="third_run", reset_num_timesteps=False)
 
 
 def evaluate(env):
