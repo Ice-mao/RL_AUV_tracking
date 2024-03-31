@@ -2,13 +2,14 @@ import gymnasium as gym
 
 import stable_baselines3
 from stable_baselines3 import DQN
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, SAC
 from stable_baselines3 import HerReplayBuffer
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.results_plotter import load_results, ts2xy
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 
 # from stable_baselines3.common.logger
 
@@ -39,7 +40,7 @@ parser.add_argument('--map', type=str, default="dynamic_map")  # dynamic_map
 parser.add_argument('--repeat', type=int, default=1)
 parser.add_argument('--im_size', type=int, default=28)
 parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--max_episode_step', type=int, default=400)
+parser.add_argument('--max_episode_step', type=int, default=200)
 args = parser.parse_args()
 
 
@@ -90,18 +91,26 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
                     self.model.save(self.save_path_best)
 
         # save model every 100000 timesteps:
-        if self.n_calls % (20000) == 0:
+        if self.num_timesteps % (20000) == 0:
             # Retrieve training reward
-            path = self.path_process + str(self.n_calls) + '_model'
+            path = self.path_process + str(self.num_timesteps) + '_model'
             self.model.save(path)
 
         return True
 
 
 def main():
-    # log_dir = args.log_dir
-    log_dir = './log/dqn_' + time_string + '/'
-    model_dir = './models/dqn_' + time_string + '/'
+    # test
+    # log_dir = './log/test/'
+    # model_dir = './models/test/'
+    # new training
+    # log_dir = './log/ppo_' + time_string + '/'
+    # model_dir = './models/ppo_' + time_string + '/'
+    log_dir = './log/sac_' + time_string + '/'
+    model_dir = './models/sac_' + time_string + '/'
+    # keep training
+    # model_dir = "./models/ppo_03-27_13/"
+    # log_dir = "./log/ppo_03-27_13/"
     env = auv_env.make(args.env,
                        render=args.render,
                        record=args.record,
@@ -115,13 +124,38 @@ def main():
                        )
     monitor_dir = log_dir
     os.makedirs(monitor_dir, exist_ok=True)
-    env = Monitor(env, monitor_dir)
+    # env = Monitor(env, monitor_dir)
+    # env = SubprocVecEnv([auv_env.make(args.env,
+    #                                   render=args.render,
+    #                                   record=args.record,
+    #                                   ros=args.ros,
+    #                                   map_name=args.map,
+    #                                   directory=model_dir,
+    #                                   num_targets=args.nb_targets,
+    #                                   is_training=True,
+    #                                   im_size=args.im_size,
+    #                                   t_steps=args.max_episode_step
+    #                                   )
+    #                      for _ in range(6)])
+    env = SubprocVecEnv([lambda: Monitor(auv_env.make(args.env,
+                                                      render=args.render,
+                                                      record=args.record,
+                                                      ros=args.ros,
+                                                      map_name=args.map,
+                                                      directory=model_dir,
+                                                      num_targets=args.nb_targets,
+                                                      is_training=True,
+                                                      im_size=args.im_size,
+                                                      t_steps=args.max_episode_step
+                                                      )) for _ in range(6)])
+    # env = make_vec_env(env, n_envs=8, vec_env_cls=SubprocVecEnv)
+    # env = VecMonitor(env)
     set_seed(41)
     # env = make_vec_env(env, n_envs=4)
     # env = Monitor(env, monitor_dir)
 
     learn(env, model_dir, log_dir)
-    # keep_learn(env, monitor_dir, log_dir)
+    # keep_learn(env, model_dir, log_dir)
     # evaluate(env)
     # env_test(env)
 
@@ -153,10 +187,15 @@ def learn(env, model_dir, log_dir):
     # model = DQN.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
 
     # PPO
-    model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=64, n_epochs=10,
-                gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
-                policy_kwargs=policy_kwargs,
-                tensorboard_log=log_dir, device="cpu", seed=41)
+    # model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=64, n_epochs=10,
+    #             gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
+    #             policy_kwargs=policy_kwargs,tensorboard_log=log_dir, device="cpu")
+
+    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=500000,
+                learning_starts=100, batch_size=64, tau=0.005, gamma=0.99, train_freq=1,
+                gradient_steps=1, action_noise=None,
+                policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cpu"
+                )
     # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
     #             clip_range_vf=0.1,
     #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
@@ -166,37 +205,39 @@ def learn(env, model_dir, log_dir):
     #                      learning_rate=0.001, clip_range=0.2, batch_size=64,
     #                      tensorboard_log=("./log/PPO_LSTM_" + time_string), device="cuda")
 
-    model.learn(total_timesteps=500000, tb_log_name="first_run", log_interval=5, callback=callback)
+    model.learn(total_timesteps=1000000, tb_log_name="first_run", log_interval=5, callback=callback)
     model.save(args.log_dir + 'final_model')
 
 
-def keep_learn(env, monitor_dir, log_dir):
+def keep_learn(env, model_dir, log_dir):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = DQN.load("./models/dqn_cnn-2023-12-13_14/final_model.zip", device='cuda', env=env,
+
+    callback = SaveOnBestTrainingRewardCallback(check_freq=2000, log_dir=log_dir, save_path=model_dir)
+    model = PPO.load(model_dir + '360000_model', device='cpu', env=env,
                      custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    model.learn(total_timesteps=10_000, tb_log_name="second_run", reset_num_timesteps=False)
+    model.learn(total_timesteps=800000, tb_log_name="second_run", reset_num_timesteps=False,
+                log_interval=5, callback=callback)
+    model.save(model_dir + 'final_model')
     # model.learn(total_timesteps=10_000, tb_log_name="third_run", reset_num_timesteps=False)
 
 
 def evaluate(env):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = DQN.load("./models/dqn_cnn-2023-12-13_14/final_model.zip", device='cuda', env=env,
+    # get render parmater true
+    model = PPO.load("./models/ppo_03-27_13/800000_model.zip", device='cpu', env=env,
                      custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')
     # model = RecurrentPPO.load("./models/dqn_cnn-2023-12-12_23/best_model.zip", device='cuda')
     obs, _ = env.reset()
-    obs, _ = env.reset()
-    obs, _ = env.reset()
     while True:
         action, _states = model.predict(obs, deterministic=False)
         obs, reward, done, _, inf = env.step(action)
-        env.render()
+        # env.render()
 
 
 def env_test(env):
     obs, _ = env.reset()
     while True:
-        action = np.array(np.random.randint(0, 12))  # 生成 0 到 11 之间的整数随机数
+        action = np.array([1, 0, 0, 0, 0, 0])  # 生成 0 到 11 之间的整数随机数
         obs, reward, done, _, inf = env.step(action)
         env.render()
 
