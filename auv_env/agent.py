@@ -1,5 +1,5 @@
 import numpy as np
-from auv_env.metadata import METADATA
+from metadata import METADATA
 from auv_env.tools import KeyBoardCmd, ImagingSonar, RangeFinder
 import auv_env.util as util
 
@@ -45,17 +45,20 @@ class AgentAuv(Agent):
         # self.imagesonar = ImagingSonar(scenario=scenario)  # to see if it is useful
         self.rangefinder = RangeFinder(scenario=scenario)
         self.state = State(sensor)
+        self.last_state = State(sensor)
         self.est_state = State(sensor)
         # self.planner = RRT()
 
     def reset(self, sensor):
         self.state = State(sensor)
+        self.last_state = State(sensor)
         self.est_state = State(sensor)
         self.vw = [0.0, 0.0]
 
     def update(self, action_waypoint, depth, sensors):
         self.rangefinder.update(sensors)
         # Estimate State
+        self.last_state = self.state
         self.state = State(sensors)
         self.est_state = self.observer.tick(sensors, self.sampling_period)
 

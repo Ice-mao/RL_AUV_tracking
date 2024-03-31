@@ -9,7 +9,7 @@ from auv_control import State
 from auv_env import util
 from auv_env.agent import AgentAuv, AgentSphere, SE2Dynamics
 from auv_env.obstacle import Obstacle
-from auv_env.metadata import METADATA
+from metadata import METADATA
 
 from gymnasium import spaces
 import logging
@@ -25,7 +25,8 @@ class World:
     def __init__(self, scenario, show, verbose, num_targets, **kwargs):
         # define the entity
         # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
-        self.ocean = holoocean.make(scenario_cfg=scenario)
+        self.ocean = holoocean.make('TestMap')
+        scenario = holoocean.get_scenario('TestMap')
         self.ocean.should_render_viewport(METADATA['render'])
         self.agent = None
         # init the param
@@ -52,6 +53,12 @@ class World:
         # rule is obstacles combined will rotate from their own center
         self.obstacles = Obstacle(self.ocean, self.fix_depth)
         self.obstacles.draw_obstacle()
+
+        # Record for reward obtain(diff from the control period and the sampling period)
+        self.agent_w = None
+            # for u calculate:when receive the new waypoints
+        self.agent_last_u = None
+        self.agent_u = None
 
         # Cal random  pos of agent and target
         self.agent_init_pos = None
@@ -123,12 +130,16 @@ class World:
         global_waypoint[0] = self.agent.est_state.vec[0] + action_waypoint[0]
         global_waypoint[1] = self.agent.est_state.vec[1] + action_waypoint[1]
         global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(action_waypoint[2])
-        for _ in range(50):
+        self.agent_w = action_waypoint[2]
+        if self.agent_u is not None:
+            self.agent_last_u = self.agent_u
+        for j in range(50):
             for i in range(self.num_targets):
                 if self.has_discovered[i]:
                     self.target_u = self.targets[i].update(self.sensors['target'], self.sensors['t'])
                     self.ocean.act("target", self.target_u)
-
+            if j == 0:
+                self.agent_u = self.u
             self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             self.sensors = self.ocean.tick()
@@ -150,7 +161,6 @@ class World:
         if METADATA['render']:
             print(is_col, observed[0], reward)
         return self.state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
-
     def reset(self):
         self.ocean.reset()
         self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
@@ -158,6 +168,10 @@ class World:
         self.obstacles.reset()
         self.obstacles.draw_obstacle()
         self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        # reset the reward record
+        self.agent_w = None
+        self.agent_last_state = None
+        self.agent_last_u = None
         # reset the random position
         self.agent_init_pos = None
         self.agent_init_yaw = None
@@ -337,14 +351,24 @@ class World:
         return observed
 
     def get_reward(self, is_col, is_training=True, c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
-                   c_penalty=METADATA['c_penalty']):
+                   c_penalty=METADATA['c_penalty'], k_3=METADATA['k_3'], k_4=METADATA['k_4'], k_5=METADATA['k_5']):
         detcov = [LA.det(b_target.cov) for b_target in self.belief_targets]
         r_detcov_mean = - np.mean(np.log(detcov))
         r_detcov_std = - np.std(np.log(detcov))
 
         reward = c_mean * r_detcov_mean + c_std * r_detcov_std
+        # reward_w = np.exp(-k_3 * np.abs(np.radians(self.agent.state.vec[8]))) - 1
+        reward_w = np.exp(-k_3 * np.abs(self.agent_w)) - 1
+        if self.agent_last_u is not None:
+            reward_a = np.exp(-k_4 * np.sum(np.abs(self.agent_u - self.agent_last_u))) - 1
+        else:
+            reward_a = 0
+        reward_e = np.exp(-k_5 * np.sum([f_i ** 2 for f_i in self.agent_u])) - 1
+        reward = reward + reward_w + reward_a + reward_e
         if is_col:
-            reward = min(0.0, reward) - c_penalty * 1.0
+            reward = np.min([0.0, reward]) - c_penalty * 1.0
+        if METADATA['render']:
+            print('reward:', reward, 'reward_w:', reward_w, 'reward_a:', reward_a, 'reward_e:', reward_e)
         return reward, False, r_detcov_mean, r_detcov_std
 
     def state_func(self, observed):
@@ -385,23 +409,17 @@ if __name__ == '__main__':
     world.reset()
     print(world.size)
     world.targets[0].planner.draw_traj(world.ocean, 30)
+    action_range_high = METADATA['action_range_high']
+    action_range_low = METADATA['action_range_low']
+    action_space = spaces.Box(low=np.float32(action_range_low), high=np.float32(action_range_high)
+                              , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
     while True:
-        for _ in range(10000):
-            if 'q' in world.agent.keyboard.pressed_keys:
-                break
-            command = world.agent.keyboard.parse_keys()
-            for target in world.targets:
-                world.target_u = target.update(world.sensors['target'], world.sensors['t'])
-                #     # world.target_u = [0.1, 1]
-                #     world.target_u = list(world.target_u)
-                #     # world.target_u[0] = 0.01
-                #     world.ocean.act("target", world.target_u * 0.01)
-                world.ocean.act("target", world.target_u)
-            # u = world.agent.update(0, world.sensors['auv0'])
-
-            world.ocean.act("auv0", command)
-            world.sensors = world.ocean.tick()
-
+        for _ in range(100000):
+            # if 'q' in world.agent.keyboard.pressed_keys:
+            #     break
+            # command = world.agent.keyboard.parse_keys()
+            action = action_space.sample()
+            world.step(action)
             # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
         world.reset()
         world.targets[0].planner.draw_traj(world.ocean, 30)

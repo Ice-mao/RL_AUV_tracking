@@ -16,7 +16,7 @@ import holoocean
 from auv_control import scenario
 
 from auv_env.maps import map_utils
-from auv_env.metadata import METADATA
+from metadata import METADATA
 import auv_env.util as util
 
 from auv_env.world import World
@@ -46,7 +46,7 @@ class TargetTrackingBase(gym.Env):
         self.world = World(scenario=scenario, show=show, verbose=verbose, num_targets=self.num_targets)
         # init the action space
         self.action_space = spaces.Box(low=np.float32(self.action_range_low), high=np.float32(self.action_range_high)
-                                       , shape=(6,))  # 6维控制 分别是x y theta 的均值和标准差
+                                       , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
         self.observation_space = self.world.observation_space
         self.target_init_cov = METADATA['target_init_cov']
         self.reset_num = 0

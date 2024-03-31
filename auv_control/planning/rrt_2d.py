@@ -3,7 +3,7 @@ from auv_control import State
 from .base import BasePlanner
 import matplotlib.pyplot as plt
 import bezier
-from auv_env.metadata import METADATA
+from metadata import METADATA
 
 class RRT_2d(BasePlanner):
     def __init__(self, num_seconds=10, start=None, end=None, speed=None, obstacles=None, margin=None,

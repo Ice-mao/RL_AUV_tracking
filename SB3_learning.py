@@ -101,16 +101,16 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 
 def main():
     # test
-    # log_dir = './log/test/'
-    # model_dir = './models/test/'
+    # log_dir = '../log/test/'
+    # model_dir = '../models/test/'
     # new training
-    # log_dir = './log/ppo_' + time_string + '/'
-    # model_dir = './models/ppo_' + time_string + '/'
-    log_dir = './log/sac_' + time_string + '/'
-    model_dir = './models/sac_' + time_string + '/'
+    # log_dir = '../log/ppo_' + time_string + '/'
+    # model_dir = '../models/ppo_' + time_string + '/'
+    log_dir = '../log/sac_' + time_string + '/'
+    model_dir = '../models/sac_' + time_string + '/'
     # keep training
-    # model_dir = "./models/ppo_03-27_13/"
-    # log_dir = "./log/ppo_03-27_13/"
+    # model_dir = "../models/ppo_03-27_13/"
+    # log_dir = "../log/ppo_03-27_13/"
     env = auv_env.make(args.env,
                        render=args.render,
                        record=args.record,
@@ -147,7 +147,7 @@ def main():
                                                       is_training=True,
                                                       im_size=args.im_size,
                                                       t_steps=args.max_episode_step
-                                                      )) for _ in range(6)])
+                                                      )) for _ in range(8)])
     # env = make_vec_env(env, n_envs=8, vec_env_cls=SubprocVecEnv)
     # env = VecMonitor(env)
     set_seed(41)

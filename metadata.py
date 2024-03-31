@@ -43,18 +43,21 @@ METADATA_v1 = {
     'action_w': [np.pi / 2, 0, -np.pi / 2],  # action primitives - angular velocities.
     'const_q': 1.0,  # target noise constant in beliefs.
     'const_q_true': 0.01,  # target noise constant of actual targets.
-    'action_range_high': [5, 5, np.pi, 1, 1, 1],
-    'action_range_low': [-5, -5, -np.pi, 0.001, 0.001, 0.001],
+    'action_range_high': [3, 3, np.pi/2],
+    'action_range_low': [-3, -3, -np.pi/2],
     'action_dim': 6,
 
     'target_num': 1,
     'target_dim': 4,  # x, y, xdot, ydot
     # reward setting
-    'c_mean': 0.1,
+    'c_mean': 0.2,
     'c_std': 0.0,
-    'c_penalty': 1.0,
+    'c_penalty': 5.0,
+    'k_3': 0.5,
+    'k_4': 0.01,
+    'k_5': 0.0002,
     # render setting
-    'render': False,
+    'render': True,
     # control_period
     'control_period': 0.5
 }

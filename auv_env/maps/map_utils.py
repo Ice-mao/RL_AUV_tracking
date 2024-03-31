@@ -11,7 +11,7 @@ Therefore, in the display_wrapper, the map is flipped.
 """
 import numpy as np
 import yaml
-from auv_env.metadata import METADATA
+from metadata import METADATA
 
 def round(x):
     if x >= 0:
