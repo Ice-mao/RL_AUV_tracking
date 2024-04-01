@@ -26,8 +26,8 @@ class TargetTrackingBase(gym.Env):
     """
     生成一个3D的HoloOcean环境
     """
-    def __init__(self, num_targets=1, map_name='empty',
-                 is_training=True, known_noise=True, show=True, verbose=True, **kwargs):
+    def __init__(self, map="TestMap", num_targets=1,
+                 is_training=True, show=True, verbose=True, **kwargs):
         gym.Env.__init__(self)
         np.random.seed()
         self.state = None
@@ -43,10 +43,10 @@ class TargetTrackingBase(gym.Env):
         self.action_range_low = METADATA['action_range_low']
         self.action_dim = METADATA['action_dim']
         # init the scenario
-        self.world = World(scenario=scenario, show=show, verbose=verbose, num_targets=self.num_targets)
+        self.world = World(map=map, show=show, verbose=verbose, num_targets=self.num_targets)
         # init the action space
         self.action_space = spaces.Box(low=np.float32(self.action_range_low), high=np.float32(self.action_range_high)
-                                       , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
+                                       , shape=(len(self.action_range_high),))
         self.observation_space = self.world.observation_space
         self.target_init_cov = METADATA['target_init_cov']
         self.reset_num = 0
@@ -65,10 +65,13 @@ class TargetTrackingBase(gym.Env):
         :param action:
         :return:
         """
-        # get the policy of (x,y,theta) in local corrdinate
-        action_waypoint = np.array([action[0] + 0.1 * np.random.normal(),
-                                    action[1] + 0.1 * np.random.normal(),
-                                    action[2] + 0.005 * np.random.normal()])
+        # get the policy of (r,theta,angle) in local corrdinate
+        if self.is_training is True:
+            action_waypoint = np.array([action[0] + 0.1 * np.random.normal(),
+                                        action[1] + 0.005 * np.random.normal(),
+                                        action[2] + 0.005 * np.random.normal()])
+        else:
+            action_waypoint = action
 
         return self.world.step(action_waypoint=action_waypoint)
 

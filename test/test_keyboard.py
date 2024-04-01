@@ -52,7 +52,7 @@ class KeyBoardCmd:
         return command
 
 
-with holoocean.make("Dam-HoveringCamera") as env:
+with holoocean.make("TestMap") as env:
     kb = KeyBoardCmd(force=25)
     for _ in range(20000):
         if 'q' in kb.pressed_keys:

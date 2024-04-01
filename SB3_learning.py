@@ -22,26 +22,31 @@ from policy_net import SEED1, set_seed, CustomCNN
 # tools
 import os
 import datetime
+from metadata import METADATA
 
 current_time = datetime.datetime.now()
 time_string = current_time.strftime('%m-%d_%H')
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('--choice', choices=['0', '1', '2', '3'], help='0:train; 1:keep train; 2:eval; 3:test',
+                    default=0)
 parser.add_argument('--env', help='environment ID', type=str, default='TargetTracking')
-# TargetTracking-v1
 parser.add_argument('--render', help='whether to render', type=int, default=0)
 parser.add_argument('--record', help='whether to record', type=int, default=0)
 parser.add_argument('--ros', help='whether to use ROS', type=int, default=0)
+parser.add_argument('--map', help='choose your map in holoocean', type=str, default='TestMap')
 parser.add_argument('--nb_targets', help='the number of targets', type=int, default=1)
 parser.add_argument('--log_dir', help='a path to a directory to log your data', type=str,
                     default='./models/dqn_cnn-' + time_string + '/')
 # parser.add_argument('--map', type=str, default="obstacles02")
-parser.add_argument('--map', type=str, default="dynamic_map")  # dynamic_map
-parser.add_argument('--repeat', type=int, default=1)
-parser.add_argument('--im_size', type=int, default=28)
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--max_episode_step', type=int, default=200)
 args = parser.parse_args()
+
+if args.render:
+    METADATA['render'] = True
+else:
+    METADATA['render'] = False
 
 
 class SaveOnBestTrainingRewardCallback(BaseCallback):
@@ -100,36 +105,38 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 
 
 def main():
-    # new training
-    # log_dir = '../log/ppo_' + time_string + '/'
-    # model_dir = '../models/ppo_' + time_string + '/'
-    log_dir = '../log/sac_' + time_string + '/'
-    model_dir = '../models/sac_' + time_string + '/'
-    # keep training
-    # model_dir = "../models/ppo_03-27_13/"
-    # log_dir = "../log/ppo_03-27_13/"
-    monitor_dir = log_dir
-    os.makedirs(monitor_dir, exist_ok=True)
-    # env = Monitor(env, monitor_dir)
-    env = SubprocVecEnv([lambda: auv_env.make(args.env,
-                                              render=args.render,
-                                              record=args.record,
-                                              ros=args.ros,
-                                              map_name=args.map,
-                                              directory=model_dir,
-                                              num_targets=args.nb_targets,
-                                              is_training=True,
-                                              im_size=args.im_size,
-                                              t_steps=args.max_episode_step
-                                              ) for _ in range(6)])
-    env = VecMonitor(env, monitor_dir)
-    set_seed(41)
-    # env = make_vec_env(env, n_envs=4)
-    # env = Monitor(env, monitor_dir)
+    if args.choice == '0' or args.choice == '1':
+        # new training
+        log_dir = '../log/sac_' + time_string + '/'
+        model_dir = '../models/sac_' + time_string + '/'
+        # keep training
+        # model_dir = "../models/ppo_03-27_13/"
+        # log_dir = "../log/ppo_03-27_13/"
+        monitor_dir = log_dir
+        os.makedirs(monitor_dir, exist_ok=True)
+        # env = Monitor(env, monitor_dir)
+        env = SubprocVecEnv([lambda: auv_env.make(args.env,
+                                                  render=args.render,
+                                                  record=args.record,
+                                                  ros=args.ros,
+                                                  directory=model_dir,
+                                                  num_targets=args.nb_targets,
+                                                  map=args.map,
+                                                  is_training=True,
+                                                  t_steps=args.max_episode_step
+                                                  ) for _ in range(6)])
+        env = VecMonitor(env, monitor_dir)
+        set_seed(41)
+        if args.choice == '0':
+            learn(env, model_dir, log_dir)
+        if args.choice == '1':
+            keep_learn(env, model_dir, log_dir)
+    elif args.choice == '2':
+        model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-01_10/300000_model.zip'
+        evaluate(model_dir)
 
-    learn(env, model_dir, log_dir)
-    # keep_learn(env, model_dir, log_dir)
-    # env_test(env)
+    elif args.choice == '3':
+        env_test()
 
 
 def learn(env, model_dir, log_dir):
@@ -186,26 +193,22 @@ def keep_learn(env, model_dir, log_dir):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     callback = SaveOnBestTrainingRewardCallback(check_freq=2000, log_dir=log_dir, save_path=model_dir)
-    model = PPO.load(model_dir + '360000_model', device='cpu', env=env,
+    model = PPO.load(model_dir + '360000_model', device='cuda', env=env,
                      custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     model.learn(total_timesteps=800000, tb_log_name="second_run", reset_num_timesteps=False,
                 log_interval=5, callback=callback)
     model.save(model_dir + 'final_model')
-    # model.learn(total_timesteps=10_000, tb_log_name="third_run", reset_num_timesteps=False)
 
 
-def evaluate():
-    # test
-    model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-01_10/300000_model.zip'
+def evaluate(model_dir):
     env = auv_env.make(args.env,
                        render=args.render,
                        record=args.record,
                        ros=args.ros,
-                       map_name=args.map,
                        directory=model_dir,
                        num_targets=args.nb_targets,
-                       is_training=True,
-                       im_size=args.im_size,
+                       map=args.map,
+                       is_training=False,
                        t_steps=args.max_episode_step
                        )
     # get render parmater true
@@ -218,17 +221,26 @@ def evaluate():
     while True:
         action, _states = model.predict(obs, deterministic=False)
         obs, reward, done, _, inf = env.step(action)
-        # env.render()
 
 
-def env_test(env):
+def env_test():
+    model_dir = '../models/test'
+    env = auv_env.make(args.env,
+                       render=args.render,
+                       record=args.record,
+                       ros=args.ros,
+                       directory=model_dir,
+                       num_targets=args.nb_targets,
+                       map=args.map,
+                       is_training=False,
+                       t_steps=args.max_episode_step
+                       )
     obs, _ = env.reset()
     while True:
-        action = np.array([1, 0, 0, 0, 0, 0])  # 生成 0 到 11 之间的整数随机数
+        action = env.action_space.sample()
+        action = np.array([0.5,0.5,0.5])
         obs, reward, done, _, inf = env.step(action)
-        env.render()
 
 
 if __name__ == "__main__":
-    # main()
-    evaluate()
+    main()

@@ -22,11 +22,11 @@ class World:
     RL state: [d, alpha, logdet(Sigma), observed] * nb_targets, [o_d, o_alpha]
     """
 
-    def __init__(self, scenario, show, verbose, num_targets, **kwargs):
+    def __init__(self, map, show, verbose, num_targets, **kwargs):
         # define the entity
         # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
-        self.ocean = holoocean.make('TestMap')
-        scenario = holoocean.get_scenario('TestMap')
+        self.ocean = holoocean.make(map)
+        scenario = holoocean.get_scenario(map)
         self.ocean.should_render_viewport(METADATA['render'])
         self.agent = None
         # init the param
@@ -37,12 +37,13 @@ class World:
         self.sensor_b_sd = METADATA['sensor_b_sd']
         self.num_targets = METADATA['target_num']  # num of target
         self.target_dim = METADATA['target_dim']
+        self.action_range_scale = METADATA['action_range_scale']
 
         self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
 
         # Setup environment
-        self.size = np.array([45, 45, 25])
-        self.bottom_corner = np.array([-22.5, -22.5, -25])
+        self.size = np.array([40, 40, 20])
+        self.bottom_corner = np.array([-20, -20, -20])
         self.fix_depth = -5
         self.margin = METADATA['margin']
         self.margin2wall = METADATA['margin2wall']
@@ -56,7 +57,7 @@ class World:
 
         # Record for reward obtain(diff from the control period and the sampling period)
         self.agent_w = None
-            # for u calculate:when receive the new waypoints
+        # for u calculate:when receive the new waypoints
         self.agent_last_u = None
         self.agent_u = None
 
@@ -127,9 +128,13 @@ class World:
     def step(self, action_waypoint):
         global_waypoint = np.zeros(3)
         observed = []
-        global_waypoint[0] = self.agent.est_state.vec[0] + action_waypoint[0]
-        global_waypoint[1] = self.agent.est_state.vec[1] + action_waypoint[1]
-        global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(action_waypoint[2])
+        # 归一化展开
+        r = action_waypoint[0] * self.action_range_scale[0]
+        theta = action_waypoint[1] * self.action_range_scale[1] - self.action_range_scale[1] / 2
+        global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
+                                                         np.radians(self.agent.est_state.vec[8]))
+        angle = action_waypoint[2] * self.action_range_scale[2] - self.action_range_scale[2] / 2
+        global_waypoint[2] = self.agent.est_state.vec[8] + angle
         self.agent_w = action_waypoint[2]
         if self.agent_u is not None:
             self.agent_last_u = self.agent_u
@@ -161,6 +166,7 @@ class World:
         if METADATA['render']:
             print(is_col, observed[0], reward)
         return self.state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
+
     def reset(self):
         self.ocean.reset()
         self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
@@ -306,8 +312,8 @@ class World:
                                                                [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
                                                [0.0, -np.pi])),
                                np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
-                                                              [self.top_corner[0], self.top_corner[1], np.pi])),
-                                              [self.sensor_r, np.pi]))]
+                                                               [self.top_corner[0], self.top_corner[1], np.pi])),
+                                               [self.sensor_r, np.pi]))]
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]

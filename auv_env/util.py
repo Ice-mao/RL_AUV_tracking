@@ -59,7 +59,6 @@ def transform_2d_inv(vec, theta_base, xy_base):
     R^T * (vec - frame_xy).
     R is a rotation matrix of the frame w.r.t the global frame.
     这是一个向量经过旋转角度和平移之后得到新向量的坐标逆变换函数
-    attention: is useful in HoloOcean,the xy is opposite
     """
     assert (len(vec) == 2)
     return np.matmul([[np.cos(theta_base), -np.sin(theta_base)],
@@ -95,6 +94,13 @@ def transform_2d_dot(xy_target, xy_dot_target, theta_base, theta_dot_base, xy_ba
 def relative_distance_polar(xy_target, xy_base, theta_base):
     xy_target_base = transform_2d(xy_target, theta_base, xy_base)
     return cartesian2polar(xy_target_base)
+
+
+def polar_distance_global(polar_vec, xy_base, theta_base):
+    # 将极坐标转换为笛卡尔坐标
+    xy_target = np.array([polar_vec[0] * np.cos(polar_vec[1]), polar_vec[0] * np.sin(polar_vec[1])])
+    xy_target_global = transform_2d_inv(xy_target, theta_base, xy_base)
+    return xy_target_global
 
 
 def relative_velocity_polar(xy_target, xy_dot_target, xy_base, theta_base, v_base, w_base):
@@ -243,3 +249,8 @@ def get_nlogdetcov_bounds_step(P0, A, W, TH):
         X = np.matmul(np.matmul(A, X), A.T) + W
     lower_bound = - np.log(LA.det(X))
     return lower_bound, upper_bound
+
+
+if __name__ == "__main__":
+    ans = polar_distance_global(np.array([5, np.pi / 2]), np.array([5, 0]), theta_base=0)
+    print(ans)

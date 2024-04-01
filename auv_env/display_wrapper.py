@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib import patches
 from matplotlib import animation
 
-from ttenv.metadata import METADATA
+from metadata import METADATA
 
 class Display2D(Wrapper):
     def __init__(self, env, figID = 0, skip = 1, confidence=0.95, local_view=0):
