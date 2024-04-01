@@ -38,7 +38,7 @@ METADATA_v1 = {
     'lin_dist_range_a2t': (3.0, 8.0),
     'ang_dist_range_a2t': (-np.pi / 5, np.pi / 5),
     'margin': 1,  # a marginal distance btw targets and the agent.
-    'margin2wall': 1.0,  # a marginal distance from a wall.
+    'margin2wall': 1.5,  # a marginal distance from a wall.
     'action_v': [3, 2, 1, 0],  # action primitives - linear velocities.
     'action_w': [np.pi / 2, 0, -np.pi / 2],  # action primitives - angular velocities.
     'const_q': 1.0,  # target noise constant in beliefs.
@@ -57,7 +57,7 @@ METADATA_v1 = {
     'k_4': 0.01,
     'k_5': 0.0002,
     # render setting
-    'render': True,
+    'render': False,
     # control_period
     'control_period': 0.5
 }

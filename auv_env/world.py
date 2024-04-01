@@ -248,7 +248,7 @@ class World:
                         )
                         if is_target_valid:  # check the blocked condition
                             is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
-                                                                                self.margin)
+                                                                                self.margin2wall)
                             flag = not is_no_blocked
                             is_target_valid = (blocked == flag)
                         count += 1

@@ -66,9 +66,9 @@ class TargetTrackingBase(gym.Env):
         :return:
         """
         # get the policy of (x,y,theta) in local corrdinate
-        action_waypoint = np.array([np.random.normal(action[0], action[3]),
-                                    np.random.normal(action[1], action[4]),
-                                    np.random.normal(action[2], action[5])])
+        action_waypoint = np.array([action[0] + 0.1 * np.random.normal(),
+                                    action[1] + 0.1 * np.random.normal(),
+                                    action[2] + 0.005 * np.random.normal()])
 
         return self.world.step(action_waypoint=action_waypoint)
 

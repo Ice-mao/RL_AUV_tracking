@@ -4,7 +4,7 @@ from auv_env.tools import KeyBoardCmd
 import numpy as np
 
 #### GET SONAR CONFIG
-scenario = "Dam-HoveringCamera"
+scenario = "SimpleUnderwater-Hovering"
 config = holoocean.packagemanager.get_scenario(scenario)
 config = config['agents'][0]['sensors'][-1]["configuration"]
 azi = config['Azimuth']
@@ -32,7 +32,7 @@ fig.canvas.draw()
 fig.canvas.flush_events()
 
 #### RUN SIMULATION
-kb_cmd = KeyBoardCmd(force=10)
+kb_cmd = KeyBoardCmd(force=30)
 with holoocean.make(scenario) as env:
     for i in range(100000):
         if 'q' in kb_cmd.pressed_keys:

@@ -100,9 +100,6 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 
 
 def main():
-    # test
-    # log_dir = '../log/test/'
-    # model_dir = '../models/test/'
     # new training
     # log_dir = '../log/ppo_' + time_string + '/'
     # model_dir = '../models/ppo_' + time_string + '/'
@@ -111,52 +108,27 @@ def main():
     # keep training
     # model_dir = "../models/ppo_03-27_13/"
     # log_dir = "../log/ppo_03-27_13/"
-    env = auv_env.make(args.env,
-                       render=args.render,
-                       record=args.record,
-                       ros=args.ros,
-                       map_name=args.map,
-                       directory=model_dir,
-                       num_targets=args.nb_targets,
-                       is_training=True,
-                       im_size=args.im_size,
-                       t_steps=args.max_episode_step
-                       )
     monitor_dir = log_dir
     os.makedirs(monitor_dir, exist_ok=True)
     # env = Monitor(env, monitor_dir)
-    # env = SubprocVecEnv([auv_env.make(args.env,
-    #                                   render=args.render,
-    #                                   record=args.record,
-    #                                   ros=args.ros,
-    #                                   map_name=args.map,
-    #                                   directory=model_dir,
-    #                                   num_targets=args.nb_targets,
-    #                                   is_training=True,
-    #                                   im_size=args.im_size,
-    #                                   t_steps=args.max_episode_step
-    #                                   )
-    #                      for _ in range(6)])
-    env = SubprocVecEnv([lambda: Monitor(auv_env.make(args.env,
-                                                      render=args.render,
-                                                      record=args.record,
-                                                      ros=args.ros,
-                                                      map_name=args.map,
-                                                      directory=model_dir,
-                                                      num_targets=args.nb_targets,
-                                                      is_training=True,
-                                                      im_size=args.im_size,
-                                                      t_steps=args.max_episode_step
-                                                      )) for _ in range(8)])
-    # env = make_vec_env(env, n_envs=8, vec_env_cls=SubprocVecEnv)
-    # env = VecMonitor(env)
+    env = SubprocVecEnv([lambda: auv_env.make(args.env,
+                                              render=args.render,
+                                              record=args.record,
+                                              ros=args.ros,
+                                              map_name=args.map,
+                                              directory=model_dir,
+                                              num_targets=args.nb_targets,
+                                              is_training=True,
+                                              im_size=args.im_size,
+                                              t_steps=args.max_episode_step
+                                              ) for _ in range(6)])
+    env = VecMonitor(env, monitor_dir)
     set_seed(41)
     # env = make_vec_env(env, n_envs=4)
     # env = Monitor(env, monitor_dir)
 
     learn(env, model_dir, log_dir)
     # keep_learn(env, model_dir, log_dir)
-    # evaluate(env)
     # env_test(env)
 
 
@@ -166,7 +138,8 @@ def learn(env, model_dir, log_dir):
     callback = SaveOnBestTrainingRewardCallback(check_freq=2000, log_dir=log_dir, save_path=model_dir)
 
     # 网络架构选择
-    policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
+    # policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
+    policy_kwargs = dict(net_arch=dict(pi=[256, 256, 256], qf=[256, 256]))  # set for off-policy network
     # policy_kwargs = dict(
     #     features_extractor_class=CustomCNN,
     #     features_extractor_kwargs=dict(features_dim=512),
@@ -191,10 +164,10 @@ def learn(env, model_dir, log_dir):
     #             gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
     #             policy_kwargs=policy_kwargs,tensorboard_log=log_dir, device="cpu")
 
-    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=500000,
+    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=100000,
                 learning_starts=100, batch_size=64, tau=0.005, gamma=0.99, train_freq=1,
                 gradient_steps=1, action_noise=None,
-                policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cpu"
+                policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
                 )
     # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
     #             clip_range_vf=0.1,
@@ -221,12 +194,26 @@ def keep_learn(env, model_dir, log_dir):
     # model.learn(total_timesteps=10_000, tb_log_name="third_run", reset_num_timesteps=False)
 
 
-def evaluate(env):
+def evaluate():
+    # test
+    model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-01_10/300000_model.zip'
+    env = auv_env.make(args.env,
+                       render=args.render,
+                       record=args.record,
+                       ros=args.ros,
+                       map_name=args.map,
+                       directory=model_dir,
+                       num_targets=args.nb_targets,
+                       is_training=True,
+                       im_size=args.im_size,
+                       t_steps=args.max_episode_step
+                       )
     # get render parmater true
-    model = PPO.load("./models/ppo_03-27_13/800000_model.zip", device='cpu', env=env,
+    # model = PPO.load("./models/ppo_03-27_13/800000_model.zip", device='cpu', env=env,
+    #                  custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+    model = SAC.load(model_dir, device='cuda', env=env,
                      custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')
-    # model = RecurrentPPO.load("./models/dqn_cnn-2023-12-12_23/best_model.zip", device='cuda')
     obs, _ = env.reset()
     while True:
         action, _states = model.predict(obs, deterministic=False)
@@ -243,4 +230,5 @@ def env_test(env):
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    evaluate()

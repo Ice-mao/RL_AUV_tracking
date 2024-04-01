@@ -35,8 +35,8 @@ class RRT_2d(BasePlanner):
         # setup plotter.
         plt.ion()
         self.fig, self.ax = plt.subplots()
-
-        self._run_rrt()
+        # from reset to build path
+        # self._run_rrt()
 
 
     def reset(self, time, start, end):
@@ -53,13 +53,18 @@ class RRT_2d(BasePlanner):
         self.finish = [False]
         self.finish_flag = 0  # use for path finish
         self.path = [0]
-        self._run_rrt()
+        return self._run_rrt()
         # self.Visualization()
 
     def _run_rrt(self):
         # Make tree till we have a connecting path
-        while np.sum(self.finish) < 15:
+        count = 0
+        while np.sum(self.finish) < 10:
             self._add_node()
+            count += 1
+            if count > 2000:
+                return False
+
 
         # find nodes that connect to end_node
         connecting_nodes = np.argwhere(np.array(self.finish) != 0).astype('int')
@@ -175,6 +180,7 @@ class RRT_2d(BasePlanner):
                 return m * t + p_prev
 
         self.pos_func = np.vectorize(pos, signature='()->(n)')
+        return True
 
     def tick(self, true_state):
         """get the path point replace the time"""

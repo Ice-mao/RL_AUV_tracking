@@ -96,8 +96,16 @@ class AgentSphere(Agent):
         self.planner = RRT_2d(start=self.init_pos, end=self.target_pos, obstacles=self.obstacles, margin=self.margin,
                               fixed_depth=self.fix_depth, num_seconds=30,
                               bottom_corner=self.bottom_corner, size=self.size, start_time=start_time)
+        while not self.planner.reset(start=self.init_pos, end=self.target_pos, time=start_time):
+            # do not generate the correct path
+            is_end_valid = False
+            while not is_end_valid:
+                _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+                is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
+                                                                                                  self.margin2wall)
+            self.target_pos = np.append(_target, self.fix_depth)
         self.controller = SE2PIDController()
-        # self.observer = InEKF()
+
         # init the sensor part of AUV
         # to see if it is useful
         # self.imagesonar = ImagingSonar(scenario=scenario)  # to see if it is useful
@@ -112,12 +120,12 @@ class AgentSphere(Agent):
         # init the control part of AUV
         self.init_pos = sensor['LocationSensor']
         _target = None
-        is_end_valid = False
-        while not is_end_valid:
-            _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
-            is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target, self.margin2wall)
-        self.target_pos = np.append(_target, self.fix_depth)
-        self.planner.reset(start=self.init_pos, end=self.target_pos, time=start_time)
+        while not self.planner.reset(start=self.init_pos, end=self.target_pos, time=start_time):
+            is_end_valid = False
+            while not is_end_valid:
+                _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+                is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target, self.margin2wall)
+            self.target_pos = np.append(_target, self.fix_depth)
         self.controller.reset()
         self.vec = []
         self.vec[0:3] = sensor["PoseSensor"][:3, 3]
@@ -134,13 +142,13 @@ class AgentSphere(Agent):
         true_state = np.array([self.vec[0], self.vec[1], np.radians(self.vec[8])])
         # desire state
         if self.planner.finish_flag == 1:
-            is_end_valid = False
-            while not is_end_valid:
-                _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
-                is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
-                                                                                                  self.margin2wall)
-            self.target_pos = np.append(_target, self.fix_depth)
-            self.planner.reset(start=true_state, end=self.target_pos, time=t)
+            while not self.planner.reset(start=true_state, end=self.target_pos, time=t):
+                is_end_valid = False
+                while not is_end_valid:
+                    _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+                    is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
+                                                                                                      self.margin2wall)
+                self.target_pos = np.append(_target, self.fix_depth)
             if METADATA['render']:
                 self.planner.draw_traj(self.scene, 30)
         if self.planner.desire_path_num == 0:

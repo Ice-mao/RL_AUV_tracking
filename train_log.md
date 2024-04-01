@@ -9,15 +9,3 @@ reward_space:协方差+碰撞惩罚
 
 ### 训练过程问题
 - reward中要增加对转动角度的限制因子
-
-### auv_env
-
-core of the task to build the env in HoloOcean
-
-base.py: the basic environment of Holo and 2D
-
-world.py: the HoloOcean environment
-
-agent.py: store the agent of both auv and target
-
-obstacle.py: according to the dynamic_map, build the dynamic obstacle in HoloOcean using simple object to make one  
