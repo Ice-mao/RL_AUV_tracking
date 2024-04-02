@@ -6,7 +6,7 @@ from stable_baselines3 import PPO, SAC
 from stable_baselines3 import HerReplayBuffer
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback, CallbackList
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.results_plotter import load_results, ts2xy
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
@@ -95,11 +95,11 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
                         print("Saving new best model to {}".format(self.save_path_best))
                     self.model.save(self.save_path_best)
 
-        # save model every 100000 timesteps:
-        if self.num_timesteps % (20000) == 0:
-            # Retrieve training reward
-            path = self.path_process + str(self.num_timesteps) + '_model'
-            self.model.save(path)
+        # # save model every 100000 timesteps:
+        # if self.num_timesteps % (20000) == 0:
+        #     # Retrieve training reward
+        #     path = self.path_process + str(self.num_timesteps) + '_model'
+        #     self.model.save(path)
 
         return True
 
@@ -107,12 +107,12 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 def main():
     if args.choice == '0' or args.choice == '1':
         # new training
-        # log_dir = '../log/sac_' + time_string + '/'
-        # model_dir = '../models/sac_' + time_string + '/'
+        log_dir = '../log/sac_' + time_string + '/'
+        model_dir = '../models/sac_' + time_string + '/'
 
         # keep training
-        model_dir = "../models/sac_04-01_18/"
-        log_dir = "../log/sac_04-01_18/"
+        # model_dir = "../models/sac_04-01_18/"
+        # log_dir = "../log/sac_04-01_18/"
         model_name = "120000_model"
 
         monitor_dir = log_dir
@@ -147,7 +147,14 @@ def learn(env, model_dir, log_dir):
     # 获取当前时间
     os.makedirs(log_dir, exist_ok=True)
     callback = SaveOnBestTrainingRewardCallback(check_freq=5000, log_dir=log_dir, save_path=model_dir)
-
+    checkpoint_callback = CheckpointCallback(
+        save_freq=max(120000 // 6, 1),
+        save_path="model_dir",
+        name_prefix="rl_model",
+        save_replay_buffer=True,
+        save_vecnormalize=True,
+    )
+    callback = CallbackList([callback, checkpoint_callback])
     # 网络架构选择
     # policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
     policy_kwargs = dict(net_arch=dict(pi=[256, 256, 256], qf=[256, 256]))  # set for off-policy network
@@ -175,7 +182,7 @@ def learn(env, model_dir, log_dir):
     #             gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
     #             policy_kwargs=policy_kwargs,tensorboard_log=log_dir, device="cpu")
 
-    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=100000,
+    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=50000,
                 learning_starts=100, batch_size=64, tau=0.005, gamma=0.99, train_freq=1,
                 gradient_steps=1, action_noise=None,
                 policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
@@ -242,7 +249,7 @@ def env_test():
     obs, _ = env.reset()
     while True:
         action = env.action_space.sample()
-        action = np.array([0.5,0.5,0.5])
+        action = np.array([0.5, 0.5, 0.5])
         obs, reward, done, _, inf = env.step(action)
 
 

@@ -91,7 +91,7 @@ class AgentSphere(Agent):
         is_end_valid = False
         while not is_end_valid:
             _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
-            is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target, self.margin2wall)
+            is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target, self.margin2wall+2)
         self.target_pos = np.append(_target, self.fix_depth)
         self.planner = RRT_2d(start=self.init_pos, end=self.target_pos, obstacles=self.obstacles, margin=self.margin,
                               fixed_depth=self.fix_depth, num_seconds=30,
@@ -102,7 +102,7 @@ class AgentSphere(Agent):
             while not is_end_valid:
                 _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
                 is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
-                                                                                                  self.margin2wall)
+                                                                                                  self.margin2wall+2)
             self.target_pos = np.append(_target, self.fix_depth)
         self.controller = SE2PIDController()
 
@@ -124,7 +124,8 @@ class AgentSphere(Agent):
             is_end_valid = False
             while not is_end_valid:
                 _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
-                is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target, self.margin2wall)
+                is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
+                                                                                                  self.margin2wall+2)
             self.target_pos = np.append(_target, self.fix_depth)
         self.controller.reset()
         self.vec = []

@@ -242,7 +242,7 @@ class World:
             # satisfy the in bound and no collision conditions ----> True(is valid)
             # give a more safe init position
             is_agent_valid = self.in_bound(a_init) and self.obstacles.check_obstacle_collision(a_init,
-                                                                                               self.margin2wall+1.5)
+                                                                                               self.margin2wall+2)
             if is_agent_valid:
                 agent_init_pos = np.array([a_init[0], a_init[1]])
                 agent_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
@@ -257,7 +257,7 @@ class World:
                         )
                         if is_target_valid:  # check the blocked condition
                             is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
-                                                                                self.margin2wall+1.5)
+                                                                                self.margin2wall+2)
                             flag = not is_no_blocked
                             is_target_valid = (blocked == flag)
                         count += 1
@@ -298,7 +298,7 @@ class World:
         rand_xy = np.array([rand_r * np.cos(rand_ang), rand_r * np.sin(rand_ang)])
         rand_xy_global = util.transform_2d_inv(rand_xy, frame_theta, np.array(frame_xy))
         is_valid = (self.in_bound(rand_xy_global) and self.obstacles.check_obstacle_collision(rand_xy_global,
-                                                                                              self.margin2wall))
+                                                                                              self.margin2wall+2))
         return is_valid, rand_xy_global, util.wrap_around(rand_ang + frame_theta)
 
     def set_limits(self):
