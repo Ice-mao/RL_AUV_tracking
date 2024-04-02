@@ -38,8 +38,8 @@ METADATA_v1 = {
     'lin_dist_range_a2t': (3.0, 8.0),
     'ang_dist_range_a2t': (-np.pi / 5, np.pi / 5),
     'margin': 1,  # a marginal distance btw targets and the agent.
-    'margin2wall': 1.5,  # a marginal distance from a wall.
-    'const_q': 1.0,  # target noise constant in beliefs.
+    'margin2wall': 1.0,  # a marginal distance from a wall.
+    'const_q': 3.0,  # target noise constant in beliefs.
     'const_q_true': 0.01,  # target noise constant of actual targets.
     'action_range_high': [1, 1, 1],
     'action_range_low': [0, 0, 0],
@@ -52,7 +52,7 @@ METADATA_v1 = {
     'c_mean': 0.2,
     'c_std': 0.0,
     'c_penalty': 5.0,
-    'k_3': 0.5,
+    'k_3': 0.3,
     'k_4': 0.01,
     'k_5': 0.0002,
     # render setting

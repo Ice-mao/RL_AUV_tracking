@@ -4,6 +4,7 @@ from numpy import linalg as LA
 import os
 
 import matplotlib
+
 matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 from matplotlib import patches
@@ -15,10 +16,10 @@ class Display2D(Wrapper):
     def __init__(self, env, figID = 0, skip = 1, confidence=0.95, local_view=0):
         super(Display2D, self).__init__(env)
         self.figID = figID # figID = 0 : train, figID = 1 : test
-        self.env_core = env.env
+        self.env_core = env.env.world
         self.bin = self.env_core.MAP.mapres
-        self.mapmin = self.env_core.MAP.mapmin
-        self.mapmax = self.env_core.MAP.mapmax
+        self.mapmin = self.env_core.bottom_corner[:2]
+        self.mapmax = self.env_core.top_corner[:2]
         self.mapres = self.env_core.MAP.mapres
         self.fig = plt.figure(self.figID)
         self.local_view = local_view
@@ -34,14 +35,15 @@ class Display2D(Wrapper):
         plt.close(self.fig)
 
     def step(self, action):
+        # get the position of agent and targets
         if type(self.env_core.targets) == list:
-            target_true_pos = [self.env_core.targets[i].state[:2] for i in range(self.env_core.num_targets)]
+            target_true_pos = [self.env_core.targets[i].state.vec[:2] for i in len(self.env_core.targets)]
         else:
-            target_true_pos = self.env_core.targets.state[:,:2]
+            raise ValueError('targets not a list')
 
-        self.traj[0].append(self.env_core.agent.state[0])
-        self.traj[1].append(self.env_core.agent.state[1])
-        for i in range(self.env_core.num_targets):
+        self.traj[0].append(self.env_core.agent.state.vec[0])
+        self.traj[1].append(self.env_core.agent.state.vec[1])
+        for i in len(self.env_core.targets):
             self.traj_y[i][0].append(target_true_pos[i][0])
             self.traj_y[i][1].append(target_true_pos[i][1])
         # 如果需要调试，可视化训练进度，则可以进行render
@@ -49,30 +51,19 @@ class Display2D(Wrapper):
         return self.env.step(action)
 
     def render(self, record=False, batch_outputs=None):
-        state = self.env_core.agent.state
-        num_targets = len(self.traj_y)
-        if type(self.env_core.targets) == list:
-            target_true_pos = [self.env_core.targets[i].state[:2] for i in range(num_targets)]
-            target_b_state = [self.env_core.belief_targets[i].state for i in range(num_targets)] # state[3:5]
-            target_cov = [self.env_core.belief_targets[i].cov for i in range(num_targets)]
-        else:
-            target_true_pos = self.env_core.targets.state[:,:2]
-            target_b_state = self.env_core.belief_targets.state[:,:2]  # state[3:5]
-            target_cov = self.env_core.belief_targets.cov
+        state = self.env_core.agent.state.vec
+        num_targets = len(self.env_core.targets)
+        target_true_pos = [self.env_core.targets[i].state.vec[:2] for i in range(num_targets)]
+        target_b_state = [self.env_core.belief_targets[i].state for i in range(num_targets)] # state[3:5]
+        target_cov = [self.env_core.belief_targets[i].cov for i in range(num_targets)]
 
         if self.n_frames%self.skip == 0:
             self.fig.clf()
             ax = self.fig.subplots()
             im = None
-            if self.local_view:
+            if self.local_view == 1:
                 self.fig0.clf()
-                if self.local_view == 1:
-                    ax0 = self.fig0.subplots()
-                elif self.local_view == 5:
-                    ax0 = self.fig0.subplots(3,3)
-                    [[ax0[r][c].set_aspect('equal','box') for r in range(3)] for c in range(3)]
-                else:
-                    raise ValueError('Invalid number of local_view.')
+                ax0 = self.fig0.subplots()
 
             if self.env_core.MAP.visit_freq_map is not None:
                 background_map = self.env_core.MAP.visit_freq_map.T
@@ -88,7 +79,7 @@ class Display2D(Wrapper):
                         vmin=0, vmax=2, extent=[self.mapmin[0], self.mapmax[0],
                                                 self.mapmin[1], self.mapmax[1]])
 
-            ax.plot(state[0], state[1], marker=(3, 0, state[2]/np.pi*180-90),
+            ax.plot(state[0], state[1], marker=(3, 0, state[8]/np.pi*180-90),
                         markersize=10, linestyle='None', markerfacecolor='b',
                         markeredgecolor='b')
             ax.plot(self.traj[0], self.traj[1], 'b.', markersize=2)
@@ -212,3 +203,26 @@ class Video2D(Wrapper):
         self.moviewriter.finish()
         if self.local_view:
             self.moviewriter0.finish()
+
+if __name__ == '__main__':
+    from auv_env import TargetTrackingBase
+    from gymnasium import wrappers
+    env0 = TargetTrackingBase(num_targets=1)
+    env = wrappers.TimeLimit(env0, max_episode_steps=200)
+
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Polygon as Draw_Polygon
+
+    fig, ax = plt.subplots()
+    for polygon in env.env.world.obstacles.polygons:
+        x, y = polygon.exterior.xy
+        polygon_patch = Draw_Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
+        ax.add_patch(polygon_patch)
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Plot of Shapely Rectangle')
+    plt.grid(True)
+    plt.axis('equal')
+    plt.show()
+
+    env = Display2D(env, figID=0, local_view=0)

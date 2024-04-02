@@ -107,11 +107,14 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 def main():
     if args.choice == '0' or args.choice == '1':
         # new training
-        log_dir = '../log/sac_' + time_string + '/'
-        model_dir = '../models/sac_' + time_string + '/'
+        # log_dir = '../log/sac_' + time_string + '/'
+        # model_dir = '../models/sac_' + time_string + '/'
+
         # keep training
-        # model_dir = "../models/ppo_03-27_13/"
-        # log_dir = "../log/ppo_03-27_13/"
+        model_dir = "../models/sac_04-01_18/"
+        log_dir = "../log/sac_04-01_18/"
+        model_name = "120000_model"
+
         monitor_dir = log_dir
         os.makedirs(monitor_dir, exist_ok=True)
         # env = Monitor(env, monitor_dir)
@@ -130,9 +133,10 @@ def main():
         if args.choice == '0':
             learn(env, model_dir, log_dir)
         if args.choice == '1':
-            keep_learn(env, model_dir, log_dir)
+            keep_learn(env, model_dir, log_dir, model_name)
+
     elif args.choice == '2':
-        model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-01_10/300000_model.zip'
+        model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-01_18/best_model.zip'
         evaluate(model_dir)
 
     elif args.choice == '3':
@@ -142,7 +146,7 @@ def main():
 def learn(env, model_dir, log_dir):
     # 获取当前时间
     os.makedirs(log_dir, exist_ok=True)
-    callback = SaveOnBestTrainingRewardCallback(check_freq=2000, log_dir=log_dir, save_path=model_dir)
+    callback = SaveOnBestTrainingRewardCallback(check_freq=5000, log_dir=log_dir, save_path=model_dir)
 
     # 网络架构选择
     # policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
@@ -189,13 +193,13 @@ def learn(env, model_dir, log_dir):
     model.save(args.log_dir + 'final_model')
 
 
-def keep_learn(env, model_dir, log_dir):
+def keep_learn(env, model_dir, log_dir, model_name):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    callback = SaveOnBestTrainingRewardCallback(check_freq=2000, log_dir=log_dir, save_path=model_dir)
-    model = PPO.load(model_dir + '360000_model', device='cuda', env=env,
+    callback = SaveOnBestTrainingRewardCallback(check_freq=5000, log_dir=log_dir, save_path=model_dir)
+    model = SAC.load(model_dir + model_name, device='cuda', env=env,
                      custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    model.learn(total_timesteps=800000, tb_log_name="second_run", reset_num_timesteps=False,
+    model.learn(total_timesteps=1000000, tb_log_name="second_run", reset_num_timesteps=False,
                 log_interval=5, callback=callback)
     model.save(model_dir + 'final_model')
 

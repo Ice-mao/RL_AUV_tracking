@@ -42,8 +42,9 @@ class World:
         self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
 
         # Setup environment
-        self.size = np.array([40, 40, 20])
-        self.bottom_corner = np.array([-20, -20, -20])
+        margin = 0.5
+        self.size = np.array([39, 39, 20])
+        self.bottom_corner = np.array([-19.5, -19.5, -20])
         self.fix_depth = -5
         self.margin = METADATA['margin']
         self.margin2wall = METADATA['margin2wall']
@@ -135,7 +136,7 @@ class World:
                                                          np.radians(self.agent.est_state.vec[8]))
         angle = action_waypoint[2] * self.action_range_scale[2] - self.action_range_scale[2] / 2
         global_waypoint[2] = self.agent.est_state.vec[8] + angle
-        self.agent_w = action_waypoint[2]
+        self.agent_w = angle/0.5
         if self.agent_u is not None:
             self.agent_last_u = self.agent_u
         for j in range(50):
@@ -239,7 +240,9 @@ class World:
             # generatr an init pos around the map
             a_init = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
             # satisfy the in bound and no collision conditions ----> True(is valid)
-            is_agent_valid = self.in_bound(a_init) and self.obstacles.check_obstacle_collision(a_init, self.margin2wall)
+            # give a more safe init position
+            is_agent_valid = self.in_bound(a_init) and self.obstacles.check_obstacle_collision(a_init,
+                                                                                               self.margin2wall+1.5)
             if is_agent_valid:
                 agent_init_pos = np.array([a_init[0], a_init[1]])
                 agent_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
@@ -254,7 +257,7 @@ class World:
                         )
                         if is_target_valid:  # check the blocked condition
                             is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
-                                                                                self.margin2wall)
+                                                                                self.margin2wall+1.5)
                             flag = not is_no_blocked
                             is_target_valid = (blocked == flag)
                         count += 1
@@ -368,7 +371,7 @@ class World:
         if self.agent_last_u is not None:
             reward_a = np.exp(-k_4 * np.sum(np.abs(self.agent_u - self.agent_last_u))) - 1
         else:
-            reward_a = 0
+            reward_a = -1
         reward_e = np.exp(-k_5 * np.sum([f_i ** 2 for f_i in self.agent_u])) - 1
         reward = reward + reward_w + reward_a + reward_e
         if is_col:

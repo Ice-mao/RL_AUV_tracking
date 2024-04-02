@@ -33,8 +33,9 @@ class RRT_2d(BasePlanner):
         # self.Visualization()
 
         # setup plotter.
-        plt.ion()
-        self.fig, self.ax = plt.subplots()
+        if METADATA['render']:
+            plt.ion()
+            self.fig, self.ax = plt.subplots()
         # from reset to build path
         # self._run_rrt()
 
