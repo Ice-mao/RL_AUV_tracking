@@ -1,13 +1,24 @@
-# RL_AUV
+# RL_AUV_tracking
 
-### auv_env
+A project for my major related graduation paper.
 
-core of the task to build the env in HoloOcean
+Using reinforcement learning(RL) to train an agent to tracking the target in the unknown underwater scenario in HoloOcean.
 
-base.py: the basic environment of Holo and 2D
+# Running
 
-world.py: the HoloOcean environment
+To run the simulation, first install all dependencies
 
-agent.py: store the agent of both auv and target
+- HoloOcean
+- Stable Baseline3
 
-obstacle.py: according to the dynamic_map, build the dynamic obstacle in HoloOcean using simple object to make one  
+Then simply run the script
+```
+python SB3_learning --choice 0 --render 0
+```
+maybe you should also add --map with you own map or HoloOcean scenario like SimpleUnderwater-Hovering.
+
+## Additional information
+
+If you want to know more details,you should read the code.:smiley:
+
+Or please keep stay tuning!
