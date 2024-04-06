@@ -40,7 +40,7 @@ class SE2PIDController:
         if angular_error < -np.pi:
             angular_error = angular_error + 2 * np.pi
         elif angular_error > np.pi:
-            angular_error = -angular_error - 2 * np.pi
+            angular_error = angular_error - 2 * np.pi
 
         # angular_error = wrap_around(angular_error)
         self.integral_angular_error += angular_error * dt
@@ -54,7 +54,7 @@ class SE2PIDController:
         self.prev_angular_error = angular_error
 
         angular_control = self.kp_angular * angular_error + self.ki_angular * self.integral_angular_error + self.kd_angular * angular_derivative
-
+        angular_control = max(min(angular_control, 0.8), -0.8)
 
         # Update integral error
         self.integral_linear_error[0] += linear_error[0] * dt
@@ -69,13 +69,12 @@ class SE2PIDController:
 
         # Compute control commands
         dis = np.sqrt(linear_error[0] ** 2 + linear_error[1] ** 2)
-        if np.abs(angular_error) > 1.57:
+        if np.abs(angular_error) > 1.0:
             v = 0.001
         elif dis >= 3:
             v = 0.001
         else:
             v = self.kp_linear * dis + 0.003 * np.random.normal(1, 0.5)
-            # v = 0.01 * np.random.normal(1, 0.5)
         return v, angular_control
 
 def wrap_around(x):
