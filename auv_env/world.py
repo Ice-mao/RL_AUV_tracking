@@ -95,6 +95,7 @@ class World:
         self.build_models(sampling_period=self.sampling_period,
                           agent_init_state=self.sensors['auv0']
                           , target_init_state=self.sensors['target'], time=self.sensors['t'])
+        self.reset()
 
     def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
         """
@@ -135,7 +136,7 @@ class World:
         global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
                                                          np.radians(self.agent.est_state.vec[8]))
         angle = action_waypoint[2] * self.action_range_scale[2] - self.action_range_scale[2] / 2
-        global_waypoint[2] = self.agent.est_state.vec[8] + angle
+        global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
         self.agent_w = angle/0.5
         if self.agent_u is not None:
             self.agent_last_u = self.agent_u

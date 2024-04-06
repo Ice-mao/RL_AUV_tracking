@@ -23,6 +23,7 @@ class RRT_2d(BasePlanner):
 
         # setup RRT
         self.start_time = start_time
+        self.count = 0
         self.desire_path_num = 0
         self.step_size = 2
         self.tree = self.start[0:2].reshape(1, -1)
@@ -197,14 +198,20 @@ class RRT_2d(BasePlanner):
         # if self.finish_flag:
         #     self.reset(true_state)
         dis = np.linalg.norm(self.path[:, self.desire_path_num][: 2] - true_state[:2])
-        # print(dis)
         if dis < 0.3:
             # 到达
+            self.count = 0
             self.desire_path_num += 1
             if METADATA['render']:
                 print(self.desire_path_num)
             # tmp = self.path[self.desire_path_num] - self.path[self.desire_path_num-1]
             # theta = np.arctan2(tmp[1], tmp[0])
+        # elif dis > 2.0:
+        #     self.count += 1
+        #     if self.count > 50:
+        #         # over
+        #         self.finish_flag = 1
+
         if self.desire_path_num == len(self.path.T):
             self.finish_flag = 1
             if METADATA['render']:
@@ -270,6 +277,8 @@ class RRT_2d(BasePlanner):
         self.ax.set_title('Bezier Curve')
         self.ax.legend()
         self.ax.grid(True)
+        self.ax.set_xlim(self.bottom_corner[0], self.top_corner[0])
+        self.ax.set_ylim(self.bottom_corner[1], self.top_corner[1])
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
