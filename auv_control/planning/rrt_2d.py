@@ -65,6 +65,7 @@ class RRT_2d(BasePlanner):
             self._add_node()
             count += 1
             if count > 2000:
+                print('RRT failed')
                 return False
 
 
@@ -214,9 +215,10 @@ class RRT_2d(BasePlanner):
 
         if self.desire_path_num == len(self.path.T):
             self.finish_flag = 1
+            self.desire_path_num -= 1
             if METADATA['render']:
                 print('finish')
-            return self.path[:, self.desire_path_num-1]
+            return self.path[:, self.desire_path_num]
         return self.path[:, self.desire_path_num]
 
     def _add_node(self):

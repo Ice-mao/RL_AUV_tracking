@@ -17,8 +17,14 @@ python SB3_learning --choice 0 --render 0
 ```
 maybe you should also add --map with you own map or HoloOcean scenario like SimpleUnderwater-Hovering.
 
+use auv target run the script
+```
+python SB3_learning --env TargetTracking1 --map TestMap_AUV --nb_envs 5 --choice 0 --render 0 
+```
+
 ## Additional information
 
-If you want to know more details,you should read the code.:smiley:
+If you want to know more details,you should read the code.
+:smile: 
 
-Or please keep stay tuning!
+Or please keep staying tuning!
