@@ -13,13 +13,13 @@ To run the simulation, first install all dependencies
 
 Then simply run the script
 ```
-python SB3_learning --choice 0 --render 0
+python SB3_learning.py --choice 0 --render 0
 ```
 maybe you should also add --map with you own map or HoloOcean scenario like SimpleUnderwater-Hovering.
 
 use auv target run the script
 ```
-python SB3_learning --env TargetTracking1 --map TestMap_AUV --nb_envs 5 --choice 0 --render 0 
+python SB3_learning.py --env TargetTracking1 --map TestMap_AUV --nb_envs 5 --choice 0 --render 0 
 ```
 if you want to run in my scenario,you should add my config[TestMap.json](config%2FTestMap.json) in you World.
 ## Additional information

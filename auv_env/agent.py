@@ -118,8 +118,6 @@ class AgentSphere(Agent):
                                                            -np.rad2deg(np.arctan2(
                                                                self.planner.path[1, 1] - self.planner.path[1, 0],
                                                                self.planner.path[0, 1] - self.planner.path[0, 0]))])
-        if METADATA['render']:
-            self.planner.draw_traj(self.scene, 0)
         self.controller = SE2PIDController()
 
         # init the sensor part of AUV
@@ -154,6 +152,8 @@ class AgentSphere(Agent):
                                                            -np.rad2deg(np.arctan2(
                                                                self.planner.path[1, 1] - self.planner.path[1, 0],
                                                                self.planner.path[0, 1] - self.planner.path[0, 0]))])
+        if METADATA['render']:
+            self.planner.draw_traj(self.scene, 30)
         self.controller.reset()
         self.vec = []
         self.vec[0:3] = sensor["PoseSensor"][:3, 3]
@@ -255,8 +255,6 @@ class AgentAuvTarget(Agent):
                                                            -np.rad2deg(np.arctan2(
                                                                self.planner.path[1, 1] - self.planner.path[1, 0],
                                                                self.planner.path[0, 1] - self.planner.path[0, 0]))])
-        if METADATA['render']:
-            self.planner.draw_traj(self.scene, 0)
 
     def reset(self, sensor, obstacles, scene, start_time):
         self.obstacles = obstacles
@@ -283,6 +281,8 @@ class AgentAuvTarget(Agent):
                                                            np.rad2deg(np.arctan2(
                                                                self.planner.path[1, 1] - self.planner.path[1, 0],
                                                                self.planner.path[0, 1] - self.planner.path[0, 0]))])
+        if METADATA['render']:
+            self.planner.draw_traj(self.scene, 30)
 
     def update(self, sensors, t):
         # update time

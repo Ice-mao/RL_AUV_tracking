@@ -270,7 +270,7 @@ class RRT_2d(BasePlanner):
         """Override super class to also make environment appear"""
         for p in self.path.T:
             p = np.append(p, self.fixed_depth)
-            env.draw_point(p.tolist(), color=[255, 0, 0], thickness=15, lifetime=0)
+            env.draw_point(p.tolist(), color=[255, 0, 0], thickness=15, lifetime=10)
         self.ax.clear()
         self.ax.plot(self.path[0], self.path[1], label='Bezier Curve')
         self.ax.scatter(self.control_points[0], self.control_points[1], label='ControlPoints')

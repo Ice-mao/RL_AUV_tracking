@@ -91,8 +91,8 @@ class Obstacle:
         self.num_obstacles = 4
         self.res = 0.2  # m remeber to * with scale
         self.sub_center = [25 * self.res, 25 * self.res]  # m sub obstacle rotate center
-        self.sub_coordinates = [np.array([25, -45]) * self.res, np.array([25, 45]) * self.res,
-                                np.array([-65, -45]) * self.res, np.array([-65, 45]) * self.res]  # m
+        self.sub_coordinates = [np.array([20, -65]) * self.res, np.array([20, 25]) * self.res,
+                                np.array([-70, -65]) * self.res, np.array([-70, 25]) * self.res]  # m
         np.random.seed()
         self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=True)
         print(self.chosen_idx)

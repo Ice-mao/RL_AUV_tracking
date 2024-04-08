@@ -1,6 +1,6 @@
 from gymnasium import wrappers
 from .base import TargetTrackingBase, TargetTracking1
-def make(env_name, render=False, record=False, ros=False, directory='',
+def make(env_name, render=False, record=False, eval=False, ros=False, directory='',
          t_steps=100, num_targets=1, **kwargs):
     """
     Parameters:
@@ -41,6 +41,9 @@ def make(env_name, render=False, record=False, ros=False, directory='',
     if ros:
         from auv_env.ros_wrapper import Ros
         env = Ros(env)
+    if eval:
+        from auv_env.display_wrapper import Display2D
+        env = Display2D(env)
     if record:
         from auv_env.display_wrapper import Video2D
         env = Video2D(env, dirname=directory, local_view=local_view)
