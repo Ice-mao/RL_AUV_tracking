@@ -36,6 +36,7 @@ parser.add_argument('--record', help='whether to record', type=int, default=0)
 parser.add_argument('--ros', help='whether to use ROS', type=int, default=0)
 parser.add_argument('--map', help='choose your map in holoocean', type=str, default='TestMap')
 parser.add_argument('--nb_targets', help='the number of targets', type=int, default=1)
+parser.add_argument('--nb_envs', help='the number of env', type=int, default=6)
 parser.add_argument('--log_dir', help='a path to a directory to log your data', type=str,
                     default='./models/dqn_cnn-' + time_string + '/')
 # parser.add_argument('--map', type=str, default="obstacles02")
@@ -127,7 +128,7 @@ def main():
                                                   map=args.map,
                                                   is_training=True,
                                                   t_steps=args.max_episode_step
-                                                  ) for _ in range(6)])
+                                                  ) for _ in range(args.nb_envs)])
         env = VecMonitor(env, monitor_dir)
         set_seed(41)
         if args.choice == '0':
@@ -136,7 +137,7 @@ def main():
             keep_learn(env, model_dir, log_dir, model_name)
 
     elif args.choice == '2':
-        model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-01_18/best_model.zip'
+        model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-06_18/rl_model_720000_steps.zip'
         evaluate(model_dir)
 
     elif args.choice == '3':
@@ -148,8 +149,8 @@ def learn(env, model_dir, log_dir):
     os.makedirs(log_dir, exist_ok=True)
     callback = SaveOnBestTrainingRewardCallback(check_freq=5000, log_dir=log_dir, save_path=model_dir)
     checkpoint_callback = CheckpointCallback(
-        save_freq=max(120000 // 6, 1),
-        save_path="model_dir",
+        save_freq=max(120000 // args.nb_envs, 1),
+        save_path=model_dir,
         name_prefix="rl_model",
         save_replay_buffer=True,
         save_vecnormalize=True,
@@ -181,8 +182,7 @@ def learn(env, model_dir, log_dir):
     # model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=64, n_epochs=10,
     #             gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
     #             policy_kwargs=policy_kwargs,tensorboard_log=log_dir, device="cpu")
-
-    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=50000,
+    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
                 learning_starts=100, batch_size=64, tau=0.005, gamma=0.99, train_freq=1,
                 gradient_steps=1, action_noise=None,
                 policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
@@ -212,6 +212,8 @@ def keep_learn(env, model_dir, log_dir, model_name):
 
 
 def evaluate(model_dir):
+    from metadata import TTENV_EVAL_SET
+    METADATA.update(TTENV_EVAL_SET[1])
     env = auv_env.make(args.env,
                        render=args.render,
                        record=args.record,
@@ -219,6 +221,7 @@ def evaluate(model_dir):
                        directory=model_dir,
                        num_targets=args.nb_targets,
                        map=args.map,
+                       eval=True,
                        is_training=False,
                        t_steps=args.max_episode_step
                        )
@@ -230,7 +233,7 @@ def evaluate(model_dir):
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')
     obs, _ = env.reset()
     while True:
-        action, _states = model.predict(obs, deterministic=False)
+        action, _states = model.predict(obs, deterministic=True)
         obs, reward, done, _, inf = env.step(action)
 
 
@@ -249,7 +252,8 @@ def env_test():
     obs, _ = env.reset()
     while True:
         action = env.action_space.sample()
-        action = np.array([0.5, 0.5, 0.5])
+        print(action)
+        # action = np.array([0.5, 1.0, 0.5])
         obs, reward, done, _, inf = env.step(action)
 
 

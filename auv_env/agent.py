@@ -220,7 +220,7 @@ class AgentAuvTarget(Agent):
         self.obstacles = obstacles
         self.scene = scene
         # init the part of Auv
-        self.controller = LQR(l_p=10, l_v=0.001)
+        self.controller = LQR(l_p=50, l_v=0.001)
         self.state = State(sensor)
         # init planner rrt
         self.init_pos = self.state.vec[:3]

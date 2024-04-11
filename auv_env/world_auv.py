@@ -36,6 +36,8 @@ class World_AUV:
         self.num_targets = METADATA['target_num']  # num of target
         self.target_dim = METADATA['target_dim']
         self.action_range_scale = METADATA['action_range_scale']
+        self.noblock = METADATA['noblock']
+        self.insight = METADATA['insight']
 
         self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
 
@@ -106,8 +108,8 @@ class World_AUV:
         # Build a robot
         self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state)
         self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state
-                                    , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
-                                    bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean)
+                                       , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
+                                       bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean)
                         for _ in range(self.num_targets)]
         # Build target beliefs.
         self.const_q = METADATA['const_q']
@@ -135,7 +137,7 @@ class World_AUV:
                                                          np.radians(self.agent.est_state.vec[8]))
         angle = action_waypoint[2] * self.action_range_scale[2] - self.action_range_scale[2] / 2
         global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
-        self.agent_w = angle/0.5
+        self.agent_w = angle / 0.5
         if self.agent_u is not None:
             self.agent_last_u = self.agent_u
         for j in range(50):
@@ -229,36 +231,47 @@ class World_AUV:
                              ang_dist_range_a2t=METADATA['ang_dist_range_a2t'],
                              blocked=None, ):
         is_agent_valid = False
-        blocked = False
         count = 0
-        if 'blocked' in METADATA:
-            blocked = METADATA['blocked']
         while not is_agent_valid:
             init_pose = {}
             np.random.seed()
             # generatr an init pos around the map
-            a_init = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+            agent_init_pos = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+            agent_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
             # satisfy the in bound and no collision conditions ----> True(is valid)
             # give a more safe init position
-            is_agent_valid = self.in_bound(a_init) and self.obstacles.check_obstacle_collision(a_init,
-                                                                                               self.margin2wall+2)
+            is_agent_valid = self.in_bound(agent_init_pos) and self.obstacles.check_obstacle_collision(agent_init_pos,
+                                                                                                       self.margin2wall + 2)
             if is_agent_valid:
-                agent_init_pos = np.array([a_init[0], a_init[1]])
-                agent_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
                 for i in range(self.num_targets):
                     is_target_valid, target_init_pos, target_init_yaw = False, np.zeros((2,)), np.zeros((1,))
                     while not is_target_valid:
-                        is_target_valid, target_init_pos, target_init_yaw = self.gen_rand_pose(
-                            agent_init_pos,
-                            agent_init_yaw,
-                            lin_dist_range_a2t[0], lin_dist_range_a2t[1],
-                            ang_dist_range_a2t[0], ang_dist_range_a2t[1]
-                        )
-                        if is_target_valid:  # check the blocked condition
-                            is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
-                                                                                self.margin2wall+2)
-                            flag = not is_no_blocked
-                            is_target_valid = (blocked == flag)
+                        if self.insight:
+                            is_target_valid, target_init_pos, target_init_yaw = self.gen_rand_pose(
+                                agent_init_pos,
+                                agent_init_yaw,
+                                lin_dist_range_a2t[0], lin_dist_range_a2t[1],
+                                ang_dist_range_a2t[0], ang_dist_range_a2t[1]
+                            )
+                            if is_target_valid:  # check the blocked condition
+                                is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
+                                                                                    self.margin2wall + 2)
+                                is_target_valid = (self.noblock == is_no_blocked)
+                        elif not self.insight:
+                            target_init_pos = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+                            target_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
+                            # confirm is not insight
+                            r, alpha = util.relative_distance_polar(target_init_pos, agent_init_pos, agent_init_yaw)
+                            if (r > METADATA['sensor_r'] or np.rad2deg(alpha) > METADATA['fov']/2
+                                    or np.rad2deg(alpha) < -METADATA['fov']/2):
+                                is_not_insight = True
+                            else:
+                                is_not_insight = False
+                            is_target_valid = (
+                                    self.in_bound(target_init_pos) and
+                                    self.obstacles.check_obstacle_collision(target_init_pos, self.margin2wall + 2) and
+                                    np.linalg.norm(target_init_pos - agent_init_pos) > self.margin and
+                                    is_not_insight)
                         count += 1
                         if count > 50:
                             is_agent_valid = False
@@ -297,7 +310,7 @@ class World_AUV:
         rand_xy = np.array([rand_r * np.cos(rand_ang), rand_r * np.sin(rand_ang)])
         rand_xy_global = util.transform_2d_inv(rand_xy, frame_theta, np.array(frame_xy))
         is_valid = (self.in_bound(rand_xy_global) and self.obstacles.check_obstacle_collision(rand_xy_global,
-                                                                                              self.margin2wall+2))
+                                                                                              self.margin2wall + 2))
         return is_valid, rand_xy_global, util.wrap_around(rand_ang + frame_theta)
 
     def set_limits(self):
