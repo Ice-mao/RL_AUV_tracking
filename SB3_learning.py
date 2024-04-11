@@ -213,7 +213,8 @@ def keep_learn(env, model_dir, log_dir, model_name):
 
 def evaluate(model_dir):
     from metadata import TTENV_EVAL_SET
-    METADATA.update(TTENV_EVAL_SET[1])
+    # 0 tracking 1 discovery 2 navagation
+    METADATA.update(TTENV_EVAL_SET[0])
     env = auv_env.make(args.env,
                        render=args.render,
                        record=args.record,

@@ -38,8 +38,10 @@ class World_AUV:
         self.action_range_scale = METADATA['action_range_scale']
         self.noblock = METADATA['noblock']
         self.insight = METADATA['insight']
-
-        self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        if self.insight:
+            self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        else:
+            self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
 
         # Setup environment
         margin = 0.5
@@ -145,6 +147,9 @@ class World_AUV:
                 if self.has_discovered[i]:
                     self.target_u = self.targets[i].update(self.sensors['target'], self.sensors['t'])
                     self.ocean.act("target", self.target_u)
+                else:
+                    self.target_u = np.zeros(8)
+                    self.ocean.act("target", self.target_u)
             if j == 0:
                 self.agent_u = self.u
             self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
@@ -175,7 +180,10 @@ class World_AUV:
                             lifetime=0)  # draw the area
         self.obstacles.reset()
         self.obstacles.draw_obstacle()
-        self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        if self.insight:
+            self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        else:
+            self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
         # reset the reward record
         self.agent_w = None
         self.agent_last_state = None
