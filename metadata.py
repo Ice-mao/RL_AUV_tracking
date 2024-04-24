@@ -38,6 +38,8 @@ METADATA_v1 = {
     'target_init_cov': 50.0,  # initial target diagonal Covariance.
     'lin_dist_range_a2t': (3.0, 8.0),
     'ang_dist_range_a2t': (-np.pi / 5, np.pi / 5),
+    'lin_dist_range_t2b': (0.0, 10.0),
+    'ang_dist_range_t2b': (-np.pi / 2, np.pi / 2),
     'insight': True,
     'noblock': True,
     # init target's param
@@ -67,35 +69,13 @@ METADATA_v1 = {
     'control_period': 0.5
 }
 
-METADATA_multi_v1 = {
-    'version': 'm1',
-    'sensor_r': 10.0,
-    'fov': 120,
-    'sensor_r_sd': 0.2,  # sensor range noise.
-    'sensor_b_sd': 0.01,  # sensor bearing noise.
-    'target_init_cov': 30.0,  # initial target diagonal Covariance.
-    'target_init_vel': [0.0, 0.0],  # target's initial velocity.
-    'target_speed_limit': 1.0,  # velocity limit of targets.
-    'lin_dist_range_a2b': (5.0, 10.0),
-    'ang_dist_range_a2b': (-np.pi, np.pi),
-    'lin_dist_range_b2t': (0.0, 10.0),
-    'ang_dist_range_b2t': (-np.pi / 2, np.pi / 2),
-    'margin': 1.0,  # a marginal distance btw targets and the agent.
-    'margin2wall': 1.0,  # a marginal distance from a wall.
-    'action_v': [3, 2, 1, 0],  # action primitives - linear velocities.
-    'action_w': [np.pi / 2, 0, -np.pi / 2],  # action primitives - angular velocities.
-    'const_q': 0.2,  # target noise constant in beliefs.
-    'const_q_true': 0.2,  # target noise constant of actual targets.
-}
-
 # Designate a metadata version to be used throughout the target tracking env.
 METADATA = METADATA_v1
 
 TTENV_EVAL_SET = [
-    {
+    {   # Tracking
         'sensor_r_sd': 0.5,  # sensor range noise.
         'sensor_b_sd': 0.01,  # sensor bearing noise.
-        # Tracking
         'lin_dist_range_a2b': (3.0, 10.0),
         'ang_dist_range_a2b': (-np.pi, np.pi),
         'lin_dist_range_b2t': (0.0, 3.0),
@@ -103,16 +83,19 @@ TTENV_EVAL_SET = [
         'insight': True,
         'noblock': True,
         'target_speed_limit': 2.5,
-        'const_q': 3.0,
+        'const_q': 0.1,
     },
-    {  # Discovery
+    {   # Discovery
+        'sensor_r_sd': 0.5,  # sensor range noise.
+        'sensor_b_sd': 0.01,  # sensor bearing noise.
         'lin_dist_range_a2b': (3.0, 10.0),
         'ang_dist_range_a2b': (-np.pi, np.pi),
-        'lin_dist_range_b2t': (10.0, 15.0),
+        'lin_dist_range_b2t': (0.0, 3.0),
         'ang_dist_range_b2t': (-np.pi / 2, np.pi / 2),
         'insight': False,
         'noblock': True,
-        'target_move': 0,
+        'target_speed_limit': 2.5,
+        'const_q': 0.1,
     },
     {  # Navigation
         'lin_dist_range_a2b': (35.0, 40.0),
