@@ -21,14 +21,14 @@ if __name__ == '__main__':
     ##################### Init section #####################
 
     # Init env
-    scenario = "Demonstration-HoveringCamera"
+    scenario = "TestMap_AUV_sonar"
     env = holoocean.make(scenario)
 
     # Init keyboard control
-    kb_cmd = KeyBoardCmd(force=50)
+    kb_cmd = KeyBoardCmd(force=10)
     # Init gridmap
-    map_x_lim = [-12, 12]
-    map_y_lim = [-12, 12]
+    map_x_lim = [-25, 25]
+    map_y_lim = [-25, 25]
     dir_pointer_len = 1
 
     # Create grid map
@@ -56,24 +56,18 @@ if __name__ == '__main__':
             break
         command = kb_cmd.parse_keys()
 
-        # send to holoocean
-        if init_flag == 1:
-            for i in range(10):
-                env.act("auv0", command)
-                env.tick()
-            init_flag = 0
-
         env.act("auv0", command)
+        env.act("target", np.zeros(8,))
         state = env.tick()
-        imagingsonar.draw_pic(state)
-        poselocation.update(state)
+        imagingsonar.draw_pic(state['auv0'])
+        poselocation.update(state['auv0'])
 
 
         # get the agent's pose
         x_odom, y_odom = poselocation.locationxy  # x,y in [m]
         theta_odom = poselocation.direction  # rad
 
-        distances_x, distances_y, distances, nearest_x, nearest_y, nearest_dist = imagingsonar.scan(state, [x_odom, y_odom], poselocation.angle)
+        distances_x, distances_y, distances, nearest_x, nearest_y, nearest_dist = imagingsonar.scan(state['auv0'], [x_odom, y_odom], poselocation.angle)
         filtered_distances_x = []
         filtered_distances_y = []
 
