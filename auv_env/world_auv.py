@@ -195,7 +195,7 @@ class World_AUV:
         self.target_init_pos = None
         self.target_init_yaw = None
         self.target_init_cov = METADATA['target_init_cov']
-        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw \
+        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw, self.belief_init_pos\
             = self.get_init_pose_random()
         print(self.agent_init_pos, self.agent_init_yaw)
         print(self.target_init_pos, self.target_init_yaw)
@@ -229,7 +229,7 @@ class World_AUV:
             self.targets[i].reset(self.sensors['target'], obstacles=self.obstacles,
                                   scene=self.ocean, start_time=self.sensors['t'])
             self.belief_targets[i].reset(
-                init_state=np.concatenate((np.array(self.targets[i].state.vec[:2]), np.zeros(2))),
+                init_state=np.concatenate((self.belief_init_pos[:2], np.zeros(2))),
                 # init_state=np.concatenate((np.array([-10, -10]), np.zeros(2))),
                 init_cov=self.target_init_cov)
 
@@ -256,9 +256,10 @@ class World_AUV:
     def get_init_pose_random(self,
                              lin_dist_range_a2t=METADATA['lin_dist_range_a2t'],
                              ang_dist_range_a2t=METADATA['ang_dist_range_a2t'],
+                             lin_dist_range_t2b=METADATA['lin_dist_range_t2b'],
+                             ang_dist_range_t2b=METADATA['ang_dist_range_t2b'],
                              blocked=None, ):
         is_agent_valid = False
-        count = 0
         while not is_agent_valid:
             init_pose = {}
             np.random.seed()
@@ -271,6 +272,7 @@ class World_AUV:
                                                                                                        self.margin2wall + 2)
             if is_agent_valid:
                 for i in range(self.num_targets):
+                    count = 0
                     is_target_valid, target_init_pos, target_init_yaw = False, np.zeros((2,)), np.zeros((1,))
                     while not is_target_valid:
                         if self.insight:
@@ -300,12 +302,31 @@ class World_AUV:
                                     np.linalg.norm(target_init_pos - agent_init_pos) > self.margin and
                                     is_not_insight)
                         count += 1
-                        if count > 50:
+                        if count > 100:
                             is_agent_valid = False
                             count = 0
                             break
+
+                    count = 0
+                    is_belief_valid, belief_init_pos = False, np.zeros((2,))
+                    while not is_belief_valid:
+                        is_belief_valid, init_pose_belief, _ = self.gen_rand_pose(
+                            target_init_pos[:2], target_init_yaw,
+                            lin_dist_range_t2b[0], lin_dist_range_t2b[1],
+                            ang_dist_range_t2b[0], ang_dist_range_t2b[1])
+                        # if is_belief_valid and (blocked is not None):
+                        #     is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
+                        #                                                         self.margin2wall + 2)
+                        #     is_belief_valid = (self.noblock == is_no_blocked)
+                        count += 1
+                        if count > 100:
+                            is_agent_valid = False
+                            break
+
+
         return (np.append(agent_init_pos, self.fix_depth), agent_init_yaw,
-                np.append(target_init_pos, self.fix_depth), target_init_yaw)
+                np.append(target_init_pos, self.fix_depth), target_init_yaw,
+                init_pose_belief)
 
     def in_bound(self, pos):
         """
