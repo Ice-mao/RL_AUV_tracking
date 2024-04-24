@@ -34,13 +34,14 @@ METADATA_v1 = {
     'sensor_r_sd': 0.2,  # sensor range noise.
     'sensor_b_sd': 0.01,  # sensor bearing noise.
     # init target's param
+    'measurement_disfactor': 0.9,
     'target_init_cov': 50.0,  # initial target diagonal Covariance.
     'lin_dist_range_a2t': (3.0, 8.0),
     'ang_dist_range_a2t': (-np.pi / 5, np.pi / 5),
     'insight': True,
     'noblock': True,
     # init target's param
-    'margin': 1,  # a marginal distance btw targets and the agent.
+    'margin': 1.0,  # a marginal distance btw targets and the agent.
     'margin2wall': 1.0,  # a marginal distance from a wall.
     'const_q': 3.0,  # target noise constant in beliefs.
     'const_q_true': 0.01,  # target noise constant of actual targets.
@@ -91,7 +92,10 @@ METADATA_multi_v1 = {
 METADATA = METADATA_v1
 
 TTENV_EVAL_SET = [
-    {  # Tracking
+    {
+        'sensor_r_sd': 0.5,  # sensor range noise.
+        'sensor_b_sd': 0.01,  # sensor bearing noise.
+        # Tracking
         'lin_dist_range_a2b': (3.0, 10.0),
         'ang_dist_range_a2b': (-np.pi, np.pi),
         'lin_dist_range_b2t': (0.0, 3.0),
@@ -99,6 +103,7 @@ TTENV_EVAL_SET = [
         'insight': True,
         'noblock': True,
         'target_speed_limit': 2.5,
+        'const_q': 3.0,
     },
     {  # Discovery
         'lin_dist_range_a2b': (3.0, 10.0),
@@ -107,7 +112,7 @@ TTENV_EVAL_SET = [
         'ang_dist_range_b2t': (-np.pi / 2, np.pi / 2),
         'insight': False,
         'noblock': True,
-        'target_move': 0.0,
+        'target_move': 0,
     },
     {  # Navigation
         'lin_dist_range_a2b': (35.0, 40.0),

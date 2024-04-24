@@ -108,8 +108,8 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 def main():
     if args.choice == '0' or args.choice == '1':
         # new training
-        log_dir = '../log/sac_' + time_string + '/'
-        model_dir = '../models/sac_' + time_string + '/'
+        log_dir = '../log/ppo_' + time_string + '/'
+        model_dir = '../models/ppo_' + time_string + '/'
 
         # keep training
         # model_dir = "../models/sac_04-01_18/"
@@ -179,14 +179,14 @@ def learn(env, model_dir, log_dir):
     # model = DQN.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
 
     # PPO
-    # model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=64, n_epochs=10,
-    #             gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
-    #             policy_kwargs=policy_kwargs,tensorboard_log=log_dir, device="cpu")
-    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
-                learning_starts=100, batch_size=64, tau=0.005, gamma=0.99, train_freq=1,
-                gradient_steps=1, action_noise=None,
-                policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
-                )
+    model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=200, n_epochs=10,
+                gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
+                policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
+    # model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
+    #             learning_starts=100, batch_size=64, tau=0.005, gamma=0.99, train_freq=1,
+    #             gradient_steps=1, action_noise=None,
+    #             policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
+    #             )
     # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
     #             clip_range_vf=0.1,
     #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
@@ -227,13 +227,13 @@ def evaluate(model_dir):
                        t_steps=args.max_episode_step
                        )
     # get render parmater true
-    # model = PPO.load("./models/ppo_03-27_13/800000_model.zip", device='cpu', env=env,
+    # model = PPO.load(model_dir, device='cuda', env=env,
     #                  custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     model = SAC.load(model_dir, device='cuda', env=env,
                      custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')
     obs, _ = env.reset()
-    while True:
+    for _ in range(200):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, done, _, inf = env.step(action)
 

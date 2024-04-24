@@ -50,13 +50,12 @@ class World_AUV:
         self.fix_depth = -5
         self.margin = METADATA['margin']
         self.margin2wall = METADATA['margin2wall']
-        self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
-                            lifetime=0)  # draw the area
+        # self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
+        #                     lifetime=0)  # draw the area
 
         # Setup obstacles
         # rule is obstacles combined will rotate from their own center
         self.obstacles = Obstacle(self.ocean, self.fix_depth)
-        self.obstacles.draw_obstacle()
 
         # Record for reward obtain(diff from the control period and the sampling period)
         self.agent_w = None
@@ -65,38 +64,38 @@ class World_AUV:
         self.agent_u = None
 
         # Cal random  pos of agent and target
-        self.agent_init_pos = None
-        self.agent_init_yaw = None
-        self.target_init_pos = None
-        self.target_init_yaw = None
-        self.target_init_cov = METADATA['target_init_cov']
-        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw \
-            = self.get_init_pose_random()
-        print(self.agent_init_pos, self.agent_init_yaw)
-        print(self.target_init_pos, self.target_init_yaw)
-        # Set the pos and tick the scenario
-        # self.ocean.agents['auv0'].set_physics_state(location=self.agent_init_pos,
-        #                                             rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)],
-        #                                             velocity=[0.0, 0.0, 0.0],
-        #                                             angular_velocity=[0.0, 0.0, 0.0])
-        self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
-                                           rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
-        # self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
-        #                                               rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)],
-        #                                               velocity=[0.0, 0.0, 0.0],
-        #                                               angular_velocity=[0.0, 0.0, 0.0])
-        self.ocean.agents['target'].teleport(location=self.target_init_pos,
-                                             rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
-        self.u = np.zeros(8)
-        self.ocean.act("auv0", self.u)
-        self.target_u = np.zeros(8)
-        self.ocean.act("target", self.target_u)
-        self.sensors = self.ocean.tick()
-
-        self.set_limits()
-        self.build_models(sampling_period=self.sampling_period,
-                          agent_init_state=self.sensors['auv0']
-                          , target_init_state=self.sensors['target'], time=self.sensors['t'])
+        # self.agent_init_pos = None
+        # self.agent_init_yaw = None
+        # self.target_init_pos = None
+        # self.target_init_yaw = None
+        # self.target_init_cov = METADATA['target_init_cov']
+        # self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw \
+        #     = self.get_init_pose_random()
+        # print(self.agent_init_pos, self.agent_init_yaw)
+        # print(self.target_init_pos, self.target_init_yaw)
+        # # Set the pos and tick the scenario
+        # # self.ocean.agents['auv0'].set_physics_state(location=self.agent_init_pos,
+        # #                                             rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)],
+        # #                                             velocity=[0.0, 0.0, 0.0],
+        # #                                             angular_velocity=[0.0, 0.0, 0.0])
+        # self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
+        #                                    rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
+        # # self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
+        # #                                               rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)],
+        # #                                               velocity=[0.0, 0.0, 0.0],
+        # #                                               angular_velocity=[0.0, 0.0, 0.0])
+        # self.ocean.agents['target'].teleport(location=self.target_init_pos,
+        #                                      rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
+        # self.u = np.zeros(8)
+        # self.ocean.act("auv0", self.u)
+        # self.target_u = np.zeros(8)
+        # self.ocean.act("target", self.target_u)
+        # self.sensors = self.ocean.tick()
+        #
+        # self.set_limits()
+        # self.build_models(sampling_period=self.sampling_period,
+        #                   agent_init_state=self.sensors['auv0']
+        #                   , target_init_state=self.sensors['target'], time=self.sensors['t'])
         self.reset()
 
     def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
@@ -189,22 +188,41 @@ class World_AUV:
         self.agent_last_state = None
         self.agent_last_u = None
         # reset the random position
+
+        # Cal random pos of agent and target
         self.agent_init_pos = None
         self.agent_init_yaw = None
         self.target_init_pos = None
         self.target_init_yaw = None
+        self.target_init_cov = METADATA['target_init_cov']
         self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw \
             = self.get_init_pose_random()
-        # Reset the pos and tick the scenario
+        print(self.agent_init_pos, self.agent_init_yaw)
+        print(self.target_init_pos, self.target_init_yaw)
+        # Set the pos and tick the scenario
+        # self.ocean.agents['auv0'].set_physics_state(location=self.agent_init_pos,
+        #                                             rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)],
+        #                                             velocity=[0.0, 0.0, 0.0],
+        #                                             angular_velocity=[0.0, 0.0, 0.0])
         self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
                                            rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
+        # self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
+        #                                               rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)],
+        #                                               velocity=[0.0, 0.0, 0.0],
+        #                                               angular_velocity=[0.0, 0.0, 0.0])
         self.ocean.agents['target'].teleport(location=self.target_init_pos,
-                                             rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)])
+                                             rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
         self.u = np.zeros(8)
         self.ocean.act("auv0", self.u)
         self.target_u = np.zeros(8)
         self.ocean.act("target", self.target_u)
         self.sensors = self.ocean.tick()
+
+        self.set_limits()
+        self.build_models(sampling_period=self.sampling_period,
+                          agent_init_state=self.sensors['auv0'],
+                          target_init_state=self.sensors['target'],
+                          time=self.sensors['t'])
         # reset model
         self.agent.reset(self.sensors['auv0'])
         for i in range(self.num_targets):
@@ -212,6 +230,7 @@ class World_AUV:
                                   scene=self.ocean, start_time=self.sensors['t'])
             self.belief_targets[i].reset(
                 init_state=np.concatenate((np.array(self.targets[i].state.vec[:2]), np.zeros(2))),
+                # init_state=np.concatenate((np.array([-10, -10]), np.zeros(2))),
                 init_cov=self.target_init_cov)
 
         # The targets are observed by the agent (z_0) and the beliefs are updated (b_0).

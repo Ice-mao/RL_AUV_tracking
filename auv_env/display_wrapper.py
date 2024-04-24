@@ -51,7 +51,7 @@ class Display2D(Wrapper):
         state = self.env_core.agent.state.vec
         num_targets = len(self.env_core.targets)
         target_true_pos = [self.env_core.targets[i].state.vec[:2] for i in range(num_targets)]
-        target_b_state = [self.env_core.belief_targets[i].state for i in range(num_targets)]  # state[3:5]
+        target_b_state = [self.env_core.belief_targets[i].state for i in range(num_targets)]
         target_cov = [self.env_core.belief_targets[i].cov for i in range(num_targets)]
 
         if self.n_frames % self.skip == 0:

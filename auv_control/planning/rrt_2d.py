@@ -34,9 +34,10 @@ class RRT_2d(BasePlanner):
         # self.Visualization()
 
         # setup plotter.
+        self.figID = 2  # for rrt render
         if METADATA['render']:
             plt.ion()
-            self.fig, self.ax = plt.subplots()
+            self.fig = plt.figure(self.figID)
         # from reset to build path
         # self._run_rrt()
 
@@ -56,7 +57,6 @@ class RRT_2d(BasePlanner):
         self.finish_flag = 0  # use for path finish
         self.path = [0]
         return self._run_rrt()
-        # self.Visualization()
 
     def _run_rrt(self):
         # Make tree till we have a connecting path
@@ -271,6 +271,8 @@ class RRT_2d(BasePlanner):
         for p in self.path.T:
             p = np.append(p, self.fixed_depth)
             env.draw_point(p.tolist(), color=[255, 0, 0], thickness=15, lifetime=50)
+        self.fig.clf()
+        self.ax = self.fig.subplots()
         self.ax.clear()
         self.ax.plot(self.path[0], self.path[1], label='Bezier Curve')
         self.ax.scatter(self.control_points[0], self.control_points[1], label='ControlPoints')
