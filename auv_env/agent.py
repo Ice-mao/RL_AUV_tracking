@@ -8,7 +8,8 @@ from auv_control.control import LQR, SE2PIDController
 from auv_control.planning import RRT_2d
 from auv_control.state import rot_to_rpy
 from auv_control import State
-from auv_control import scenario
+
+from gridmap.grid_map import *
 
 
 class Agent(object):
@@ -32,7 +33,7 @@ class Agent(object):
 
 
 class AgentAuv(Agent):
-    def __init__(self, dim, sampling_period, sensor):
+    def __init__(self, dim, sampling_period, sensor, scenario):
         Agent.__init__(self, dim, sampling_period)
         # init the control part of Auv
         self.controller = LQR()
@@ -40,14 +41,23 @@ class AgentAuv(Agent):
         if METADATA['render']:
             self.keyboard = KeyBoardCmd(20)
 
+        # init the sonar and grid map part
+        self.imagingsonar = ImagingSonar(scenario=scenario)  # to see if it is useful
+        self.P_prior = METADATA['p_prior']  # Prior occupancy probability
+        self.P_occ = METADATA['p_occ']  # Probability that cell is occupied with total confidence
+        self.P_free = METADATA['p_free']  # Probability that cell is free with total confidence
+        self.RESOLUTION = METADATA['resolution']  # Grid resolution in [m]
+        self.gridMap = GridMap(X_lim=np.array([METADATA['bottom_corner'][0],
+                                               METADATA['bottom_corner'][0] + METADATA['size'][0]]),
+                               Y_lim=np.array([METADATA['bottom_corner'][1],
+                                               METADATA['bottom_corner'][1] + METADATA['size'][1]]),
+                               resolution=self.RESOLUTION,
+                               p=self.P_prior)
         # init the sensor part of AUV
-        # to see if it is useful
-        # self.imagesonar = ImagingSonar(scenario=scenario)  # to see if it is useful
         self.rangefinder = RangeFinder(scenario=scenario)
         self.state = State(sensor)
         self.last_state = State(sensor)
         self.est_state = State(sensor)
-        # self.planner = RRT()
 
     def reset(self, sensor):
         self.state = State(sensor)
@@ -61,6 +71,7 @@ class AgentAuv(Agent):
         self.last_state = self.state
         self.state = State(sensors)
         self.est_state = self.observer.tick(sensors, self.sampling_period)
+        self.update_gridmap(sensors)
 
         # Path planner
         des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,
@@ -70,7 +81,63 @@ class AgentAuv(Agent):
 
         # Autopilot Commands
         u = self.controller.u(self.est_state, des_state)
+
         return u
+
+    def update_gridmap(self, sensors):
+        # get the gridmap part
+        if METADATA['render']:
+            self.imagingsonar.draw_pic(sensors)
+        else:
+            self.imagingsonar.update(sensors)
+
+        if not self.imagingsonar.getimage:
+            return
+        else:
+            # get the agent's pose
+            x_odom, y_odom = self.est_state.vec[:2]  # x,y in [m]
+            theta_odom = np.radians(self.est_state.vec[8])  # rad
+
+            distances_x, distances_y, distances, nearest_x, nearest_y, nearest_dist = \
+                self.imagingsonar.scan(sensors, [x_odom, y_odom], self.est_state.vec[8])
+            filtered_distances_x = []
+            filtered_distances_y = []
+
+            ##################### Grid map update section #####################
+            # 机器人当前坐标(x1, y1)
+            x1, y1 = self.gridMap.discretize(x_odom, y_odom)
+            # for image of the grid map
+            X2 = []
+            Y2 = []
+
+            # 类似lidar的原理更新free space
+            for (dist_x, dist_y, dist) in zip(nearest_x, nearest_y, nearest_dist):
+                # 障碍物的坐标(x2, y2)
+                x2, y2 = self.gridMap.discretize(dist_x, dist_y)
+                # draw a discrete line of free pixels, [robot position -> laser hit spot), 确定测量范围内的free space
+                for (x_bres, y_bres) in bresenham(self.gridMap, x1, y1, x2, y2):
+                    self.gridMap.update(x=x_bres, y=y_bres, p=self.P_free)
+                # for BGR image of the grid map
+                X2.append(x2)
+                Y2.append(y2)
+
+            # 更新occ space
+            for (dist_x, dist_y, dist) in zip(nearest_x, nearest_y, nearest_dist):
+                if dist < self.imagingsonar.zmax:
+                    # 障碍物的坐标(x2, y2)
+                    x2, y2 = self.gridMap.discretize(dist_x, dist_y)
+
+                    # 检测到障碍物，更新occ grid map
+                    self.gridMap.update(x=x2, y=y2, p=self.P_occ)
+
+                    # filtered distances in X-Y plane for Ploting
+                    filtered_distances_x.append(dist_x)
+                    filtered_distances_y.append(dist_y)
+
+        if METADATA['render']:
+            gray_map = self.gridMap.to_grayscale_image()
+            cv2.imshow("Grid map", gray_map)
+            cv2.waitKey(1)
 
 
 class AgentSphere(Agent):
@@ -317,9 +384,10 @@ class AgentAuvTarget(Agent):
         des_state = self.planner.tick(true_state)  # only x, y
         if self.planner.desire_path_num != 0:
             angle = np.rad2deg(np.arctan2(
-                self.planner.path[1, self.planner.desire_path_num] - self.planner.path[1, self.planner.desire_path_num-1],
+                self.planner.path[1, self.planner.desire_path_num] - self.planner.path[
+                    1, self.planner.desire_path_num - 1],
                 self.planner.path[0, self.planner.desire_path_num] - self.planner.path[
-                        0, self.planner.desire_path_num - 1]))
+                    0, self.planner.desire_path_num - 1]))
         else:
             angle = 0
 

@@ -23,8 +23,9 @@ class World_AUV:
     def __init__(self, map, show, verbose, num_targets, **kwargs):
         # define the entity
         # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
-        self.ocean = holoocean.make(map)
-        scenario = holoocean.get_scenario(map)
+        self.map = map
+        self.ocean = holoocean.make(self.map)
+        scenario = holoocean.get_scenario(self.map)
         self.ocean.should_render_viewport(METADATA['render'])
         self.agent = None
         # init the param
@@ -44,10 +45,11 @@ class World_AUV:
             self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
 
         # Setup environment
-        margin = 0.5
-        self.size = np.array([39, 39, 20])
-        self.bottom_corner = np.array([-19.5, -19.5, -20])
-        self.fix_depth = -5
+        margin = 0.25
+        self.size = np.array([METADATA['size'][0]-2*margin, METADATA['size'][1]-2*margin, METADATA['size'][2]])
+        self.bottom_corner = np.array([METADATA['bottom_corner'][0]+margin, METADATA['bottom_corner'][1]+margin,
+                                       METADATA['bottom_corner'][2]])
+        self.fix_depth = METADATA['fix_depth']
         self.margin = METADATA['margin']
         self.margin2wall = METADATA['margin2wall']
         # self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
@@ -107,7 +109,8 @@ class World_AUV:
         :return:
         """
         # Build a robot
-        self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state)
+        self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state,
+                              scenario=self.map)
         self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state
                                        , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
                                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean)

@@ -5,34 +5,23 @@ gather the param to be used
 ready to rewrite
 """
 
-METADATA_v0 = {
-    'version': 0,
-    'sensor_r': 10.0,
-    'fov': 120,
-    'sensor_r_sd': 0.2,  # sensor range noise.
-    'sensor_b_sd': 0.01,  # sensor bearing noise.
-    'target_init_cov': 30.0,  # initial target diagonal Covariance.
-    'target_init_vel': [0.0, 0.0],  # target's initial velocity.
-    'target_speed_limit': 2.0,  # velocity limit of targets.
-    'lin_dist_range_a2b': (0.0, 8.0),
-    'ang_dist_range_a2b': (-np.pi, np.pi),
-    'lin_dist_range_b2t': (0.0, 5.0),
-    'ang_dist_range_b2t': (-np.pi, np.pi),
-    'margin': 1.0,  # a marginal distance btw targets and the agent.
-    'margin2wall': 0.5,  # a marginal distance from a wall. 最小的安全距离
-    'action_v': [3, 2, 1, 0],  # action primitives - linear velocities.
-    'action_w': [np.pi / 2, 0, -np.pi / 2],  # action primitives - angular velocities.
-    'const_q': 0.01,  # target noise constant in beliefs.
-    'const_q_true': 0.01,  # target noise constant of actual targets.
-}
-
 METADATA_v1 = {
     'version': 1,
+    # init the scenario's param
+    'size': [40, 40, 20],
+    'bottom_corner': [-20, -20, -20],
+    'fix_depth': -5,
     # init agent's param
     'sensor_r': 10.0,
     'fov': 100,
     'sensor_r_sd': 0.2,  # sensor range noise.
     'sensor_b_sd': 0.01,  # sensor bearing noise.
+    'p_prior': 0.5,  # Prior occupancy probability
+    'p_occ': 0.9,  # Probability that cell is occupied with total confidence
+    'p_free': 0.35,  # Probability that cell is free with total confidence
+    'resolution': 0.1,  # Grid resolution in [m]
+
+
     # init target's param
     'measurement_disfactor': 0.9,
     'target_init_cov': 50.0,  # initial target diagonal Covariance.
@@ -53,7 +42,6 @@ METADATA_v1 = {
     'action_range_low': [0, 0, 0],
     'action_range_scale': [3, np.pi, np.pi/2],
     'action_dim': 6,
-
     'target_num': 1,
     'target_dim': 4,  # x, y, xdot, ydot
     # reward setting

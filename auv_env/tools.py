@@ -106,6 +106,7 @@ class ImagingSonar:
         self.fig.canvas.flush_events()
 
     def sonar_filter(self):
+        # TODO:follow the paper
         # 加入了噪声
         # matrix = (self.s * 255).astype(np.uint8)
         # matrix = cv2.medianBlur(matrix, 2)  # 中值滤波
@@ -126,33 +127,33 @@ class ImagingSonar:
             self.s = state['ImagingSonar']
             self.sonar_filter()
             self.getimage = True
-            return True
         else:
-            return False
+            self.getimage = False
 
     def draw_pic(self, state):
         "绘制声呐图像"
-        if self.update(state):
+        self.update(state)
+        if self.getimage:
             self.plot.set_array(self.s.ravel())
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
 
-    def determine_borderline(self, state, pose, angle):
-        # 建立边界地图，但不是栅格地图
-        if 'ImagingSonar' in state:
-            # 加入了噪声
-            # self.s[128:255,:] = 0
-            self.s = state['ImagingSonar']
-            x_coordinates, y_coordinates = np.where(self.s)
-            self.distance = x_coordinates / self.binsR * (self.maxR - self.minR) + self.minR
-            self.angle = -self.azi / 2 + y_coordinates / self.binsA * (self.azi)
-            self.x_world = pose[0] + self.distance * np.cos((angle + self.angle) * np.pi / 180)
-            self.y_world = pose[1] + self.distance * np.sin((angle + self.angle) * np.pi / 180)
-            # self.borderline_world = list(zip(x_coordinates, y_coordinates))
-
-            ax1.scatter(self.x_world, self.y_world)
-            ax1.scatter(pose[0], pose[1], color='red')
-            plt.show()
+    # def determine_borderline(self, state, pose, angle):
+    #     # 建立边界地图，但不是栅格地图
+    #     if 'ImagingSonar' in state:
+    #         # 加入了噪声
+    #         # self.s[128:255,:] = 0
+    #         self.s = state['ImagingSonar']
+    #         x_coordinates, y_coordinates = np.where(self.s)
+    #         self.distance = x_coordinates / self.binsR * (self.maxR - self.minR) + self.minR
+    #         self.angle = -self.azi / 2 + y_coordinates / self.binsA * (self.azi)
+    #         self.x_world = pose[0] + self.distance * np.cos((angle + self.angle) * np.pi / 180)
+    #         self.y_world = pose[1] + self.distance * np.sin((angle + self.angle) * np.pi / 180)
+    #         # self.borderline_world = list(zip(x_coordinates, y_coordinates))
+    #
+    #         ax1.scatter(self.x_world, self.y_world)
+    #         ax1.scatter(pose[0], pose[1], color='red')
+    #         plt.show()
 
     def scan(self, state, pose, angle):
         distances_x = []
@@ -161,33 +162,33 @@ class ImagingSonar:
         nearest_distances_x = []
         nearest_distances_y = []
         nearest_distances = []
-        if self.update(state):
-            # # 生成所有坐标信息
-            self.s2map = np.empty(self.s.shape, dtype=object)
-            for i in range(self.s.shape[0]):
-                for j in range(self.s.shape[1]):
-                    self.s2map[i, j] = ((i / self.binsR * (self.maxR - self.minR) + self.minR,
-                                         -self.azi / 2 + j / self.binsA * (self.azi)))
 
-            x_coordinates, y_coordinates = np.where(self.s)  # x是距离变化，y是角度变换
-            # 映射图像中每一个障碍物的坐标到机器人物理坐标
-            self.distance = x_coordinates / self.binsR * (self.maxR - self.minR) + self.minR
-            self.angle = -self.azi / 2 + y_coordinates / self.binsA * (self.azi)
-            distances_x = pose[0] + self.distance * np.cos((angle + self.angle) * np.pi / 180)
-            distances_y = pose[1] + self.distance * np.sin((angle + self.angle) * np.pi / 180)
+        # 生成所有坐标信息
+        self.s2map = np.empty(self.s.shape, dtype=object)
+        for i in range(self.s.shape[0]):
+            for j in range(self.s.shape[1]):
+                self.s2map[i, j] = ((i / self.binsR * (self.maxR - self.minR) + self.minR,
+                                     -self.azi / 2 + j / self.binsA * (self.azi)))
 
-            # 生成每个角度下最近的障碍物坐标,如果没有识别出障碍物，则假设最远位置有障碍物
-            for i in range(self.s.shape[1]):
-                dis_index = np.argmax(self.s[:, i] > 0.1)
-                if dis_index == 0:
-                    dis_index = self.binsR
-                nearest_distance = dis_index / self.binsR * (self.maxR - self.minR) + self.minR
-                nearest_angle = -self.azi / 2 + i / self.binsA * (self.azi)
-                nearest_distance_x = pose[0] + nearest_distance * np.cos((angle + nearest_angle) * np.pi / 180)
-                nearest_distance_y = pose[1] + nearest_distance * np.sin((angle + nearest_angle) * np.pi / 180)
-                nearest_distances_x.append(nearest_distance_x)
-                nearest_distances_y.append(nearest_distance_y)
-                nearest_distances.append(nearest_distance)
+        x_coordinates, y_coordinates = np.where(self.s)  # x是距离变化，y是角度变换
+        # 映射图像中每一个障碍物的坐标到机器人物理坐标
+        self.distance = x_coordinates / self.binsR * (self.maxR - self.minR) + self.minR
+        self.angle = -self.azi / 2 + y_coordinates / self.binsA * (self.azi)
+        distances_x = pose[0] + self.distance * np.cos((angle + self.angle) * np.pi / 180)
+        distances_y = pose[1] + self.distance * np.sin((angle + self.angle) * np.pi / 180)
+
+        # 生成每个角度下最近的障碍物坐标,如果没有识别出障碍物，则假设最远位置有障碍物
+        for i in range(self.s.shape[1]):
+            dis_index = np.argmax(self.s[:, i] > 0.1)
+            if dis_index == 0:
+                dis_index = self.binsR
+            nearest_distance = dis_index / self.binsR * (self.maxR - self.minR) + self.minR
+            nearest_angle = -self.azi / 2 + i / self.binsA * (self.azi)
+            nearest_distance_x = pose[0] + nearest_distance * np.cos((angle + nearest_angle) * np.pi / 180)
+            nearest_distance_y = pose[1] + nearest_distance * np.sin((angle + nearest_angle) * np.pi / 180)
+            nearest_distances_x.append(nearest_distance_x)
+            nearest_distances_y.append(nearest_distance_y)
+            nearest_distances.append(nearest_distance)
 
         return (distances_x, distances_y, self.distance, nearest_distances_x, nearest_distances_y, nearest_distances)
 
@@ -216,10 +217,11 @@ class RangeFinder:
 
     def __init__(self, scenario):
         # init config
+        config = holoocean.packagemanager.get_scenario(scenario)
         self.LaserMaxDistance = 1
         self.LaserCount = 1
         self.LaserDebug = 1
-        for sensor in scenario['agents'][0]['sensors']:
+        for sensor in config['agents'][0]['sensors']:
             if 'sensor_type' in sensor:
                 if sensor['sensor_type'] == 'RangeFinderSensor':
                     config = sensor["configuration"]
