@@ -44,8 +44,8 @@ if __name__ == '__main__':
     init_flag = 1
 
     ##################### Main loop #####################
-    # env.spawn_prop(prop_type='cylinder', location=[31.5, 95, -37], scale=[2,2,2], sim_physics=0, material='steel')
-    # env.draw_box(center=[31.5, 95, -37],extent=[1,1,1],lifetime=0)
+    env.spawn_prop(prop_type='box', location=[10, 10, -5], scale=[2,2,2], sim_physics=0, material='steel')
+    # env.draw_box(center=[10, 10, -5],extent=[1,1,1],lifetime=0)
     # env.weather.stop_day_cycle()
     imagingsonar = ImagingSonar(scenario)
     poselocation = PoseLocation()

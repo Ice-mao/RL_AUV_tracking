@@ -28,7 +28,7 @@ current_time = datetime.datetime.now()
 time_string = current_time.strftime('%m-%d_%H')
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--choice', choices=['0', '1', '2', '3'], help='0:train; 1:keep train; 2:eval; 3:test',
+parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train; 1:keep train; 2:eval; 3:test',
                     default=0)
 parser.add_argument('--env', help='environment ID', type=str, default='TargetTracking')
 parser.add_argument('--render', help='whether to render', type=int, default=0)
@@ -143,6 +143,10 @@ def main():
     elif args.choice == '3':
         env_test()
 
+    elif args.choice == '4':
+        model_dir = ''
+        eval_greedy(model_dir)
+
 
 def learn(env, model_dir, log_dir):
     # 获取当前时间
@@ -235,6 +239,28 @@ def evaluate(model_dir):
     obs, _ = env.reset()
     for _ in range(200):
         action, _states = model.predict(obs, deterministic=True)
+        obs, reward, done, _, inf = env.step(action)
+
+def eval_greedy(model_dir):
+    from metadata import TTENV_EVAL_SET
+    # 0 tracking 1 discovery 2 navagation
+    METADATA.update(TTENV_EVAL_SET[0])
+    env = auv_env.make(args.env,
+                       render=args.render,
+                       record=args.record,
+                       ros=args.ros,
+                       directory=model_dir,
+                       num_targets=args.nb_targets,
+                       map=args.map,
+                       eval=True,
+                       is_training=False,
+                       t_steps=args.max_episode_step
+                       )
+    from auv_baseline.greedy import Greedy
+    greedy = Greedy(env.env.env)
+    obs, _ = env.reset()
+    for _ in range(200):
+        action = greedy.predict(obs)
         obs, reward, done, _, inf = env.step(action)
 
 
