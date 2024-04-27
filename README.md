@@ -22,6 +22,11 @@ use auv target run the script
 python SB3_learning.py --env TargetTracking1 --map TestMap_AUV --nb_envs 5 --choice 0 --render 0 
 ```
 if you want to run in my scenario,you should add my config[TestMap.json](config%2FTestMap.json) in you World.
+
+## Simulation Process
+
+![simulation](config/simulation.png)
+
 ## Additional information
 
 If you want to know more details,you should read the code.
