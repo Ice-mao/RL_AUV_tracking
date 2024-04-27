@@ -75,6 +75,33 @@ class KFbelief(object):
         self.cov = np.matmul(C, self.cov)
         self.state = np.clip(self.state + np.matmul(K, innov), self.limit[0], self.limit[1])
 
+    def greedy_update(self, z_t, x_t):
+        """
+        Just for greedy policy
+        return the result,but not update the class param
+        """
+        # Kalman Filter Update
+        r_pred, alpha_pred = relative_distance_polar(
+            self.state[:2], x_t[:2], x_t[2])
+        diff_pred = np.array(self.state[:2]) - np.array(x_t[:2])
+        if self.dim == 2:
+            Hmat = np.array([[diff_pred[0], diff_pred[1]],
+                             [-diff_pred[1] / r_pred, diff_pred[0] / r_pred]]) / r_pred
+        elif self.dim == 4:
+            # 观测测量矩阵
+            Hmat = np.array([[diff_pred[0], diff_pred[1], 0.0, 0.0],
+                             [-diff_pred[1] / r_pred, diff_pred[0] / r_pred, 0.0, 0.0]]) / r_pred
+        else:
+            raise ValueError('target dimension for KF must be either 2 or 4')
+        innov = z_t - np.array([r_pred, alpha_pred])
+        innov[1] = wrap_around(innov[1])
+
+        R = np.matmul(np.matmul(Hmat, self.cov), Hmat.T) \
+            + self.obs_noise_func((r_pred, alpha_pred))
+        K = np.matmul(np.matmul(self.cov, Hmat.T), LA.inv(R))
+        C = np.eye(self.dim) - np.matmul(K, Hmat)  # 简易更新协方差矩阵：P_hat = (I- K_k*H_k)*P_check
+
+        return np.matmul(C, self.cov), np.clip(self.state + np.matmul(K, innov), self.limit[0], self.limit[1])
 
 class UKFbelief(object):
     """
