@@ -37,12 +37,12 @@ class AgentAuv(Agent):
         Agent.__init__(self, dim, sampling_period)
         # init the control part of Auv
         self.controller = LQR()
-        self.observer = InEKF()
         if METADATA['render']:
             self.keyboard = KeyBoardCmd(20)
 
         # init the sonar and grid map part
-        self.imagingsonar = ImagingSonar(scenario=scenario)  # to see if it is useful
+        if METADATA['use_sonar']:
+            self.imagingsonar = ImagingSonar(scenario=scenario)  # to see if it is useful
         self.P_prior = METADATA['p_prior']  # Prior occupancy probability
         self.P_occ = METADATA['p_occ']  # Probability that cell is occupied with total confidence
         self.P_free = METADATA['p_free']  # Probability that cell is free with total confidence
@@ -58,6 +58,7 @@ class AgentAuv(Agent):
         self.state = State(sensor)
         self.last_state = State(sensor)
         self.est_state = State(sensor)
+        self.observer = InEKF(x_init=self.state.vec[0], y_init=self.state.vec[1])
 
     def reset(self, sensor):
         self.state = State(sensor)
@@ -71,7 +72,9 @@ class AgentAuv(Agent):
         self.last_state = self.state
         self.state = State(sensors)
         self.est_state = self.observer.tick(sensors, self.sampling_period)
-        self.update_gridmap(sensors)
+        # print(self.est_state.vec[0], self.est_state.vec[1])
+        if METADATA['use_sonar']:
+            self.update_gridmap(sensors)
 
         # Path planner
         des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,

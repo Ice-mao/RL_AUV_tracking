@@ -40,10 +40,12 @@ class CompassSensor(MeasureModel[SE3[2, 6]]):
 
 
 class InEKF:
-    def __init__(self, error=ERROR.RIGHT):
+    def __init__(self, x_init, y_init, error=ERROR.RIGHT):
         # set up initial state
         xi = np.zeros(15)
-        xi[8] = -2  # depth
+        xi[6] = x_init  # x_init
+        xi[7] = y_init  # y_init
+        xi[8] = -5  # depth
 
         s = np.zeros(15)
         s[0:3] = 0.1  # rotation
@@ -140,3 +142,9 @@ class InEKF:
         est_state = State(est_state, self.last_omega)
 
         return est_state
+
+
+if __name__ == '__main__':
+    obs = InEKF()
+    print('1')
+    print('1')

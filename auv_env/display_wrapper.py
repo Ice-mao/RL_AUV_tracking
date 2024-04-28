@@ -49,6 +49,7 @@ class Display2D(Wrapper):
 
     def render(self, record=False, batch_outputs=None):
         state = self.env_core.agent.state.vec
+        est_state = self.env_core.agent.est_state.vec
         num_targets = len(self.env_core.targets)
         target_true_pos = [self.env_core.targets[i].state.vec[:2] for i in range(num_targets)]
         target_b_state = [self.env_core.belief_targets[i].state for i in range(num_targets)]
@@ -59,18 +60,6 @@ class Display2D(Wrapper):
             ax = self.fig.subplots()
             im = None
 
-            # if self.env_core.MAP.visit_freq_map is not None:
-            #     background_map = self.env_core.MAP.visit_freq_map.T
-            #     if self.env_core.MAP.map is not None:
-            #         background_map += 2 * self.env_core.MAP.map
-            # else:
-            #     if self.env_core.MAP.map is not None:
-            #         background_map = 2 * self.env_core.MAP.map
-            #     else:
-            #         background_map = np.zeros(self.env_core.MAP.mapdim)
-            # im = ax.imshow(background_map, cmap='gray_r', origin='lower',
-            #                vmin=0, vmax=2, extent=[self.mapmin[0], self.mapmax[0],
-            #                                        self.mapmin[1], self.mapmax[1]])
             # show the obstacles and background
             background_rect = patches.Rectangle((self.mapmin[0]-1, self.mapmin[1]-1), self.size[0]+2, self.size[1]+2,
                                                 edgecolor='none', facecolor='gray', alpha=0.5)
@@ -119,6 +108,9 @@ class Display2D(Wrapper):
             ax.plot(state[0], state[1], marker=(4, 0, state[8]),
                     markersize=10, linestyle='None', markerfacecolor='b',
                     markeredgecolor='b')
+            ax.plot(est_state[0], est_state[1], marker=(4, 0, state[8]),
+                    markersize=10, linestyle='None', markerfacecolor='b',
+                    markeredgecolor='b', alpha=0.2)
             # ax.plot(self.traj[0], self.traj[1], 'b.', markersize=2)
 
             # show the agent's orientation

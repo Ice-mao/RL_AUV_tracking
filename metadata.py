@@ -11,6 +11,7 @@ METADATA_v1 = {
     'size': [40, 40, 20],
     'bottom_corner': [-20, -20, -20],
     'fix_depth': -5,
+    'use_sonar':False,
     # init agent's param
     'sensor_r': 10.0,
     'fov': 100,
@@ -21,13 +22,12 @@ METADATA_v1 = {
     'p_free': 0.35,  # Probability that cell is free with total confidence
     'resolution': 0.1,  # Grid resolution in [m]
 
-
     # init target's param
     'measurement_disfactor': 0.9,
     'target_init_cov': 50.0,  # initial target diagonal Covariance.
     'lin_dist_range_a2t': (3.0, 8.0),
     'ang_dist_range_a2t': (-np.pi / 5, np.pi / 5),
-    'lin_dist_range_t2b': (0.0, 10.0),
+    'lin_dist_range_t2b': (0.0, 2.0),
     'ang_dist_range_t2b': (-np.pi / 2, np.pi / 2),
     'insight': True,
     'noblock': True,
@@ -62,12 +62,12 @@ METADATA = METADATA_v1
 
 TTENV_EVAL_SET = [
     {   # Tracking
-        'sensor_r_sd': 0.5,  # sensor range noise.
+        'sensor_r_sd': 0.2,  # sensor range noise.
         'sensor_b_sd': 0.01,  # sensor bearing noise.
-        'lin_dist_range_a2b': (3.0, 10.0),
-        'ang_dist_range_a2b': (-np.pi, np.pi),
-        'lin_dist_range_b2t': (0.0, 3.0),
-        'ang_dist_range_b2t': (-np.pi / 2, np.pi / 2),
+        'lin_dist_range_a2t': (3.0, 8.0),
+        'ang_dist_range_a2t': (-np.pi / 4, np.pi / 4),
+        'lin_dist_range_t2b': (0.0, 3.0),
+        'ang_dist_range_t2b': (-np.pi / 2, np.pi / 2),
         'insight': True,
         'noblock': True,
         'target_speed_limit': 2.5,

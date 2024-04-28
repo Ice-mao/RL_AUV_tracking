@@ -16,6 +16,8 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 import auv_env
 import torch
 import numpy as np
+from numpy import linalg as LA
+import csv
 import argparse
 from policy_net import SEED1, set_seed, CustomCNN
 
@@ -216,9 +218,15 @@ def keep_learn(env, model_dir, log_dir, model_name):
 
 
 def evaluate(model_dir):
+    """
+    2
+    :param model_dir:
+    :return:
+    """
     from metadata import TTENV_EVAL_SET
     # 0 tracking 1 discovery 2 navagation
     METADATA.update(TTENV_EVAL_SET[0])
+
     env = auv_env.make(args.env,
                        render=args.render,
                        record=args.record,
@@ -236,10 +244,28 @@ def evaluate(model_dir):
     model = SAC.load(model_dir, device='cuda', env=env,
                      custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')
-    obs, _ = env.reset()
-    for _ in range(200):
-        action, _states = model.predict(obs, deterministic=True)
-        obs, reward, done, _, inf = env.step(action)
+
+    for i in range(10):
+        # init the eval data
+        prior_data = []  # sigma t+1
+        posterior_data = []  # sigma t+1|t
+        observed = []
+
+        obs, _ = env.reset()
+        for _ in range(200):
+            action, _states = model.predict(obs, deterministic=True)
+            obs, reward, done, _, inf = env.step(action)
+
+            prior_data.append(-np.log(LA.det(env.env.env.world.belief_targets[0].cov)))
+            posterior_data.append(-np.log(LA.det(env.env.env.world.record_cov_posterior[0])))
+            observed.append(env.env.env.world.record_observed[0])
+
+        # 对于列表
+        with open('data_record/model_q_'+str(METADATA['const_q'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            # 遍历列表并写入数据
+            for j in range(len(prior_data)):
+                writer.writerow([prior_data[j], posterior_data[j], observed[j]])
 
 def eval_greedy(model_dir):
     from metadata import TTENV_EVAL_SET
@@ -258,11 +284,28 @@ def eval_greedy(model_dir):
                        )
     from auv_baseline.greedy import Greedy
     greedy = Greedy(env.env.env)
-    obs, _ = env.reset()
-    for _ in range(200):
-        action = greedy.predict(obs)
-        obs, reward, done, _, inf = env.step(action)
 
+    for i in range(10):
+        # init the eval data
+        prior_data = []  # sigma t+1
+        posterior_data = []  # sigma t+1|t
+        observed = []
+
+        obs, _ = env.reset()
+        for _ in range(200):
+            action = greedy.predict(obs)
+            obs, reward, done, _, inf = env.step(action)
+
+            prior_data.append(-np.log(LA.det(env.env.env.world.belief_targets[0].cov)))
+            posterior_data.append(-np.log(LA.det(env.env.env.world.record_cov_posterior[0])))
+            observed.append(env.env.env.world.record_observed[0])
+
+        # 对于列表
+        with open('data_record/greedy_q_'+str(METADATA['const_q'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            # 遍历列表并写入数据
+            for j in range(len(prior_data)):
+                writer.writerow([prior_data[j], posterior_data[j], observed[j]])
 
 def env_test():
     model_dir = '../models/test'

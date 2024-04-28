@@ -43,7 +43,10 @@ class World_AUV:
             self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         else:
             self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
-
+        # for record
+        self.record_cov_posterior = []
+        self.record_observed = []
+        
         # Setup environment
         margin = 0.25
         self.size = np.array([METADATA['size'][0]-2*margin, METADATA['size'][1]-2*margin, METADATA['size'][2]])
@@ -140,6 +143,7 @@ class World_AUV:
 
         # Compute the RL state.
         self.state_func(observed)
+        self.record_observed = observed
         if METADATA['render']:
             print(is_col, observed[0], reward)
         return self.state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
@@ -379,15 +383,18 @@ class World_AUV:
 
     def observe_and_update_belief(self):
         observed = []
+        self.record_cov_posterior = []
         for i in range(self.num_targets):
             observation = self.observation(self.targets[i])
             observed.append(observation[0])
             if observation[0]:  # if observed, update the target belief.
+                # we use truth
                 self.belief_targets[i].update(observation[1],
                                               np.array([self.agent.est_state.vec[0], self.agent.est_state.vec[1],
                                                         np.radians(self.agent.est_state.vec[8])]))
                 if not (self.has_discovered[i]):
                     self.has_discovered[i] = 1
+            self.record_cov_posterior.append(self.belief_targets[i].cov)
         return observed
 
     def get_reward(self, is_col, is_training=True, c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
