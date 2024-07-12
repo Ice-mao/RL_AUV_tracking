@@ -10,6 +10,14 @@ To run the simulation, first install all dependencies
 
 - HoloOcean
 - Stable Baseline3
+- pynput
+- bezier
+- filterpy
+- inekf
+- scipy
+- sb3-contrib
+- seaborn
+- shapely
 
 Then simply run the script
 ```
