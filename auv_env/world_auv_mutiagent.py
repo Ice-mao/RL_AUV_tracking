@@ -17,7 +17,8 @@ import logging
 
 class World_AUV:
     """
-        different from world:target is also an auv
+        different from world:targets are more than one.
+        need TestMap_AUV_mutiagent_sonar / TestMap_AUV_mutiagent
     """
 
     def __init__(self, map, show, verbose, num_targets, **kwargs):
@@ -83,7 +84,7 @@ class World_AUV:
         # Build a robot
         self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state,
                               scenario=self.map)
-        self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
+        self.targets = [AgentAuvTarget(dim=3, rank=i, sampling_period=sampling_period, sensor=target_init_state
                                        , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
                                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean, l_p=METADATA['lqr_l_p'])
                         for i in range(self.num_targets)]
@@ -118,13 +119,12 @@ class World_AUV:
             self.agent_last_u = self.agent_u
         for j in range(50):
             for i in range(self.num_targets):
-                target = 'target'+str(i)
                 if self.has_discovered[i]:
-                    self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
-                    self.ocean.act(target, self.target_u)
+                    self.target_u = self.targets[i].update(self.sensors['target'+str(i)], self.sensors['t'])
+                    self.ocean.act("target"+str(i), self.target_u)
                 else:
                     self.target_u = np.zeros(8)
-                    self.ocean.act(target, self.target_u)
+                    self.ocean.act("target"+str(i), self.target_u)
             if j == 0:
                 self.agent_u = self.u
             self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
@@ -135,7 +135,10 @@ class World_AUV:
         observed = self.observe_and_update_belief()
         is_col = not (self.obstacles.check_obstacle_collision(self.agent.state.vec[:2], self.margin2wall)
                       and self.in_bound(self.agent.state.vec[:2])
-                      and np.linalg.norm(self.agent.state.vec[:2] - self.targets[0].state.vec[:2]) > self.margin)
+                      and (  # 对于所有目标
+                        np.linalg.norm(self.agent.state.vec[:2] - target.state.vec[:2]) > self.margin
+                        for target in self.targets)
+                      )
 
         # Compute a reward from b_t+1|t+1 or b_t+1|t.
         reward, done, mean_nlogdetcov, std_nlogdetcov = self.get_reward(is_col=is_col)
@@ -192,32 +195,27 @@ class World_AUV:
         #                                             angular_velocity=[0.0, 0.0, 0.0])
         self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
                                            rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
+        # self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
+        #                                               rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)],
+        #                                               velocity=[0.0, 0.0, 0.0],
+        #                                               angular_velocity=[0.0, 0.0, 0.0])
+        self.ocean.agents['target'].teleport(location=self.target_init_pos,
+                                             rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
         self.u = np.zeros(8)
         self.ocean.act("auv0", self.u)
-
-        for i in range(self.num_targets):
-            target = 'target'+str(i)
-            # self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
-            #                                               rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)],
-            #                                               velocity=[0.0, 0.0, 0.0],
-            #                                               angular_velocity=[0.0, 0.0, 0.0])
-            self.ocean.agents[target].teleport(location=self.target_init_pos,
-                                                 rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
-            self.target_u = np.zeros(8)
-            self.ocean.act(target, self.target_u)
-
+        self.target_u = np.zeros(8)
+        self.ocean.act("target", self.target_u)
         self.sensors = self.ocean.tick()
 
         self.set_limits()
         self.build_models(sampling_period=self.sampling_period,
                           agent_init_state=self.sensors['auv0'],
-                          target_init_state=self.sensors['target0'],    #TODO
+                          target_init_state=self.sensors['target'],
                           time=self.sensors['t'])
         # reset model
         self.agent.reset(self.sensors['auv0'])
         for i in range(self.num_targets):
-            target = 'target' + str(i)
-            self.targets[i].reset(self.sensors[target], obstacles=self.obstacles,
+            self.targets[i].reset(self.sensors['target'], obstacles=self.obstacles,
                                   scene=self.ocean, start_time=self.sensors['t'])
             self.belief_targets[i].reset(
                 init_state=np.concatenate((self.belief_init_pos[:2], np.zeros(2))),
@@ -251,6 +249,7 @@ class World_AUV:
                              ang_dist_range_t2b=METADATA['ang_dist_range_t2b'],
                              blocked=None, ):
         is_agent_valid = False
+        targets_init_pos = []
         while not is_agent_valid:
             init_pose = {}
             np.random.seed()
@@ -287,17 +286,28 @@ class World_AUV:
                                 is_not_insight = True
                             else:
                                 is_not_insight = False
+
                             is_target_valid = (
-                                    self.in_bound(target_init_pos) and
-                                    self.obstacles.check_obstacle_collision(target_init_pos, self.margin2wall + 2) and
-                                    np.linalg.norm(target_init_pos - agent_init_pos) > self.margin and
-                                    is_not_insight)
+                                self.in_bound(target_init_pos) and
+                                self.obstacles.check_obstacle_collision(target_init_pos, self.margin2wall + 2) and
+                                np.linalg.norm(target_init_pos - agent_init_pos) > self.margin and
+                                is_not_insight and
+                                all(                     # consider targets' collision
+                                    np.linalg.norm(target_init_pos - targets_init_pos[j]) > self.margin
+                                    for j in range(i)
+                                )
+                            )
+                            # if i != 0:
+                            #     is_target_valid = is_target_valid and all(
+                            #         np.linalg.norm(target_init_pos - targets_init_pos[j]) > self.margin
+                            #         for j in range(i)
+                            #     )
                         count += 1
                         if count > 100:
                             is_agent_valid = False
                             count = 0
                             break
-
+                    # consider the belief part
                     count = 0
                     is_belief_valid, belief_init_pos = False, np.zeros((2,))
                     while not is_belief_valid:
@@ -313,7 +323,7 @@ class World_AUV:
                         if count > 100:
                             is_agent_valid = False
                             break
-
+                    targets_init_pos.append(np.append(target_init_pos, self.fix_depth))
 
         return (np.append(agent_init_pos, self.fix_depth), agent_init_yaw,
                 np.append(target_init_pos, self.fix_depth), target_init_yaw,

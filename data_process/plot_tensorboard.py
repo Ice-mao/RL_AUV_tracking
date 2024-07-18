@@ -16,21 +16,25 @@ def smooth(csv_path,weight=0.85):
     # save.to_csv('smooth_'+csv_path)
 
 # 读取第一个CSV文件
-csv_file_path1 = 'data/DQN_1.csv'  # 替换为第一个CSV文件的路径
+csv_file_path1 = '../../data_record/2d_dqn.csv'
 df1 = smooth(csv_file_path1, weight=0.6)
-# df1 = pd.read_csv(csv_file_path1, header=None, skiprows=1)
-
-# 提取第一个CSV文件的x和y轴数据
 x_data1 = df1.iloc[1:, 0].astype(float)
 y_data1 = df1.iloc[1:, 1].astype(float)
-
-# # 读取第二个CSV文件
-# csv_file_path2 = 'train_loss.csv'  # 替换为第二个CSV文件的路径
-# df2 = pd.read_csv(csv_file_path2, header=None, skiprows=1)
-#
-# # 提取第二个CSV文件的x和y轴数据
-# x_data2 = df2.iloc[1:, 1].astype(float)
-# y_data2 = df2.iloc[1:, 2].astype(float)
+# 读取第二个CSV文件
+csv_file_path2 = '../../data_record/2d_ppo.csv'
+df2 = smooth(csv_file_path2, weight=0.6)
+x_data2 = df2.iloc[1:, 0].astype(float)
+y_data2 = df2.iloc[1:, 1].astype(float)
+# 读取第一个CSV文件
+csv_file_path3 = '../../data_record/2d_rppo.csv'
+df3 = smooth(csv_file_path3, weight=0.6)
+x_data3 = df3.iloc[1:, 0].astype(float)
+y_data3 = df3.iloc[1:, 1].astype(float)
+# 读取第一个CSV文件
+csv_file_path4 = '../../data_record/2d_sac.csv'
+df4 = smooth(csv_file_path4, weight=0.6)
+x_data4 = df4.iloc[1:, 0].astype(float)
+y_data4 = df4.iloc[1:, 1].astype(float)
 
 # 设置绘图风格，使用科学论文常见的线条样式和颜色
 print(plt.style.available)
@@ -45,12 +49,16 @@ font = {'family': 'sans-serif',
 plt.rc('font', **font)
 
 # 绘制第一幅图像
-plt.figure(1)
-plt.plot(x_data1, y_data1, color='#424e66', linewidth=2)
-plt.xlabel('timestep')
-plt.ylabel('ep_rew_mean')
-plt.title('reward_mean')
+plt.figure()
+plt.plot(x_data1, y_data1, color='darkcyan', linewidth=2)
+plt.plot(x_data2, y_data2, color='brown', linewidth=2)
+plt.plot(x_data3, y_data3, color='royalblue', linewidth=2)
+plt.plot(x_data4, y_data4, color='#424e66', linewidth=2)
+plt.xlabel('时间步')
+plt.ylabel('阶段平均奖励')
+plt.title('奖励结果')
 
+plt.legend(["DQN", "PPO", "RPPO", "SAC"])
 plt.tight_layout()
 plt.grid()
 # 调整布局使得图像不溢出

@@ -71,6 +71,8 @@ class AgentAuv(Agent):
         # Estimate State
         self.last_state = self.state
         self.state = State(sensors)
+        # if you want to eval,use the observer to update
+        # self.est_state = State(sensors)
         self.est_state = self.observer.tick(sensors, self.sampling_period)
         # print(self.est_state.vec[0], self.est_state.vec[1])
         if METADATA['use_sonar']:
@@ -282,15 +284,16 @@ class AgentAuvTarget(Agent):
         use for target of HoveringAUV
     """
 
-    def __init__(self, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time, scene):
+    def __init__(self, rank, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time, scene, l_p):
         Agent.__init__(self, dim, sampling_period)
+        self.rank = rank
         self.size = size
         self.bottom_corner = bottom_corner
         self.fix_depth = fixed_depth
         self.obstacles = obstacles
         self.scene = scene
         # init the part of Auv
-        self.controller = LQR(l_p=50, l_v=0.001)
+        self.controller = LQR(l_p=l_p, l_v=0.001)
         self.state = State(sensor)
         # init planner rrt
         self.init_pos = self.state.vec[:3]
@@ -321,7 +324,7 @@ class AgentAuvTarget(Agent):
                                                                                                   self.margin2wall + 2)
             self.target_pos = np.append(_target, self.fix_depth)
         if self.planner.desire_path_num == 0:
-            self.scene.agents['target'].teleport(rotation=[0.0, 0.0,
+            self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
                                                            -np.rad2deg(np.arctan2(
                                                                self.planner.path[1, 1] - self.planner.path[1, 0],
                                                                self.planner.path[0, 1] - self.planner.path[0, 0]))])
@@ -338,7 +341,10 @@ class AgentAuvTarget(Agent):
             _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
             is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
                                                                                               self.margin2wall + 2)
-        self.target_pos = np.append(_target, self.fix_depth)
+        if not METADATA['eval_fixed']:
+            self.target_pos = np.append(_target, self.fix_depth)
+        else:
+            self.target_pos = np.array([-15,15,-5])
         while not self.planner.reset(start=self.init_pos, end=self.target_pos, time=start_time):
             is_end_valid = False
             while not is_end_valid:
@@ -347,7 +353,7 @@ class AgentAuvTarget(Agent):
                                                                                                   self.margin2wall + 2)
             self.target_pos = np.append(_target, self.fix_depth)
         if self.planner.desire_path_num == 0:
-            self.scene.agents['target'].teleport(rotation=[0.0, 0.0,
+            self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
                                                            np.rad2deg(np.arctan2(
                                                                self.planner.path[1, 1] - self.planner.path[1, 0],
                                                                self.planner.path[0, 1] - self.planner.path[0, 0]))])
@@ -369,7 +375,10 @@ class AgentAuvTarget(Agent):
                 _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
                 is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
                                                                                                   self.margin2wall)
-            self.target_pos = np.append(_target, self.fix_depth)
+            if not METADATA['eval_fixed']:
+                self.target_pos = np.append(_target, self.fix_depth)
+            else:
+                self.target_pos = np.array([-15, 15, -5])
             while not self.planner.reset(start=true_state, end=self.target_pos, time=t):
                 is_end_valid = False
                 while not is_end_valid:
@@ -380,7 +389,7 @@ class AgentAuvTarget(Agent):
             if METADATA['render']:
                 self.planner.draw_traj(self.scene, 30)
         if self.planner.desire_path_num == 0:
-            self.scene.agents['target'].teleport(rotation=[0.0, 0.0,
+            self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
                                                            np.rad2deg(np.arctan2(
                                                                self.planner.path[1, 1] - self.planner.path[1, 0],
                                                                self.planner.path[0, 1] - self.planner.path[0, 0]))])

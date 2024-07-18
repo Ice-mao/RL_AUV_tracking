@@ -15,7 +15,7 @@ class Greedy:
     def __init__(self, env):
         self.action_space = env.action_space
         self.world = env.world
-        self.N_nbv = 100  # select the num of sample points.
+        self.N_nbv = 50  # select the num of sample points.
 
     def predict(self, obs):
         """
@@ -23,7 +23,7 @@ class Greedy:
         """
         # belief = self.world.belief_targets
         # self.sample_belief = None
-        best_reward = -10
+        best_reward = -100
         best_viewpoint = None
         for i in range(self.N_nbv):
             # 初始化每个采样对应的belief
@@ -34,17 +34,17 @@ class Greedy:
             # 归一化展开，并得到全局路径点坐标
             r = random_action_waypoint[0] * self.world.action_range_scale[0]
             theta = random_action_waypoint[1] * self.world.action_range_scale[1] - self.world.action_range_scale[1] / 2
-            global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.world.agent.est_state.vec[:2],
-                                                             np.radians(self.world.agent.est_state.vec[8]))
+            global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.world.agent.state.vec[:2],
+                                                             np.radians(self.world.agent.state.vec[8]))
             angle = random_action_waypoint[2] * self.world.action_range_scale[2] - self.world.action_range_scale[2] / 2
-            global_waypoint[2] = self.world.agent.est_state.vec[8] + np.rad2deg(angle)
+            global_waypoint[2] = self.world.agent.state.vec[8] + np.rad2deg(angle)
 
             # The targets are observed by the agent (z_t+1) and the beliefs are updated.
             self.cov = self.observe_and_update_belief(global_waypoint)
             is_col = not (self.world.obstacles.check_obstacle_collision(global_waypoint[:2], self.world.margin2wall)
                           and self.world.in_bound(global_waypoint[:2])
                           and np.linalg.norm(
-                        global_waypoint[:2] - self.world.targets[0].state.vec[:2]) > self.world.margin)
+                        global_waypoint[:2] - self.world.targets[0].state.vec[:2]) > self.world.margin+2)
 
             # Compute a reward from b_t+1|t+1 or b_t+1|t.
             reward, done, mean_nlogdetcov, std_nlogdetcov = self.get_reward(is_col=is_col)

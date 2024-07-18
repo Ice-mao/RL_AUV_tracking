@@ -22,6 +22,7 @@ if __name__ == '__main__':
 
     # Init env
     scenario = "TestMap_AUV_sonar"
+    # scenario = 'TestMap'
     env = holoocean.make(scenario)
 
     # Init keyboard control
@@ -44,7 +45,8 @@ if __name__ == '__main__':
     init_flag = 1
 
     ##################### Main loop #####################
-    env.spawn_prop(prop_type='box', location=[10, 10, -5], scale=[2,2,2], sim_physics=0, material='steel')
+    env.spawn_prop(prop_type='box', location=[10, 10, -5], scale=[5,5,5],
+                    material='steel', sim_physics=True)
     # env.draw_box(center=[10, 10, -5],extent=[1,1,1],lifetime=0)
     # env.weather.stop_day_cycle()
     imagingsonar = ImagingSonar(scenario)

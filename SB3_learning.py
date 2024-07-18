@@ -32,7 +32,7 @@ time_string = current_time.strftime('%m-%d_%H')
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train; 1:keep train; 2:eval; 3:test',
                     default=0)
-parser.add_argument('--env', help='environment ID', type=str, default='TargetTracking')
+parser.add_argument('--env', help='environment ID', type=str, default='TargetTracking1')
 parser.add_argument('--render', help='whether to render', type=int, default=0)
 parser.add_argument('--record', help='whether to record', type=int, default=0)
 parser.add_argument('--ros', help='whether to use ROS', type=int, default=0)
@@ -110,8 +110,8 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 def main():
     if args.choice == '0' or args.choice == '1':
         # new training
-        log_dir = '../log/ppo_' + time_string + '/'
-        model_dir = '../models/ppo_' + time_string + '/'
+        log_dir = '../log/sac_' + time_string + '/'
+        model_dir = '../models/sac_' + time_string + '/'
 
         # keep training
         # model_dir = "../models/sac_04-01_18/"
@@ -139,7 +139,8 @@ def main():
             keep_learn(env, model_dir, log_dir, model_name)
 
     elif args.choice == '2':
-        model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-06_18/rl_model_720000_steps.zip'
+        # model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-06_18/rl_model_720000_steps.zip'
+        model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-29_13/rl_model_480000_steps.zip'
         evaluate(model_dir)
 
     elif args.choice == '3':
@@ -185,17 +186,17 @@ def learn(env, model_dir, log_dir):
     # model = DQN.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
 
     # PPO
-    model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=200, n_epochs=10,
-                gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
-                policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
-    # model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
-    #             learning_starts=100, batch_size=64, tau=0.005, gamma=0.99, train_freq=1,
-    #             gradient_steps=1, action_noise=None,
-    #             policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
-    #             )
+    # model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=200, n_epochs=10,
+    #             gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
+    #             policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
+    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
+                learning_starts=100, batch_size=128, tau=0.005, gamma=0.99, train_freq=1,
+                gradient_steps=1, action_noise=None,
+                policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
+                )
     # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
     #             clip_range_vf=0.1,
-    #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
+        #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
     # model = PPO.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
 
     # model = RecurrentPPO("CnnLstmPolicy", env, policy_kwargs=policy_kwargs, verbose=1,
@@ -244,12 +245,18 @@ def evaluate(model_dir):
     model = SAC.load(model_dir, device='cuda', env=env,
                      custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')
+    obs, _ = env.reset()
+    for _ in range(500):
+        action, _states = model.predict(obs, deterministic=True)
+        obs, reward, done, _, inf = env.step(action)
+
 
     for i in range(10):
         # init the eval data
         prior_data = []  # sigma t+1
         posterior_data = []  # sigma t+1|t
         observed = []
+        is_col = []
 
         obs, _ = env.reset()
         for _ in range(200):
@@ -259,15 +266,21 @@ def evaluate(model_dir):
             prior_data.append(-np.log(LA.det(env.env.env.world.belief_targets[0].cov)))
             posterior_data.append(-np.log(LA.det(env.env.env.world.record_cov_posterior[0])))
             observed.append(env.env.env.world.record_observed[0])
+            is_col.append(env.env.env.world.is_col)
 
         # 对于列表
-        with open('data_record/model_q_'+str(METADATA['const_q'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
+        with open('../data_record/greedy_comparion_l/model_l_'+str(METADATA['lqr_l_p'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
             writer = csv.writer(file)
             # 遍历列表并写入数据
             for j in range(len(prior_data)):
-                writer.writerow([prior_data[j], posterior_data[j], observed[j]])
+                writer.writerow([prior_data[j], posterior_data[j], observed[j], is_col[j]])
 
 def eval_greedy(model_dir):
+    """
+    4
+    :param model_dir:
+    :return:
+    """
     from metadata import TTENV_EVAL_SET
     # 0 tracking 1 discovery 2 navagation
     METADATA.update(TTENV_EVAL_SET[0])
@@ -290,6 +303,7 @@ def eval_greedy(model_dir):
         prior_data = []  # sigma t+1
         posterior_data = []  # sigma t+1|t
         observed = []
+        is_col = []
 
         obs, _ = env.reset()
         for _ in range(200):
@@ -299,15 +313,17 @@ def eval_greedy(model_dir):
             prior_data.append(-np.log(LA.det(env.env.env.world.belief_targets[0].cov)))
             posterior_data.append(-np.log(LA.det(env.env.env.world.record_cov_posterior[0])))
             observed.append(env.env.env.world.record_observed[0])
+            is_col.append(env.env.env.world.is_col)
 
         # 对于列表
-        with open('data_record/greedy_q_'+str(METADATA['const_q'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
+        with open('../data_record/greedy_comparion_l/greedy_500_l_'+str(METADATA['lqr_l_p'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
             writer = csv.writer(file)
             # 遍历列表并写入数据
             for j in range(len(prior_data)):
                 writer.writerow([prior_data[j], posterior_data[j], observed[j]])
 
 def env_test():
+    "3"
     model_dir = '../models/test'
     env = auv_env.make(args.env,
                        render=args.render,
@@ -316,6 +332,7 @@ def env_test():
                        directory=model_dir,
                        num_targets=args.nb_targets,
                        map=args.map,
+                       eval=True,
                        is_training=False,
                        t_steps=args.max_episode_step
                        )
@@ -323,7 +340,7 @@ def env_test():
     while True:
         action = env.action_space.sample()
         print(action)
-        # action = np.array([0.5, 1.0, 0.5])
+        action = np.array([0.0, 0.5, 0.5])
         obs, reward, done, _, inf = env.step(action)
 
 

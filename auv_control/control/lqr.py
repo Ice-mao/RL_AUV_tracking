@@ -3,7 +3,7 @@ from scipy.linalg import solve_continuous_are
 
 
 class LQR:
-    def __init__(self, l_p=100, l_v=0.01):
+    def __init__(self, l_p=50, l_v=0.01):
         # ----------- PARAMETERS OF AUV -----------#
         self.gravity = 9.81
         self.cob = np.array([0, 0, 5.0]) / 100

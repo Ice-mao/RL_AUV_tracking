@@ -16,19 +16,19 @@ digraph G {
 		color=white;
 		node [style=solid,color=red2, shape=circle];
 		a11 a12 a13 a14 a15;
-		label = "hidden layer 128";
+		label = "hidden layer 256";
 	}
     subgraph cluster_2 {
 		color=white;
 		node [style=solid,color=red2, shape=circle];
 		a21 a22 a23 a24 a25;
-		label = "hidden layer 128";
+		label = "hidden layer 256";
 	}
     subgraph cluster_3 {
 		color=white;
 		node [style=solid,color=red2, shape=circle];
 		a31 a32 a33 a34 a35;
-		label = "hidden layer 128";
+		label = "hidden layer 256";
 	}
 
 	subgraph cluster_4 {

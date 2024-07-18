@@ -3,6 +3,7 @@ import math
 import numpy as np
 import copy
 
+from metadata import METADATA
 from shapely import LineString
 from shapely.geometry import Point, Polygon
 
@@ -100,11 +101,16 @@ class Obstacle:
         self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         self.polygons = []  # ready for collision detection
         print('finish obstacles')
+
     def reset(self):
         np.random.seed()
-        self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=False)
+        if not METADATA['eval_fixed']:
+            self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=False)
+            self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
+        else:
+            self.chosen_idx = np.array([4, 5, 0, 7])
+            self.rot_angs = np.array([36.0, -72.0, -144.0, 125.99999999999999])
         print(self.chosen_idx)
-        self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         self.polygons = []  # ready for collision detection
 
     def draw_obstacle(self):
