@@ -8,7 +8,7 @@ Using reinforcement learning(RL) to train an agent to tracking the target in the
 
 To run the simulation, first install all dependencies
 
-- HoloOcean==0.5.0(maybe i will update later)
+- HoloOcean==1.0.0
 - Stable Baseline3
 - pynput
 - bezier
