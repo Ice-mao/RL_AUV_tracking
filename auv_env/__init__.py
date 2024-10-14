@@ -34,6 +34,8 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
         env0 = TargetTrackingBase(num_targets=num_targets, **kwargs)
     elif env_name == 'TargetTracking1':
         env0 = TargetTracking1(num_targets=num_targets, **kwargs)
+    elif env_name == 'TargetTracking1':
+        env0 = TargetTracking1(num_targets=num_targets, **kwargs)
     else:
         raise ValueError('No such environment exists.')
     # 使用gym中对episode进行timestep限制的wrapper进行封装，保证环境的更新

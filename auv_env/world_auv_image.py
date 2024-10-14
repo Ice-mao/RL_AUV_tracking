@@ -15,7 +15,7 @@ from gymnasium import spaces
 import logging
 
 
-class World_AUV:
+class World_AUV_Image:
     """
         different from world:target is also an auv
     """
@@ -31,6 +31,7 @@ class World_AUV:
         # init the param
         self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time
         self.random = METADATA['random']  # bool for domain random
+        self.task_random = METADATA['task_random']
         self.control_period = METADATA['control_period']
         self.sensor_r = METADATA['sensor_r']
         self.fov = METADATA['fov']
@@ -162,7 +163,7 @@ class World_AUV:
         self.obstacles.reset()
         self.obstacles.draw_obstacle()
 
-        if self.random:
+        if self.task_random:
             self.insight = np.random.choice([True, False])
         else:
             self.insight = METADATA['insight']
@@ -477,7 +478,7 @@ if __name__ == '__main__':
     from auv_control import scenario
 
     print("Test World")
-    world = World_AUV(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
+    world = World_AUV_Image(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
     world.reset()
     print(world.size)
     world.targets[0].planner.draw_traj(world.ocean, 30)

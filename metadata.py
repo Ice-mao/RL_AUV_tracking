@@ -40,6 +40,9 @@ METADATA_v1 = {
     'lqr_l_p': 50,
 
     # reinforcement learning setting.
+    'algorithm': 'PPO', # PPO、SAC、
+    'random': False,  # for domain randomization.
+    'task_random': True,
     'action_range_high': [1, 1, 1],
     'action_range_low': [0, 0, 0],
     'action_range_scale': [3, np.pi, np.pi/2],

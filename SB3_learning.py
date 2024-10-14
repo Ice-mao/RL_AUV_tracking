@@ -32,6 +32,7 @@ time_string = current_time.strftime('%m-%d_%H')
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train; 1:keep train; 2:eval; 3:test',
                     default=0)
+# for env parse in
 parser.add_argument('--env', help='environment ID', type=str, default='TargetTracking1')
 parser.add_argument('--render', help='whether to render', type=int, default=0)
 parser.add_argument('--record', help='whether to record', type=int, default=0)
@@ -39,11 +40,12 @@ parser.add_argument('--ros', help='whether to use ROS', type=int, default=0)
 parser.add_argument('--map', help='choose your map in holoocean', type=str, default='TestMap')
 parser.add_argument('--nb_targets', help='the number of targets', type=int, default=1)
 parser.add_argument('--nb_envs', help='the number of env', type=int, default=6)
+parser.add_argument('--max_episode_step', type=int, default=200)
+
 parser.add_argument('--log_dir', help='a path to a directory to log your data', type=str,
                     default='./models/dqn_cnn-' + time_string + '/')
 # parser.add_argument('--map', type=str, default="obstacles02")
 parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--max_episode_step', type=int, default=200)
 args = parser.parse_args()
 
 if args.render:
@@ -110,13 +112,19 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
 def main():
     if args.choice == '0' or args.choice == '1':
         # new training
-        log_dir = '../log/sac_' + time_string + '/'
-        model_dir = '../models/sac_' + time_string + '/'
+        if args.choice == '0':
+            if METADATA['algorithm'] == "PPO":
+                log_dir = '../log/ppo_' + time_string + '/'
+                model_dir = '../models/ppo_' + time_string + '/'
+            elif METADATA['algorithm'] == "SAC":
+                log_dir = '../log/sac_' + time_string + '/'
+                model_dir = '../models/sac_' + time_string + '/'
 
         # keep training
-        # model_dir = "../models/sac_04-01_18/"
-        # log_dir = "../log/sac_04-01_18/"
-        model_name = "120000_model"
+        elif args.choice == '1':
+            model_dir = "../models/ppo_10-14_18/"
+            log_dir = "../log/ppo_10-14_18/"
+            model_name = "100000_model"
 
         monitor_dir = log_dir
         os.makedirs(monitor_dir, exist_ok=True)
@@ -129,7 +137,7 @@ def main():
                                                   num_targets=args.nb_targets,
                                                   map=args.map,
                                                   is_training=True,
-                                                  t_steps=args.max_episode_step
+                                                  t_steps=args.max_episode_step,
                                                   ) for _ in range(args.nb_envs)])
         env = VecMonitor(env, monitor_dir)
         set_seed(41)
@@ -156,11 +164,11 @@ def learn(env, model_dir, log_dir):
     os.makedirs(log_dir, exist_ok=True)
     callback = SaveOnBestTrainingRewardCallback(check_freq=5000, log_dir=log_dir, save_path=model_dir)
     checkpoint_callback = CheckpointCallback(
-        save_freq=max(120000 // args.nb_envs, 1),
+        save_freq=max(80000 // args.nb_envs, 1),
         save_path=model_dir,
         name_prefix="rl_model",
-        save_replay_buffer=True,
-        save_vecnormalize=True,
+        # save_replay_buffer=False,
+        # save_vecnormalize=True,
     )
     callback = CallbackList([callback, checkpoint_callback])
     # 网络架构选择
@@ -176,28 +184,30 @@ def learn(env, model_dir, log_dir):
     # )  # 设置网络结构为自定义的网络架构（支持自定义输入）
 
     # 算法选择
-    # DQN
-    # model = DQN("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
-    #             batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
-    #             exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
-    # model = DQN("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
-    #             batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
-    #             exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
-    # model = DQN.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
+    if METADATA['algorithm'] == "DQN":
+        model = DQN("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
+                    batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
+                    exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
+        # model = DQN("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
+        #             batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
+        #             exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
+        # model = DQN.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
 
     # PPO
-    # model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=200, n_epochs=10,
-    #             gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
-    #             policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
-    model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
-                learning_starts=100, batch_size=128, tau=0.005, gamma=0.99, train_freq=1,
-                gradient_steps=1, action_noise=None,
-                policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
-                )
-    # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
-    #             clip_range_vf=0.1,
+    if METADATA['algorithm'] == "PPO":
+        model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=200, n_epochs=10,
+                    gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
+                    policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
+        # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
+        #             clip_range_vf=0.1,
         #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
-    # model = PPO.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
+
+    if METADATA['algorithm'] == "SAC":
+        model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
+                    learning_starts=100, batch_size=128, tau=0.005, gamma=0.99, train_freq=1,
+                    gradient_steps=1, action_noise=None,
+                    policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
+                    )
 
     # model = RecurrentPPO("CnnLstmPolicy", env, policy_kwargs=policy_kwargs, verbose=1,
     #                      learning_rate=0.001, clip_range=0.2, batch_size=64,
@@ -211,8 +221,25 @@ def keep_learn(env, model_dir, log_dir, model_name):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     callback = SaveOnBestTrainingRewardCallback(check_freq=5000, log_dir=log_dir, save_path=model_dir)
-    model = SAC.load(model_dir + model_name, device='cuda', env=env,
-                     custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+    checkpoint_callback = CheckpointCallback(
+        save_freq=max(80000 // args.nb_envs, 1),
+        save_path=model_dir,
+        name_prefix="rl_model",
+        # save_replay_buffer=False,
+        # save_vecnormalize=True,
+    )
+    callback = CallbackList([callback, checkpoint_callback])
+    # PPO
+    if METADATA['algorithm'] == "PPO":
+        model = PPO.load(model_dir + model_name, device='cuda', env=env,
+                         custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+        # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
+        #             clip_range_vf=0.1,
+        #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
+
+    if METADATA['algorithm'] == "SAC":
+        model = SAC.load(model_dir + model_name, device='cuda', env=env,
+                         custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     model.learn(total_timesteps=1000000, tb_log_name="second_run", reset_num_timesteps=False,
                 log_interval=5, callback=callback)
     model.save(model_dir + 'final_model')
@@ -251,29 +278,29 @@ def evaluate(model_dir):
         obs, reward, done, _, inf = env.step(action)
 
 
-    for i in range(10):
-        # init the eval data
-        prior_data = []  # sigma t+1
-        posterior_data = []  # sigma t+1|t
-        observed = []
-        is_col = []
-
-        obs, _ = env.reset()
-        for _ in range(200):
-            action, _states = model.predict(obs, deterministic=True)
-            obs, reward, done, _, inf = env.step(action)
-
-            prior_data.append(-np.log(LA.det(env.env.env.world.belief_targets[0].cov)))
-            posterior_data.append(-np.log(LA.det(env.env.env.world.record_cov_posterior[0])))
-            observed.append(env.env.env.world.record_observed[0])
-            is_col.append(env.env.env.world.is_col)
-
-        # 对于列表
-        with open('../data_record/greedy_comparion_l/model_l_'+str(METADATA['lqr_l_p'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
-            writer = csv.writer(file)
-            # 遍历列表并写入数据
-            for j in range(len(prior_data)):
-                writer.writerow([prior_data[j], posterior_data[j], observed[j], is_col[j]])
+    # for i in range(10):
+    #     # init the eval data
+    #     prior_data = []  # sigma t+1
+    #     posterior_data = []  # sigma t+1|t
+    #     observed = []
+    #     is_col = []
+    #
+    #     obs, _ = env.reset()
+    #     for _ in range(200):
+    #         action, _states = model.predict(obs, deterministic=True)
+    #         obs, reward, done, _, inf = env.step(action)
+    #
+    #         prior_data.append(-np.log(LA.det(env.env.env.world.belief_targets[0].cov)))
+    #         posterior_data.append(-np.log(LA.det(env.env.env.world.record_cov_posterior[0])))
+    #         observed.append(env.env.env.world.record_observed[0])
+    #         is_col.append(env.env.env.world.is_col)
+    #
+    #     # 对于列表
+    #     with open('../data_record/greedy_comparion_l/model_l_'+str(METADATA['lqr_l_p'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
+    #         writer = csv.writer(file)
+    #         # 遍历列表并写入数据
+    #         for j in range(len(prior_data)):
+    #             writer.writerow([prior_data[j], posterior_data[j], observed[j], is_col[j]])
 
 def eval_greedy(model_dir):
     """

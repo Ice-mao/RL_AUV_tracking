@@ -36,7 +36,13 @@ class AgentAuv(Agent):
     def __init__(self, dim, sampling_period, sensor, scenario):
         Agent.__init__(self, dim, sampling_period)
         # init the control part of Auv
-        self.controller = LQR()
+        if METADATA['random']:
+            l_p = np.random.normal(40, 15)
+        else:
+            l_p = 50
+        if l_p is not None:
+            self.controller = LQR(l_p=l_p)
+
         if METADATA['render']:
             self.keyboard = KeyBoardCmd(20)
 
@@ -293,7 +299,11 @@ class AgentAuvTarget(Agent):
         self.obstacles = obstacles
         self.scene = scene
         # init the part of Auv
-        self.controller = LQR(l_p=l_p, l_v=0.001)
+        if METADATA['random']:
+            data = [20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 200, 250]
+            self.controller = LQR(l_p=np.random.choice(data), l_v=0.001)
+        else:
+            self.controller = LQR(l_p=l_p, l_v=0.001)
         self.state = State(sensor)
         # init planner rrt
         self.init_pos = self.state.vec[:3]
