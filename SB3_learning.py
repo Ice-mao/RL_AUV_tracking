@@ -122,9 +122,9 @@ def main():
 
         # keep training
         elif args.choice == '1':
-            model_dir = "../models/ppo_10-14_18/"
-            log_dir = "../log/ppo_10-14_18/"
-            model_name = "100000_model"
+            model_dir = "../models/ppo_10-14_21/"
+            log_dir = "../log/ppo_10-14_21/"
+            model_name = "rl_model_960000_steps.zip"
 
         monitor_dir = log_dir
         os.makedirs(monitor_dir, exist_ok=True)
@@ -148,7 +148,7 @@ def main():
 
     elif args.choice == '2':
         # model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-06_18/rl_model_720000_steps.zip'
-        model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-29_13/rl_model_480000_steps.zip'
+        model_dir = '/home/dell-t3660tow/data/RL/RL_AUV_tracking/models/ppo_10-14_21/rl_model_960000_steps.zip'
         evaluate(model_dir)
 
     elif args.choice == '3':
@@ -229,17 +229,14 @@ def keep_learn(env, model_dir, log_dir, model_name):
         # save_vecnormalize=True,
     )
     callback = CallbackList([callback, checkpoint_callback])
-    # PPO
+
     if METADATA['algorithm'] == "PPO":
         model = PPO.load(model_dir + model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-        # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
-        #             clip_range_vf=0.1,
-        #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
-
     if METADATA['algorithm'] == "SAC":
         model = SAC.load(model_dir + model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+
     model.learn(total_timesteps=1000000, tb_log_name="second_run", reset_num_timesteps=False,
                 log_interval=5, callback=callback)
     model.save(model_dir + 'final_model')
@@ -253,7 +250,7 @@ def evaluate(model_dir):
     """
     from metadata import TTENV_EVAL_SET
     # 0 tracking 1 discovery 2 navagation
-    METADATA.update(TTENV_EVAL_SET[0])
+    # METADATA.update(TTENV_EVAL_SET[0])
 
     env = auv_env.make(args.env,
                        render=args.render,
@@ -267,10 +264,12 @@ def evaluate(model_dir):
                        t_steps=args.max_episode_step
                        )
     # get render parmater true
-    # model = PPO.load(model_dir, device='cuda', env=env,
-    #                  custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    model = SAC.load(model_dir, device='cuda', env=env,
-                     custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+    if METADATA['algorithm'] == "PPO":
+        model = PPO.load(model_dir, device='cuda', env=env,
+                         custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+    if METADATA['algorithm'] == "SAC":
+        model = SAC.load(model_dir, device='cuda', env=env,
+                         custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')
     obs, _ = env.reset()
     for _ in range(500):

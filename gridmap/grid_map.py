@@ -43,14 +43,19 @@ class GridMap:
 
         self.X_lim = X_lim
         self.Y_lim = Y_lim
-        self.resolution = resolution
+        # self.resolution = resolution
+        self.resolution = (X_lim[1]-X_lim[0])/256
+        # x = np.arange(start=X_lim[0], stop=X_lim[1] + resolution, step=resolution)
+        # y = np.arange(start=Y_lim[0], stop=Y_lim[1] + resolution, step=resolution)
 
-        x = np.arange(start=X_lim[0], stop=X_lim[1] + resolution, step=resolution)
-        y = np.arange(start=Y_lim[0], stop=Y_lim[1] + resolution, step=resolution)
+        x = np.linspace(start=X_lim[0], stop=X_lim[1], num=256)
+        y = np.linspace(start=Y_lim[0], stop=Y_lim[1], num=256)
 
         # probability matrix in log-odds scale:
         self.l = np.full(shape=(len(x), len(y)), fill_value=log_odds(p))
         self.size = np.shape(self.l)
+
+        self.cal_entropy()
 
     def get_shape(self):
         """
@@ -99,11 +104,12 @@ class GridMap:
         """
 		Transformation to GRAYSCALE image format
 		"""
+        # return 1 - retrieve_p(self.l)
         return 1 - retrieve_p(self.l)
 
     def discretize(self, x_cont, y_cont):
         """
-		Discretize continious x and y 
+		Discretize continious x and y
 		并取整表示栅格
 		"""
         x = int((x_cont - self.X_lim[0]) / self.resolution)
@@ -171,7 +177,17 @@ class GridMap:
 
         return zip(X_neighbours, Y_neighbours)
 
-
+    def cal_entropy(self):
+        """
+            cal the entropy of the map
+        """
+        self.calc_MLE()  # consider the nan condition.
+        self.gray_map = self.to_grayscale_image()
+        self.entropy = self.gray_map
+        for x in range(self.entropy.shape[0]):
+            for y in range(self.entropy.shape[1]):
+                self.entropy[x][y] = (- self.gray_map[x][y]*np.log(self.gray_map[x][y])
+                                      - (1-self.gray_map[x][y])*np.log(1-self.gray_map[x][y]))
 def set_pixel_color(bgr_image, x, y, color):
     """
     Set 'color' to the given pixel (x,y) on 'bgr_image'

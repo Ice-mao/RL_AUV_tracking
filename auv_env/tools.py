@@ -229,18 +229,81 @@ class RangeFinder:
                     self.LaserCount = config['LaserCount']
                     self.LaserDebug = config['LaserDebug']
         self.min_distance = self.LaserMaxDistance
-        self.angle = 0
+        self.min_angle = 0
+        self.azi = int(self.LaserCount/3)
+        self.azi_half = int(self.LaserCount / 6)
+        self.angle = np.linspace(0, 360, self.LaserCount, endpoint=False)  # angle list
+        self.get_scan = False
 
     def update(self, state):
+        # self.get_scan = False
+        # if 'RangeFinderSensor' in state:
+        #     self.get_scan = True
+        #     range_data = state['RangeFinderSensor']
+        #     # update the minimum distance and its angle to nearest obstacle
+        #     # if np.min(range_data) < self.LaserMaxDistance:
+        #     self.min_distance = np.min(range_data)
+        #     self.min_angle = (360 / self.LaserCount) * np.argmin(range_data)
+        #     # else:
+        #     #     self.min_distance = None
+        #     #     self.angle = None
+
+        # use just to simulate sonar update process
+        self.update_like_sonar(state)
+
+    def update_like_sonar(self, state):
+        self.get_scan = False
         if 'RangeFinderSensor' in state:
+            self.get_scan = True
             range_data = state['RangeFinderSensor']
             # update the minimum distance and its angle to nearest obstacle
             # if np.min(range_data) < self.LaserMaxDistance:
+
+            # The first definition of sonar-like
+            # left_part = range_data[:self.azi_half][::-1]
+            # right_part = range_data[-self.azi_half:][::-1]
+            # self.data = np.concatenate((left_part, right_part))
+            # self.min_distance = np.min(self.data)
+            # self.min_angle = (120 / self.azi) * np.argmin(self.data) - 60
+
+            # The second definition keep form of raw data
+            part_1 = range_data[:self.azi_half]
+            part_2 = range_data[-self.azi_half:]
+            angel_1 = self.angle[:self.azi_half]
+            angel_2 = self.angle[-self.azi_half:]
+            self.data = np.concatenate((part_1, part_2))
+            self.angle = np.concatenate((angel_1, angel_2))
+
             self.min_distance = np.min(range_data)
-            self.angle = (360 / self.LaserCount) * np.argmin(range_data)
-            # else:
-            #     self.min_distance = None
-            #     self.angle = None
+            self.min_angle = (360 / self.LaserCount) * np.argmin(range_data)
+
+
+    def scan(self, pose, angle):
+        distances_x = []
+        distances_y = []
+        nearest_distances_x = []
+        nearest_distances_y = []
+        nearest_distances = []
+
+        # 投影到全局坐标系下
+        distances_x = pose[0] + self.data * np.cos((angle + self.angle) * np.pi / 180)
+        distances_y = pose[1] + self.data * np.sin((angle + self.angle) * np.pi / 180)
+
+        # # 生成每个角度下最近的障碍物坐标,如果没有识别出障碍物，则假设最远位置有障碍物
+        # for i in range(self.s.shape[1]):
+        #     dis_index = np.argmax(self.s[:, i] > 0.1)
+        #     if dis_index == 0:
+        #         dis_index = self.binsR
+        #     nearest_distance = dis_index / self.binsR * (self.maxR - self.minR) + self.minR
+        #     nearest_angle = -self.azi / 2 + i / self.binsA * (self.azi)
+        #     nearest_distance_x = pose[0] + nearest_distance * np.cos((angle + nearest_angle) * np.pi / 180)
+        #     nearest_distance_y = pose[1] + nearest_distance * np.sin((angle + nearest_angle) * np.pi / 180)
+        #     nearest_distances_x.append(nearest_distance_x)
+        #     nearest_distances_y.append(nearest_distance_y)
+        #     nearest_distances.append(nearest_distance)
+
+        return (distances_x, distances_y, self.data)
+
 
 import matplotlib.pyplot as plt
 import numpy as np

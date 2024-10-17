@@ -30,7 +30,7 @@ METADATA_v1 = {
     'ang_dist_range_a2t': (-np.pi / 5, np.pi / 5),
     'lin_dist_range_t2b': (0.0, 2.0),
     'ang_dist_range_t2b': (-np.pi / 2, np.pi / 2),
-    'insight': True,
+    'insight': False,
     'noblock': True,
     # init target's param
     'margin': 1.0,  # a marginal distance btw targets and the agent.

@@ -31,6 +31,7 @@ class World_AUV:
         # init the param
         self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time
         self.random = METADATA['random']  # bool for domain random
+        self.task_random = METADATA['task_random']
         self.control_period = METADATA['control_period']
         self.sensor_r = METADATA['sensor_r']
         self.fov = METADATA['fov']
@@ -162,10 +163,11 @@ class World_AUV:
         self.obstacles.reset()
         self.obstacles.draw_obstacle()
 
-        if self.random:
+        if self.task_random:
             self.insight = np.random.choice([True, False])
         else:
             self.insight = METADATA['insight']
+        print("insight is :", self.insight)
         if self.insight:
             self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         else:
@@ -260,6 +262,7 @@ class World_AUV:
                              ang_dist_range_t2b=METADATA['ang_dist_range_t2b'],
                              blocked=None, ):
         is_agent_valid = False
+        print(self.insight)
         while not is_agent_valid:
             init_pose = {}
             np.random.seed()
@@ -310,19 +313,23 @@ class World_AUV:
                     count = 0
                     is_belief_valid, belief_init_pos = False, np.zeros((2,))
                     while not is_belief_valid:
-                        is_belief_valid, init_pose_belief, _ = self.gen_rand_pose(
-                            target_init_pos[:2], target_init_yaw,
-                            lin_dist_range_t2b[0], lin_dist_range_t2b[1],
-                            ang_dist_range_t2b[0], ang_dist_range_t2b[1])
-                        # if is_belief_valid and (blocked is not None):
-                        #     is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
-                        #                                                         self.margin2wall + 2)
-                        #     is_belief_valid = (self.noblock == is_no_blocked)
+                        if self.insight:
+                            is_belief_valid, init_pose_belief, _ = self.gen_rand_pose(
+                                target_init_pos[:2], target_init_yaw,
+                                lin_dist_range_t2b[0], lin_dist_range_t2b[1],
+                                ang_dist_range_t2b[0], ang_dist_range_t2b[1])
+                            # if is_belief_valid and (blocked is not None):
+                            #     is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
+                            #                                                         self.margin2wall + 2)
+                            #     is_belief_valid = (self.noblock == is_no_blocked)
+                        elif not self.insight:
+                            is_belief_valid = True
+                            init_pose_belief = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+
                         count += 1
                         if count > 100:
                             is_agent_valid = False
                             break
-
 
         return (np.append(agent_init_pos, self.fix_depth), agent_init_yaw,
                 np.append(target_init_pos, self.fix_depth), target_init_yaw,

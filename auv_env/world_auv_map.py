@@ -15,7 +15,7 @@ from gymnasium import spaces
 import logging
 
 
-class World_AUV_Image:
+class World_AUV_map:
     """
         different from world:target is also an auv
     """
@@ -49,11 +49,11 @@ class World_AUV_Image:
         # for record
         self.record_cov_posterior = []
         self.record_observed = []
-        
+
         # Setup environment
         margin = 0.25
-        self.size = np.array([METADATA['size'][0]-2*margin, METADATA['size'][1]-2*margin, METADATA['size'][2]])
-        self.bottom_corner = np.array([METADATA['bottom_corner'][0]+margin, METADATA['bottom_corner'][1]+margin,
+        self.size = np.array([METADATA['size'][0] - 2 * margin, METADATA['size'][1] - 2 * margin, METADATA['size'][2]])
+        self.bottom_corner = np.array([METADATA['bottom_corner'][0] + margin, METADATA['bottom_corner'][1] + margin,
                                        METADATA['bottom_corner'][2]])
         self.fix_depth = METADATA['fix_depth']
         self.margin = METADATA['margin']
@@ -87,7 +87,8 @@ class World_AUV_Image:
                               scenario=self.map)
         self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
                                        , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
-                                       bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean, l_p=METADATA['lqr_l_p'])
+                                       bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
+                                       l_p=METADATA['lqr_l_p'])
                         for i in range(self.num_targets)]
         # Build target beliefs.
         if self.random:
@@ -123,7 +124,7 @@ class World_AUV_Image:
             self.agent_last_u = self.agent_u
         for j in range(50):
             for i in range(self.num_targets):
-                target = 'target'+str(i)
+                target = 'target' + str(i)
                 if self.has_discovered[i]:
                     self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
                     self.ocean.act(target, self.target_u)
@@ -167,6 +168,7 @@ class World_AUV_Image:
             self.insight = np.random.choice([True, False])
         else:
             self.insight = METADATA['insight']
+        print("insight is :", self.insight)
         if self.insight:
             self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         else:
@@ -183,7 +185,7 @@ class World_AUV_Image:
         self.target_init_pos = None
         self.target_init_yaw = None
         self.target_init_cov = METADATA['target_init_cov']
-        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw, self.belief_init_pos\
+        self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw, self.belief_init_pos \
             = self.get_init_pose_random()
 
         if METADATA['eval_fixed']:
@@ -206,13 +208,13 @@ class World_AUV_Image:
         self.ocean.act("auv0", self.u)
 
         for i in range(self.num_targets):
-            target = 'target'+str(i)
+            target = 'target' + str(i)
             # self.ocean.agents['target'].set_physics_state(location=self.target_init_pos,
             #                                               rotation=[0.0, 0.0, -np.rad2deg(self.target_init_yaw)],
             #                                               velocity=[0.0, 0.0, 0.0],
             #                                               angular_velocity=[0.0, 0.0, 0.0])
             self.ocean.agents[target].teleport(location=self.target_init_pos,
-                                                 rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
+                                               rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
             self.target_u = np.zeros(8)
             self.ocean.act(target, self.target_u)
 
@@ -221,7 +223,7 @@ class World_AUV_Image:
         self.set_limits()
         self.build_models(sampling_period=self.sampling_period,
                           agent_init_state=self.sensors['auv0'],
-                          target_init_state=self.sensors['target0'],    #TODO
+                          target_init_state=self.sensors['target0'],  # TODO
                           time=self.sensors['t'])
         # reset model
         self.agent.reset(self.sensors['auv0'])
@@ -261,6 +263,7 @@ class World_AUV_Image:
                              ang_dist_range_t2b=METADATA['ang_dist_range_t2b'],
                              blocked=None, ):
         is_agent_valid = False
+        print(self.insight)
         while not is_agent_valid:
             init_pose = {}
             np.random.seed()
@@ -292,8 +295,8 @@ class World_AUV_Image:
                             target_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
                             # confirm is not insight
                             r, alpha = util.relative_distance_polar(target_init_pos, agent_init_pos, agent_init_yaw)
-                            if (r > METADATA['sensor_r'] or np.rad2deg(alpha) > METADATA['fov']/2
-                                    or np.rad2deg(alpha) < -METADATA['fov']/2):
+                            if (r > METADATA['sensor_r'] or np.rad2deg(alpha) > METADATA['fov'] / 2
+                                    or np.rad2deg(alpha) < -METADATA['fov'] / 2):
                                 is_not_insight = True
                             else:
                                 is_not_insight = False
@@ -311,19 +314,23 @@ class World_AUV_Image:
                     count = 0
                     is_belief_valid, belief_init_pos = False, np.zeros((2,))
                     while not is_belief_valid:
-                        is_belief_valid, init_pose_belief, _ = self.gen_rand_pose(
-                            target_init_pos[:2], target_init_yaw,
-                            lin_dist_range_t2b[0], lin_dist_range_t2b[1],
-                            ang_dist_range_t2b[0], ang_dist_range_t2b[1])
-                        # if is_belief_valid and (blocked is not None):
-                        #     is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
-                        #                                                         self.margin2wall + 2)
-                        #     is_belief_valid = (self.noblock == is_no_blocked)
+                        if self.insight:
+                            is_belief_valid, init_pose_belief, _ = self.gen_rand_pose(
+                                target_init_pos[:2], target_init_yaw,
+                                lin_dist_range_t2b[0], lin_dist_range_t2b[1],
+                                ang_dist_range_t2b[0], ang_dist_range_t2b[1])
+                            # if is_belief_valid and (blocked is not None):
+                            #     is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
+                            #                                                         self.margin2wall + 2)
+                            #     is_belief_valid = (self.noblock == is_no_blocked)
+                        elif not self.insight:
+                            is_belief_valid = True
+                            init_pose_belief = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+
                         count += 1
                         if count > 100:
                             is_agent_valid = False
                             break
-
 
         return (np.append(agent_init_pos, self.fix_depth), agent_init_yaw,
                 np.append(target_init_pos, self.fix_depth), target_init_yaw,
@@ -478,7 +485,7 @@ if __name__ == '__main__':
     from auv_control import scenario
 
     print("Test World")
-    world = World_AUV_Image(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
+    world = World_AUV(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
     world.reset()
     print(world.size)
     world.targets[0].planner.draw_traj(world.ocean, 30)

@@ -66,6 +66,10 @@ class AgentAuv(Agent):
         self.est_state = State(sensor)
         self.observer = InEKF(x_init=self.state.vec[0], y_init=self.state.vec[1])
 
+        # count for grid map
+        self.count = 0
+        self.period = 10
+
     def reset(self, sensor):
         self.state = State(sensor)
         self.last_state = State(sensor)
@@ -81,8 +85,15 @@ class AgentAuv(Agent):
         # self.est_state = State(sensors)
         self.est_state = self.observer.tick(sensors, self.sampling_period)
         # print(self.est_state.vec[0], self.est_state.vec[1])
-        if METADATA['use_sonar']:
-            self.update_gridmap(sensors)
+        # if METADATA['use_sonar']:
+        #     self.update_gridmap(sensors)
+        #
+
+        if self.count == self.period:
+            self.update_gridmap_rangefinder_based(sensors)
+            self.count = 0
+        else:
+            self.count += 1
 
         # Path planner
         des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,
@@ -95,55 +106,43 @@ class AgentAuv(Agent):
 
         return u
 
-    def update_gridmap(self, sensors):
+    def update_gridmap_rangefinder_based(self, sensors):
         # get the gridmap part
-        if METADATA['render']:
-            self.imagingsonar.draw_pic(sensors)
-        else:
-            self.imagingsonar.update(sensors)
 
-        if not self.imagingsonar.getimage:
-            return
-        else:
-            # get the agent's pose
-            x_odom, y_odom = self.est_state.vec[:2]  # x,y in [m]
-            theta_odom = np.radians(self.est_state.vec[8])  # rad
+        # get the agent's pose
+        x_odom, y_odom = self.est_state.vec[:2]  # x,y in [m]
+        theta_odom = np.radians(self.est_state.vec[8])  # rad
 
-            distances_x, distances_y, distances, nearest_x, nearest_y, nearest_dist = \
-                self.imagingsonar.scan(sensors, [x_odom, y_odom], self.est_state.vec[8])
-            filtered_distances_x = []
-            filtered_distances_y = []
+        distances_x, distances_y, distances = self.rangefinder.scan([x_odom, y_odom], self.est_state.vec[8])
 
-            ##################### Grid map update section #####################
-            # 机器人当前坐标(x1, y1)
-            x1, y1 = self.gridMap.discretize(x_odom, y_odom)
-            # for image of the grid map
-            X2 = []
-            Y2 = []
+        ##################### Grid map update section #####################
+        # 机器人当前坐标(x1, y1)
+        x1, y1 = self.gridMap.discretize(x_odom, y_odom)
+        # for image of the grid map
+        X2 = []
+        Y2 = []
 
-            # 类似lidar的原理更新free space
-            for (dist_x, dist_y, dist) in zip(nearest_x, nearest_y, nearest_dist):
+        # 类似lidar的原理更新free space
+        for (dist_x, dist_y, dist) in zip(distances_x, distances_y, distances):
+            # 障碍物的坐标(x2, y2)
+            x2, y2 = self.gridMap.discretize(dist_x, dist_y)
+            # draw a discrete line of free pixels, [robot position -> laser hit spot), 确定测量范围内的free space
+            for (x_bres, y_bres) in bresenham(self.gridMap, x1, y1, x2, y2):
+                self.gridMap.update(x=x_bres, y=y_bres, p=self.P_free)
+            # for BGR image of the grid map
+            X2.append(x2)
+            Y2.append(y2)
+
+        # 更新occ space
+        for (dist_x, dist_y, dist) in zip(distances_x, distances_y, distances):
+            if dist < self.imagingsonar.zmax:
                 # 障碍物的坐标(x2, y2)
                 x2, y2 = self.gridMap.discretize(dist_x, dist_y)
-                # draw a discrete line of free pixels, [robot position -> laser hit spot), 确定测量范围内的free space
-                for (x_bres, y_bres) in bresenham(self.gridMap, x1, y1, x2, y2):
-                    self.gridMap.update(x=x_bres, y=y_bres, p=self.P_free)
-                # for BGR image of the grid map
-                X2.append(x2)
-                Y2.append(y2)
 
-            # 更新occ space
-            for (dist_x, dist_y, dist) in zip(nearest_x, nearest_y, nearest_dist):
-                if dist < self.imagingsonar.zmax:
-                    # 障碍物的坐标(x2, y2)
-                    x2, y2 = self.gridMap.discretize(dist_x, dist_y)
+                # 检测到障碍物，更新occ grid map
+                self.gridMap.update(x=x2, y=y2, p=self.P_occ)
 
-                    # 检测到障碍物，更新occ grid map
-                    self.gridMap.update(x=x2, y=y2, p=self.P_occ)
-
-                    # filtered distances in X-Y plane for Ploting
-                    filtered_distances_x.append(dist_x)
-                    filtered_distances_y.append(dist_y)
+        # self.gridMap.cal_entropy()
 
         if METADATA['render']:
             gray_map = self.gridMap.to_grayscale_image()

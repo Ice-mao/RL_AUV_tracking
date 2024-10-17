@@ -21,7 +21,7 @@ import auv_env.util as util
 
 from auv_env.world import World
 from auv_env.world_auv import World_AUV
-from auv_env.world_auv_image import World_AUV_Image
+from auv_env.world_auv_map import World_AUV_map
 
 
 class TargetTrackingBase(gym.Env):
@@ -151,7 +151,7 @@ class TargetTracking2(gym.Env):
         self.action_range_low = METADATA['action_range_low']
         self.action_dim = METADATA['action_dim']
         # init the scenario
-        self.world = World_AUV_Image(map=map, show=show, verbose=verbose, num_targets=self.num_targets)
+        self.world = World_AUV_map(map=map, show=show, verbose=verbose, num_targets=self.num_targets)
         # init the action space
         self.action_space = spaces.Box(low=np.float32(self.action_range_low), high=np.float32(self.action_range_high)
                                        , shape=(len(self.action_range_high),))
