@@ -150,7 +150,7 @@ class World_AUV_map:
             self.belief_targets[i].predict()
 
         # Compute the RL state.
-        self.state_func(observed)
+        self.state_func(observed, action_waypoint)
         self.record_observed = observed
         if METADATA['render']:
             print(is_col, observed[0], reward)
@@ -451,7 +451,7 @@ class World_AUV_map:
             print('reward:', reward, 'reward_w:', reward_w, 'reward_a:', reward_a, 'reward_e:', reward_e)
         return reward, False, r_detcov_mean, r_detcov_std
 
-    def state_func(self, observed):
+    def state_func(self, observed, action_waypoint):
         '''
         在父类的step中调用该函数对self.state进行更新
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
@@ -470,10 +470,13 @@ class World_AUV_map:
                 theta_base=np.radians(self.agent.est_state.vec[8]))
             self.state.extend([r_b, alpha_b,
                                np.log(LA.det(self.belief_targets[i].cov)),
-                               float(observed[i])])
+                               float(observed[i])]) # dim:4
         self.state.extend([self.agent.state.vec[0], self.agent.state.vec[1],
-                           np.radians(self.agent.state.vec[8])])
-        self.state.extend(obstacles_pt)
+                           np.radians(self.agent.state.vec[8])]) # dim:3
+        # self.state.extend(obstacles_pt)
+        self.state.extend(action_waypoint.tolist()) # dim:3
+        self.state.extend(self.agent.gridMap.to_grayscale_image.flatten()) # dim:64*64
+
         self.state = np.array(self.state)
 
         # Update the visit map for the evaluation purpose.
@@ -485,7 +488,7 @@ if __name__ == '__main__':
     from auv_control import scenario
 
     print("Test World")
-    world = World_AUV(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
+    world = World_AUV_map(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
     world.reset()
     print(world.size)
     world.targets[0].planner.draw_traj(world.ocean, 30)

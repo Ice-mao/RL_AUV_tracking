@@ -40,7 +40,8 @@ METADATA_v1 = {
     'lqr_l_p': 50,
 
     # reinforcement learning setting.
-    'algorithm': 'PPO', # PPO、SAC、
+    'algorithm': 'PPO', # PPO、SAC
+    'policy': 'CNN', # CNN、MLP 记得同时修改环境
     'random': False,  # for domain randomization.
     'task_random': True,
     'action_range_high': [1, 1, 1],

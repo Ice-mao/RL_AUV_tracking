@@ -44,12 +44,12 @@ class GridMap:
         self.X_lim = X_lim
         self.Y_lim = Y_lim
         # self.resolution = resolution
-        self.resolution = (X_lim[1]-X_lim[0])/256
+        self.resolution = (X_lim[1]-X_lim[0])/64
         # x = np.arange(start=X_lim[0], stop=X_lim[1] + resolution, step=resolution)
         # y = np.arange(start=Y_lim[0], stop=Y_lim[1] + resolution, step=resolution)
 
-        x = np.linspace(start=X_lim[0], stop=X_lim[1], num=256)
-        y = np.linspace(start=Y_lim[0], stop=Y_lim[1], num=256)
+        x = np.linspace(start=X_lim[0], stop=X_lim[1], num=64)
+        y = np.linspace(start=Y_lim[0], stop=Y_lim[1], num=64)
 
         # probability matrix in log-odds scale:
         self.l = np.full(shape=(len(x), len(y)), fill_value=log_odds(p))

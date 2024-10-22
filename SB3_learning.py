@@ -173,15 +173,15 @@ def learn(env, model_dir, log_dir):
     callback = CallbackList([callback, checkpoint_callback])
     # 网络架构选择
     # policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
-    policy_kwargs = dict(net_arch=dict(pi=[256, 256, 256], qf=[256, 256]))  # set for off-policy network
-    # policy_kwargs = dict(
-    #     features_extractor_class=CustomCNN,
-    #     features_extractor_kwargs=dict(features_dim=512),
-    #     net_arch=[512, 512]
-    #     # net_arch=[dict(pi=[512, 512], vf=[512, 512])],  # for AC policy
-    #     # shared_lstm=True,  # use for RNNPPO
-    #     # enable_critic_lstm=False  # use for RNNPPO
-    # )  # 设置网络结构为自定义的网络架构（支持自定义输入）
+    # policy_kwargs = dict(net_arch=dict(pi=[256, 256, 256], qf=[256, 256]))  # set for off-policy network
+    policy_kwargs = dict(
+        features_extractor_class=CustomCNN,
+        features_extractor_kwargs=dict(features_dim=512),
+        net_arch=[512, 512]
+        # net_arch=[dict(pi=[512, 512], vf=[512, 512])],  # for AC policy
+        # shared_lstm=True,  # use for RNNPPO
+        # enable_critic_lstm=False  # use for RNNPPO
+    )  # 设置网络结构为自定义的网络架构（支持自定义输入）
 
     # 算法选择
     if METADATA['algorithm'] == "DQN":
@@ -195,19 +195,27 @@ def learn(env, model_dir, log_dir):
 
     # PPO
     if METADATA['algorithm'] == "PPO":
-        model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=200, n_epochs=10,
-                    gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
-                    policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
-        # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
-        #             clip_range_vf=0.1,
-        #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
+        if METADATA['policy'] == 'MLP':
+            policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
+            model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=200, n_epochs=10,
+                        gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
+                        policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
+        if METADATA['policy'] == 'CNN':
+            policy_kwargs = dict(
+                features_extractor_class=CustomCNN,
+                features_extractor_kwargs=dict(features_dim=128),
+                net_arch=[dict(pi=[256, 128, 64], vf=[128, 64])],  # for AC policy
+            )
+            model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
+                        clip_range_vf=0.1,
+                        batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
 
     if METADATA['algorithm'] == "SAC":
         model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
                     learning_starts=100, batch_size=128, tau=0.005, gamma=0.99, train_freq=1,
                     gradient_steps=1, action_noise=None,
                     policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
-                    )
+                )
 
     # model = RecurrentPPO("CnnLstmPolicy", env, policy_kwargs=policy_kwargs, verbose=1,
     #                      learning_rate=0.001, clip_range=0.2, batch_size=64,
