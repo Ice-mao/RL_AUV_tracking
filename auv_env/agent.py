@@ -87,7 +87,6 @@ class AgentAuv(Agent):
         # print(self.est_state.vec[0], self.est_state.vec[1])
         # if METADATA['use_sonar']:
         #     self.update_gridmap(sensors)
-        #
 
         if self.count == self.period:
             self.update_gridmap_rangefinder_based(sensors)

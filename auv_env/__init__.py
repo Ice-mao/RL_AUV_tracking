@@ -30,9 +30,7 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
     # T_steps = 200
 
     local_view = 0
-    if env_name == 'TargetTracking':
-        env0 = TargetTrackingBase(num_targets=num_targets, **kwargs)
-    elif env_name == 'TargetTracking1':
+    if env_name == 'TargetTracking1':
         env0 = TargetTracking1(num_targets=num_targets, **kwargs)
     elif env_name == 'TargetTracking2':
         env0 = TargetTracking2(num_targets=num_targets, **kwargs)
