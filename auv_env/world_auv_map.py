@@ -110,14 +110,15 @@ class World_AUV_map:
                                for _ in range(self.num_targets)]
 
     def step(self, action_waypoint):
+        print('action: ',action_waypoint)
         global_waypoint = np.zeros(3)
         observed = []
         # 归一化展开
         r = action_waypoint[0] * self.action_range_scale[0]
-        theta = action_waypoint[1] * self.action_range_scale[1] - self.action_range_scale[1] / 2
+        theta = action_waypoint[1] * self.action_range_scale[1]
         global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
                                                          np.radians(self.agent.est_state.vec[8]))
-        angle = action_waypoint[2] * self.action_range_scale[2] - self.action_range_scale[2] / 2
+        angle = action_waypoint[2] * self.action_range_scale[2]
         global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
         self.agent_w = angle / 0.5
         if self.agent_u is not None:
@@ -245,7 +246,7 @@ class World_AUV_map:
 
         observed = [True]
         # Compute the RL state.
-        self.state_func(observed)
+        self.state_func(observed, action_waypoint=np.zeros(3))
         return self.state, 0
 
     @property
@@ -377,14 +378,20 @@ class World_AUV_map:
         self.limit['target'] = [np.concatenate((self.bottom_corner[:2], np.array([-3, -3]))),
                                 np.concatenate((self.top_corner[:2], np.array([3, 3])))]
         # STATE:
-        # target distance、angle、协方差行列式值、bool;agent 自身定位; 声呐图像
-        # target distance、angle、协方差行列式值、bool;agent 自身定位; 最近障碍物的位置
-        self.limit['state'] = [np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
-                                                               [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
-                                               [0.0, -np.pi])),
-                               np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
-                                                               [self.top_corner[0], self.top_corner[1], np.pi])),
-                                               [self.sensor_r, np.pi]))]
+        # target distance、angle、协方差行列式值、bool;agent 自身定位;last action; 声呐图像
+        state_lower = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
+                                        [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
+                        [0.0] * 3))
+        grid_lower = [0.0] * (64 * 64)
+        lower_bound = np.concatenate((state_lower, grid_lower))
+
+        state_upper = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
+                                        [self.top_corner[0], self.top_corner[1], np.pi])),
+                        [1.0] * 3))
+        grid_upper = [1.0] * (64 * 64)
+        upper_bound = np.concatenate((state_upper, grid_upper))
+        self.limit['state'] = [lower_bound, upper_bound]
+
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
@@ -463,6 +470,7 @@ class World_AUV_map:
             obstacles_pt = (self.sensor_r, 0)
 
         self.state = []
+        self.state.extend(self.agent.gridMap.to_grayscale_image().flatten())  # dim:64*64
         for i in range(self.num_targets):
             r_b, alpha_b = util.relative_distance_polar(
                 self.belief_targets[i].state[:2],
@@ -470,12 +478,11 @@ class World_AUV_map:
                 theta_base=np.radians(self.agent.est_state.vec[8]))
             self.state.extend([r_b, alpha_b,
                                np.log(LA.det(self.belief_targets[i].cov)),
-                               float(observed[i])]) # dim:4
+                               float(observed[i])])  # dim:4
         self.state.extend([self.agent.state.vec[0], self.agent.state.vec[1],
-                           np.radians(self.agent.state.vec[8])]) # dim:3
+                           np.radians(self.agent.state.vec[8])])  # dim:3
         # self.state.extend(obstacles_pt)
-        self.state.extend(action_waypoint.tolist()) # dim:3
-        self.state.extend(self.agent.gridMap.to_grayscale_image.flatten()) # dim:64*64
+        self.state.extend(action_waypoint.tolist())  # dim:3
 
         self.state = np.array(self.state)
 

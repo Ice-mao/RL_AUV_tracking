@@ -49,6 +49,9 @@ class AgentAuv(Agent):
         # init the sonar and grid map part
         if METADATA['use_sonar']:
             self.imagingsonar = ImagingSonar(scenario=scenario)  # to see if it is useful
+            self.zmax = self.imagingsonar.zmax
+        else:
+            self.zmax = 8.0
         self.P_prior = METADATA['p_prior']  # Prior occupancy probability
         self.P_occ = METADATA['p_occ']  # Probability that cell is occupied with total confidence
         self.P_free = METADATA['p_free']  # Probability that cell is free with total confidence
@@ -82,8 +85,8 @@ class AgentAuv(Agent):
         self.last_state = self.state
         self.state = State(sensors)
         # if you want to eval,use the observer to update
-        # self.est_state = State(sensors)
-        self.est_state = self.observer.tick(sensors, self.sampling_period)
+        self.est_state = State(sensors)
+        # self.est_state = self.observer.tick(sensors, self.sampling_period)
         # print(self.est_state.vec[0], self.est_state.vec[1])
         # if METADATA['use_sonar']:
         #     self.update_gridmap(sensors)
@@ -107,7 +110,6 @@ class AgentAuv(Agent):
 
     def update_gridmap_rangefinder_based(self, sensors):
         # get the gridmap part
-
         # get the agent's pose
         x_odom, y_odom = self.est_state.vec[:2]  # x,y in [m]
         theta_odom = np.radians(self.est_state.vec[8])  # rad
@@ -134,7 +136,7 @@ class AgentAuv(Agent):
 
         # 更新occ space
         for (dist_x, dist_y, dist) in zip(distances_x, distances_y, distances):
-            if dist < self.imagingsonar.zmax:
+            if dist < self.zmax:
                 # 障碍物的坐标(x2, y2)
                 x2, y2 = self.gridMap.discretize(dist_x, dist_y)
 
@@ -145,8 +147,13 @@ class AgentAuv(Agent):
 
         if METADATA['render']:
             gray_map = self.gridMap.to_grayscale_image()
-            cv2.imshow("Grid map", gray_map)
+            scale_factor = 2
+            new_size = (gray_map.shape[1] * scale_factor, gray_map.shape[0] * scale_factor)
+            resized_map = cv2.resize(gray_map, new_size, interpolation=cv2.INTER_NEAREST)
+
+            cv2.imshow("Grid map", resized_map)
             cv2.waitKey(1)
+
 
 
 class AgentSphere(Agent):

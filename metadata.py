@@ -11,7 +11,7 @@ METADATA_v1 = {
     'size': [40, 40, 20],
     'bottom_corner': [-20, -20, -20],
     'fix_depth': -5,
-    'use_sonar':False,
+    'use_sonar': False,
 
     # init agent's param
     'sensor_r': 10.0,
@@ -19,8 +19,8 @@ METADATA_v1 = {
     'sensor_r_sd': 0.2,  # sensor range noise.
     'sensor_b_sd': 0.01,  # sensor bearing noise.
     'p_prior': 0.5,  # Prior occupancy probability
-    'p_occ': 0.9,  # Probability that cell is occupied with total confidence
-    'p_free': 0.35,  # Probability that cell is free with total confidence
+    'p_occ': 0.8,  # Probability that cell is occupied with total confidence
+    'p_free': 0.25,  # Probability that cell is free with total confidence
     'resolution': 0.1,  # Grid resolution in [m]
 
     # init target's param
@@ -30,7 +30,7 @@ METADATA_v1 = {
     'ang_dist_range_a2t': (-np.pi / 5, np.pi / 5),
     'lin_dist_range_t2b': (0.0, 2.0),
     'ang_dist_range_t2b': (-np.pi / 2, np.pi / 2),
-    'insight': False,
+    'insight': True,
     'noblock': True,
     # init target's param
     'margin': 1.0,  # a marginal distance btw targets and the agent.
@@ -40,13 +40,13 @@ METADATA_v1 = {
     'lqr_l_p': 50,
 
     # reinforcement learning setting.
-    'algorithm': 'PPO', # PPO、SAC
-    'policy': 'CNN', # CNN、MLP 记得同时修改环境
+    'algorithm': 'PPO',  # PPO、SAC
+    'policy': 'CNN',  # CNN、MLP 记得同时修改环境
     'random': False,  # for domain randomization.
-    'task_random': True,
+    'task_random': False,  # if False, according to 'insight' to determine
     'action_range_high': [1, 1, 1],
-    'action_range_low': [0, 0, 0],
-    'action_range_scale': [3, np.pi, np.pi/2],
+    'action_range_low': [-1, -1, -1],
+    'action_range_scale': [3 / 2, np.pi / 2, np.pi / 4],
     'action_dim': 6,
     'target_num': 1,
     'target_dim': 4,  # x, y, xdot, ydot
@@ -54,9 +54,9 @@ METADATA_v1 = {
     'c_mean': 0.2,
     'c_std': 0.0,
     'c_penalty': 5.0,
-    'k_3': 0.0,   # 0.3,
-    'k_4': 0.0,   # 0.01,
-    'k_5': 0.0,   # 0.0002,
+    'k_3': 0.0,  # 0.3,
+    'k_4': 0.0,  # 0.01,
+    'k_5': 0.0,  # 0.0002,
     # render setting
     'render': False,
     # control_period
@@ -64,7 +64,6 @@ METADATA_v1 = {
     # eval setting
     'eval_fixed': False
 }
-
 
 """
     used for mutiagent env
@@ -75,7 +74,7 @@ METADATA_v2 = {
     'size': [40, 40, 20],
     'bottom_corner': [-20, -20, -20],
     'fix_depth': -5,
-    'use_sonar':False,
+    'use_sonar': False,
 
     # init agent's param
     'sensor_r': 10.0,
@@ -106,7 +105,7 @@ METADATA_v2 = {
     # reinforcement learning setting.
     'action_range_high': [1, 1, 1],
     'action_range_low': [0, 0, 0],
-    'action_range_scale': [3, np.pi, np.pi/2],
+    'action_range_scale': [3, np.pi, np.pi / 2],
     'action_dim': 6,
     'target_num': 1,
     'target_dim': 4,  # x, y, xdot, ydot
@@ -114,9 +113,9 @@ METADATA_v2 = {
     'c_mean': 0.2,
     'c_std': 0.0,
     'c_penalty': 5.0,
-    'k_3': 0.0,   # 0.3,
-    'k_4': 0.0,   # 0.01,
-    'k_5': 0.0,   # 0.0002,
+    'k_3': 0.0,  # 0.3,
+    'k_4': 0.0,  # 0.01,
+    'k_5': 0.0,  # 0.0002,
     # render setting
     'render': False,
     # control_period
@@ -128,7 +127,7 @@ METADATA_v2 = {
 METADATA = METADATA_v1
 
 TTENV_EVAL_SET = [
-    {   # Tracking
+    {  # Tracking
         'sensor_r_sd': 0.2,  # sensor range noise.
         'sensor_b_sd': 0.01,  # sensor bearing noise.
         'lin_dist_range_a2t': (3.0, 8.0),
@@ -140,7 +139,7 @@ TTENV_EVAL_SET = [
         'target_speed_limit': 2.5,
         'const_q': 0.5,
     },
-    {   # Discovery
+    {  # Discovery
         'sensor_r_sd': 0.5,  # sensor range noise.
         'sensor_b_sd': 0.01,  # sensor bearing noise.
         'lin_dist_range_a2b': (3.0, 10.0),

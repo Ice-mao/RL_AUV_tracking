@@ -29,7 +29,7 @@ class CustomCNN(BaseFeaturesExtractor):
     任务输入的图像信息为5*28*28
     """
 
-    def __init__(self, observation_space: spaces.Box|None, features_dim: int = 512):
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 512):
         super().__init__(observation_space, features_dim)
         # predined
         norm_layer = nn.BatchNorm2d  # 归一化
@@ -111,17 +111,19 @@ class PPO_withgridmap(BaseFeaturesExtractor):
     :param observation_space: (gym.Space)
     :param features_dim: (int) Number of features extracted.
         This corresponds to the number of unit for the last layer.
-    任务输入的图像信息为5*28*28
     """
 
-    def __init__(self, observation_space: spaces.Box | None, features_dim: int = 128):
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 128):
         super().__init__(observation_space, features_dim)
 
         # CNN for sonar grid map
         self.conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
         self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.bn2 = nn.BatchNorm2d(32)
+        self.bn3 = nn.BatchNorm2d(64)
+        self.pool = nn.MaxPool2d(2)
 
         # Fully connected layer for CNN output
         self.fc1 = nn.Linear(64 * 8 * 8, 256)  # Assuming input size 64x64
@@ -131,6 +133,15 @@ class PPO_withgridmap(BaseFeaturesExtractor):
 
         # Combined fully connected layers
         self.fc3 = nn.Linear(256 + 64, features_dim)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight)
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         # preprocessing:
@@ -143,10 +154,13 @@ class PPO_withgridmap(BaseFeaturesExtractor):
         # CNN feature extraction
         grid_map = grid_map.reshape(-1, 1, 64, 64)
         x = F.relu(self.conv1(grid_map))
+        x = self.bn1(x)
         x = self.pool(x)
         x = F.relu(self.conv2(x))
+        x = self.bn2(x)
         x = self.pool(x)
         x = F.relu(self.conv3(x))
+        x = self.bn3(x)
         x = self.pool(x)
 
         # Flatten CNN output
@@ -168,7 +182,9 @@ if __name__ == "__main__":
     test_cnn = PPO_withgridmap(spaces.Box(low=1, high=2)).to("cuda")
     observations = torch.from_numpy(np.ones((1, 4096+10)))
     map = observations[:, :4096].type(torch.cuda.FloatTensor)
+    state = observations[:, 4096:].type(torch.cuda.FloatTensor)
     map_in = map.reshape(-1, 1, 64, 64)
+    test_cnn.forward(observations)
     x = test_cnn(observations)
     x = test_cnn.conv1_(map_in) # (1,16,64,64)
     x = test_cnn.relu(x)

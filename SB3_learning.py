@@ -19,7 +19,7 @@ import numpy as np
 from numpy import linalg as LA
 import csv
 import argparse
-from policy_net import SEED1, set_seed, CustomCNN
+from policy_net import SEED1, set_seed, CustomCNN, PPO_withgridmap
 
 # tools
 import os
@@ -122,9 +122,9 @@ def main():
 
         # keep training
         elif args.choice == '1':
-            model_dir = "../models/ppo_10-14_21/"
-            log_dir = "../log/ppo_10-14_21/"
-            model_name = "rl_model_960000_steps.zip"
+            model_dir = "../models/ppo_10-23_16/"
+            log_dir = "../log/ppo_10-23_16/"
+            model_name = "rl_model_10719996_steps.zip"
 
         monitor_dir = log_dir
         os.makedirs(monitor_dir, exist_ok=True)
@@ -147,8 +147,9 @@ def main():
             keep_learn(env, model_dir, log_dir, model_name)
 
     elif args.choice == '2':
+        # eval mode
         # model_dir = '/home/dell-t3660tow/Documents/RL/RL_AUV_tracking/models/sac_04-06_18/rl_model_720000_steps.zip'
-        model_dir = '/home/dell-t3660tow/data/RL/RL_AUV_tracking/models/ppo_10-14_21/rl_model_960000_steps.zip'
+        model_dir = '/home/dell-t3660tow/data/RL/RL_AUV_tracking/models/ppo_11-16_23/rl_model_880000_steps.zip'
         evaluate(model_dir)
 
     elif args.choice == '3':
@@ -197,18 +198,18 @@ def learn(env, model_dir, log_dir):
     if METADATA['algorithm'] == "PPO":
         if METADATA['policy'] == 'MLP':
             policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
-            model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.0001, batch_size=200, n_epochs=10,
-                        gae_lambda=0.9, clip_range=0.2, ent_coef=0.1, vf_coef=0.5, target_kl=0.02,
+            model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.00005, batch_size=128, n_epochs=4,
+                        gae_lambda=0.9, clip_range=0.2, ent_coef=0.15, vf_coef=0.5, target_kl=0.01,
                         policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
         if METADATA['policy'] == 'CNN':
             policy_kwargs = dict(
-                features_extractor_class=CustomCNN,
+                features_extractor_class=PPO_withgridmap,
                 features_extractor_kwargs=dict(features_dim=128),
-                net_arch=[dict(pi=[256, 128, 64], vf=[128, 64])],  # for AC policy
+                net_arch=dict(pi=[256, 128, 64], vf=[128, 64]),  # for AC policy
             )
             model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
                         clip_range_vf=0.1,
-                        batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
+                        batch_size=64, tensorboard_log=log_dir, device="cuda")
 
     if METADATA['algorithm'] == "SAC":
         model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
@@ -221,8 +222,9 @@ def learn(env, model_dir, log_dir):
     #                      learning_rate=0.001, clip_range=0.2, batch_size=64,
     #                      tensorboard_log=("./log/PPO_LSTM_" + time_string), device="cuda")
 
-    model.learn(total_timesteps=1000000, tb_log_name="first_run", log_interval=5, callback=callback)
-    model.save(args.log_dir + 'final_model')
+    model.learn(total_timesteps=10000000, tb_log_name="first_run", log_interval=5, callback=callback)
+    model.save(os.path.join(args.log_dir, 'final_model'))
+
 
 
 def keep_learn(env, model_dir, log_dir, model_name):
@@ -245,8 +247,8 @@ def keep_learn(env, model_dir, log_dir, model_name):
         model = SAC.load(model_dir + model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 
-    model.learn(total_timesteps=1000000, tb_log_name="second_run", reset_num_timesteps=False,
-                log_interval=5, callback=callback)
+    model.learn(total_timesteps=20000000, tb_log_name="third_run_6", reset_num_timesteps=False,
+                log_interval=1, callback=callback)
     model.save(model_dir + 'final_model')
 
 
@@ -283,6 +285,7 @@ def evaluate(model_dir):
     for _ in range(500):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, done, _, inf = env.step(action)
+        print(action)
 
 
     # for i in range(10):
@@ -374,7 +377,7 @@ def env_test():
     while True:
         action = env.action_space.sample()
         print(action)
-        action = np.array([0.0, 0.5, 0.5])
+        action = np.array([0.0, 0.0, 0.0])
         obs, reward, done, _, inf = env.step(action)
 
 

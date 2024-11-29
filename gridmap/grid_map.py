@@ -55,7 +55,7 @@ class GridMap:
         self.l = np.full(shape=(len(x), len(y)), fill_value=log_odds(p))
         self.size = np.shape(self.l)
 
-        self.cal_entropy()
+        # self.cal_entropy()
 
     def get_shape(self):
         """
