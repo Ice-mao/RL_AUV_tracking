@@ -153,9 +153,10 @@ def test_sac(args: argparse.Namespace = get_args()) -> None:
     if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
-        test_envs.seed(args.seed)
-        test_collector.reset()
-        collector_stats = test_collector.collect(n_episode=args.test_num, render=args.render)
+        render_envs = gym.make(args.task, render_mode="human")
+        render_collector = Collector(policy, render_envs)
+        render_collector.reset()
+        collector_stats = render_collector.collect(n_episode=10, render=0.0, reset_before_collect=True)
         print(collector_stats)
 
 

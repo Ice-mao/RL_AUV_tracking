@@ -1,0 +1,5 @@
+log/
+build/
+install/
+
+global*
