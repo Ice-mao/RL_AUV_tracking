@@ -41,8 +41,11 @@ class DRQPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
 
     main idea:
     1、data augmentation
-    2、因为encoder编码部分需要单独训练处理，所以我们
-    :param actor: the actor network following the rules (s -> dist_input_BD)
+    2、因为encoder编码部分需要单独训练处理，所以我们需要单独定义encoder部分
+    :param aug: data augment for the image input
+    :param encoder: the actor network following the rules (s -> encoder_dim)
+    :param encoder_optim: the optimizer for actor network.
+    :param actor: the actor network following the rules (encoder_dim -> dist_input_BD)
     :param actor_optim: the optimizer for actor network.
     :param critic: the first critic network. (s, a -> Q(s, a))
     :param critic_optim: the optimizer for the first critic network.
@@ -81,6 +84,7 @@ class DRQPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
     def __init__(
         self,
         *,
+        aug: torch.nn.Module,
         encoder: torch.nn.Module,
         encoder_optim: torch.optim.Optimizer,
         actor: torch.nn.Module | ActorProb,
@@ -118,6 +122,10 @@ class DRQPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
             observation_space=observation_space,
             lr_scheduler=lr_scheduler,
         )
+        self.aug = aug
+        self.encoder = encoder
+        self.encoder_optim = encoder_optim
+
         critic2 = critic2 or deepcopy(critic)
         critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
         self.critic2, self.critic2_old = critic2, deepcopy(critic2)
@@ -148,7 +156,6 @@ class DRQPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
             )  # can we convert alpha to a constant tensor here? then mypy wouldn't complain
             self.alpha = alpha
 
-        # TODO or not TODO: add to BasePolicy?
         self._check_field_validity()
 
     def _check_field_validity(self) -> None:
@@ -173,13 +180,14 @@ class DRQPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         self.soft_update(self.critic_old, self.critic, self.tau)
         self.soft_update(self.critic2_old, self.critic2, self.tau)
 
-    # TODO: violates Liskov substitution principle
     def forward(  # type: ignore
         self,
         batch: ObsBatchProtocol,
         state: dict | Batch | np.ndarray | None = None,
         **kwargs: Any,
     ) -> DistLogProbBatchProtocol:
+        # TODO
+        obs = self.encoder(batch.obs)
         (loc_B, scale_B), hidden_BH = self.actor(batch.obs, state=state, info=batch.info)
         dist = Independent(Normal(loc=loc_B, scale=scale_B), 1)
         if self.deterministic_eval and not self.is_within_training_step:

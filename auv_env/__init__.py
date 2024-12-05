@@ -1,5 +1,32 @@
 from gymnasium import wrappers
-from .base import TargetTrackingBase, TargetTracking1, TargetTracking2
+from .base import TargetTrackingBase
+from .world_auv import World_AUV
+from .world_auv_map import WorldAuvMap
+
+class TargetTracking1(TargetTrackingBase):
+    """
+    target is an auv.
+    """
+    def __init__(self, map="TestMap", num_targets=1,
+                 is_training=True, show=True, verbose=True, **kwargs):
+        super().__init__(World_AUV, map, num_targets, is_training, show, verbose, **kwargs)
+
+class TargetTracking2(TargetTrackingBase):
+    """
+    target is an auv with map.
+    """
+    def __init__(self, map="TestMap", num_targets=1,
+                 is_training=True, show=True, verbose=True, **kwargs):
+        super().__init__(WorldAuvMap, map, num_targets, is_training, show, verbose, **kwargs)
+
+class AUVTracking_rgb(TargetTrackingBase):
+    """
+    target is an auv with map.
+    """
+    def __init__(self, map="TestMap", num_targets=1,
+                 is_training=True, show=True, verbose=True, **kwargs):
+        super().__init__(World_AUV_RGB, map, num_targets, is_training, show, verbose, **kwargs)
+        # TODO
 def make(env_name, render=False, record=False, eval=False, ros=False, directory='',
          t_steps=100, num_targets=1, **kwargs):
     """

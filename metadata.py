@@ -58,7 +58,7 @@ METADATA_v1 = {
     'k_4': 0.0,  # 0.01,
     'k_5': 0.0,  # 0.0002,
     # render setting
-    'render': False,
+    'render': True,
     # control_period
     'control_period': 0.5,
     # eval setting
