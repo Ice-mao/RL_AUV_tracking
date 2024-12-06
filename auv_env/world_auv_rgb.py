@@ -14,6 +14,7 @@ from metadata import METADATA
 
 from gymnasium import spaces
 import logging
+import copy
 
 
 class WorldAuvMap(WorldBase):
@@ -31,25 +32,31 @@ class WorldAuvMap(WorldBase):
                                np.concatenate((self.top_corner[:2], [np.pi]))]
         self.limit['target'] = [np.concatenate((self.bottom_corner[:2], np.array([-3, -3]))),
                                 np.concatenate((self.top_corner[:2], np.array([3, 3])))]
+        # ACTION:
+        self.action_space = spaces.Box(low=np.float32(METADATA['action_range_low']),
+                                       high=np.float32(METADATA['action_range_high']),
+                                       dtype=float)
         # STATE:
-        # target distance、angle、协方差行列式值、bool;agent 自身定位;last action; 声呐图像
-        state_lower = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
+        # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
+        state_lower_bound = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
                                                       [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
                                       [0.0] * 3))
-        grid_lower = [0.0] * (64 * 64)
-        lower_bound = np.concatenate((state_lower, grid_lower))
-
-        state_upper = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
+        state_upper_bound = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
                                                       [self.top_corner[0], self.top_corner[1], np.pi])),
                                       [1.0] * 3))
+        grid_lower = [0.0] * (64 * 64)
         grid_upper = [1.0] * (64 * 64)
-        upper_bound = np.concatenate((state_upper, grid_upper))
-        self.limit['state'] = [lower_bound, upper_bound]
 
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
-        self.observation_space = spaces.Box(self.limit['state'][0], self.limit['state'][1], dtype=np.float64)
+        self.observation_space = spaces.Dict({
+            "images": spaces.Dict(
+                    {"left": spaces.Box(0, 255, shape=(128, 128, 3), dtype=np.uint8),
+                     "right": spaces.Box(0, 255, shape=(128, 128, 3), dtype=np.uint8)}
+                ),
+            "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=float),
+        })
 
     def get_reward(self, is_col, reward_param=METADATA['reward_param'],
                    c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
@@ -84,23 +91,23 @@ class WorldAuvMap(WorldBase):
         else:
             obstacles_pt = (self.sensor_r, 0)
 
-        state = []
-        state.extend(self.agent.gridMap.to_grayscale_image().flatten())  # dim:64*64
+        state_observation = []
+        state_observation.extend(self.agent.gridMap.to_grayscale_image().flatten())  # dim:64*64
         for i in range(self.num_targets):
             r_b, alpha_b = util.relative_distance_polar(
                 self.belief_targets[i].state[:2],
                 xy_base=self.agent.est_state.vec[:2],
                 theta_base=np.radians(self.agent.est_state.vec[8]))
-            state.extend([r_b, alpha_b,
+            state_observation.extend([r_b, alpha_b,
                           np.log(LA.det(self.belief_targets[i].cov)),
                           float(observed[i])])  # dim:4
-        state.extend([self.agent.state.vec[0], self.agent.state.vec[1],
+        state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
                       np.radians(self.agent.state.vec[8])])  # dim:3
         # self.state.extend(obstacles_pt)
-        state.extend(action_waypoint.tolist())  # dim:3
+        state_observation.extend(action_waypoint.tolist())  # dim:3
 
-        state = np.array(state)
-
+        state_observation = np.array(state_observation)
+        return copy.deepcopy(dict(images=images, state=state_observation))
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))

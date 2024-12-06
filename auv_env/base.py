@@ -49,6 +49,7 @@ class TargetTrackingBase(gym.Env):
         # init the scenario
         self.world = world_class(map=map, show=show, verbose=verbose, num_targets=self.num_targets)
         # init the action space
+        self.action_space = self.world.action_space
         self.action_space = spaces.Box(low=np.float32(self.action_range_low), high=np.float32(self.action_range_high)
                                        , shape=(len(self.action_range_high),))
         self.observation_space = self.world.observation_space

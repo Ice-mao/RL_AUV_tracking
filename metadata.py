@@ -32,12 +32,11 @@ METADATA_v1 = {
     'ang_dist_range_t2b': (-np.pi / 2, np.pi / 2),
     'insight': True,
     'noblock': True,
-    # init target's param
     'margin': 1.0,  # a marginal distance btw targets and the agent.
     'margin2wall': 1.0,  # a marginal distance from a wall.
     'const_q': 0.5,  # target noise constant in beliefs.
     'const_q_true': 0.01,  # target noise constant of actual targets.
-    'lqr_l_p': 50,
+    'lqr_l_p': 50, # control the target's veocity
 
     # reinforcement learning setting.
     'algorithm': 'PPO',  # PPO、SAC
@@ -51,12 +50,14 @@ METADATA_v1 = {
     'target_num': 1,
     'target_dim': 4,  # x, y, xdot, ydot
     # reward setting
-    'c_mean': 0.2,
-    'c_std': 0.0,
-    'c_penalty': 5.0,
-    'k_3': 0.0,  # 0.3,
-    'k_4': 0.0,  # 0.01,
-    'k_5': 0.0,  # 0.0002,
+    'reward_param':{
+        'c_mean': 0.2,
+        'c_std': 0.0,
+        'c_penalty': 5.0,
+        'k_3': 0.0,  # 0.3,
+        'k_4': 0.0,  # 0.01,
+        'k_5': 0.0,  # 0.0002,
+    },
     # render setting
     'render': True,
     # control_period
@@ -66,9 +67,9 @@ METADATA_v1 = {
 }
 
 """
-    used for mutiagent env
+    used for RGB env
 """
-METADATA_v2 = {
+METADATA_RGB = {
     'version': 1,
     # init the scenario's param
     'size': [40, 40, 20],
@@ -82,8 +83,8 @@ METADATA_v2 = {
     'sensor_r_sd': 0.2,  # sensor range noise.
     'sensor_b_sd': 0.01,  # sensor bearing noise.
     'p_prior': 0.5,  # Prior occupancy probability
-    'p_occ': 0.9,  # Probability that cell is occupied with total confidence
-    'p_free': 0.35,  # Probability that cell is free with total confidence
+    'p_occ': 0.8,  # Probability that cell is occupied with total confidence
+    'p_free': 0.25,  # Probability that cell is free with total confidence
     'resolution': 0.1,  # Grid resolution in [m]
 
     # init target's param
@@ -95,36 +96,42 @@ METADATA_v2 = {
     'ang_dist_range_t2b': (-np.pi / 2, np.pi / 2),
     'insight': True,
     'noblock': True,
-    # init target's param
     'margin': 1.0,  # a marginal distance btw targets and the agent.
     'margin2wall': 1.0,  # a marginal distance from a wall.
     'const_q': 0.5,  # target noise constant in beliefs.
     'const_q_true': 0.01,  # target noise constant of actual targets.
-    'lqr_l_p': 50,
+    'lqr_l_p': 50, # control the target's veocity
 
     # reinforcement learning setting.
+    'algorithm': 'PPO',  # PPO、SAC
+    'policy': 'CNN',  # CNN、MLP 记得同时修改环境
+    'random': False,  # for domain randomization.
+    'task_random': False,  # if False, according to 'insight' to determine
     'action_range_high': [1, 1, 1],
-    'action_range_low': [0, 0, 0],
-    'action_range_scale': [3, np.pi, np.pi / 2],
+    'action_range_low': [-1, -1, -1],
+    'action_range_scale': [3 / 2, np.pi / 2, np.pi / 4],
     'action_dim': 6,
     'target_num': 1,
     'target_dim': 4,  # x, y, xdot, ydot
     # reward setting
-    'c_mean': 0.2,
-    'c_std': 0.0,
-    'c_penalty': 5.0,
-    'k_3': 0.0,  # 0.3,
-    'k_4': 0.0,  # 0.01,
-    'k_5': 0.0,  # 0.0002,
+    'reward_param':{
+        'c_mean': 0.2,
+        'c_std': 0.0,
+        'c_penalty': 5.0,
+        'k_3': 0.0,  # 0.3,
+        'k_4': 0.0,  # 0.01,
+        'k_5': 0.0,  # 0.0002,
+    },
     # render setting
-    'render': False,
+    'render': True,
     # control_period
     'control_period': 0.5,
     # eval setting
     'eval_fixed': False
 }
+
 # Designate a metadata version to be used throughout the target tracking env.
-METADATA = METADATA_v1
+METADATA = METADATA_RGB
 
 TTENV_EVAL_SET = [
     {  # Tracking
