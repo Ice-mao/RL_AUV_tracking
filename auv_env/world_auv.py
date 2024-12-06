@@ -429,23 +429,22 @@ class World_AUV:
             self.record_cov_posterior.append(self.belief_targets[i].cov)
         return observed
 
-    def get_reward(self, is_col, is_training=True, c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
-                   c_penalty=METADATA['c_penalty'], k_3=METADATA['k_3'], k_4=METADATA['k_4'], k_5=METADATA['k_5']):
+    def get_reward(self, is_col, reward_param=METADATA['reward_param']):
         detcov = [LA.det(b_target.cov) for b_target in self.belief_targets]
         r_detcov_mean = - np.mean(np.log(detcov))
         r_detcov_std = - np.std(np.log(detcov))
 
-        reward = c_mean * r_detcov_mean + c_std * r_detcov_std
+        reward = reward_param["c_mean"] * r_detcov_mean + reward_param["c_std"] * r_detcov_std
         # reward_w = np.exp(-k_3 * np.abs(np.radians(self.agent.state.vec[8]))) - 1
-        reward_w = np.exp(-k_3 * np.abs(self.agent_w)) - 1
+        reward_w = np.exp(-reward_param["k_3"] * np.abs(self.agent_w)) - 1
         if self.agent_last_u is not None:
-            reward_a = np.exp(-k_4 * np.sum(np.abs(self.agent_u - self.agent_last_u))) - 1
+            reward_a = np.exp(-reward_param["k_4"] * np.sum(np.abs(self.agent_u - self.agent_last_u))) - 1
         else:
             reward_a = -1
-        reward_e = np.exp(-k_5 * np.sum([f_i ** 2 for f_i in self.agent_u])) - 1
+        reward_e = np.exp(-reward_param["k_5"] * np.sum([f_i ** 2 for f_i in self.agent_u])) - 1
         reward = reward + reward_w + reward_a + reward_e
         if is_col:
-            reward = np.min([0.0, reward]) - c_penalty * 1.0
+            reward = np.min([0.0, reward]) - reward_param["c_penalty"] * 1.0
         if METADATA['render']:
             print('reward:', reward, 'reward_w:', reward_w, 'reward_a:', reward_a, 'reward_e:', reward_e)
         return reward, False, r_detcov_mean, r_detcov_std

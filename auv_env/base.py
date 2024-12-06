@@ -136,6 +136,7 @@ class WorldBase:
         # for u calculate:when receive the new waypoints
         self.agent_last_u = None
         self.agent_u = None
+        self.sensors = {}
 
         # Cal random  pos of agent and target
         self.reset()
@@ -166,7 +167,8 @@ class WorldBase:
                 self.agent_u = self.u
             self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
-            self.sensors = self.ocean.tick()
+            sensors = self.ocean.tick()
+            self.sensors.update(sensors)
 
         # The targets are observed by the agent (z_t+1) and the beliefs are updated.
         observed = self.observe_and_update_belief()
@@ -283,7 +285,8 @@ class WorldBase:
             self.target_u = np.zeros(8)
             self.ocean.act(target, self.target_u)
 
-        self.sensors = self.ocean.tick()
+        sensors = self.ocean.tick()
+        self.sensors.update(sensors)
 
         self.set_limits()
         self.build_models(sampling_period=self.sampling_period,

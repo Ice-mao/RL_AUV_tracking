@@ -51,9 +51,7 @@ class WorldAuvMap(WorldBase):
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Box(self.limit['state'][0], self.limit['state'][1], dtype=np.float64)
 
-    def get_reward(self, is_col, reward_param=METADATA['reward_param'],
-                   c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
-                   c_penalty=METADATA['c_penalty'], k_3=METADATA['k_3'], k_4=METADATA['k_4'], k_5=METADATA['k_5']):
+    def get_reward(self, is_col, reward_param=METADATA['reward_param']):
         detcov = [LA.det(b_target.cov) for b_target in self.belief_targets]
         r_detcov_mean = - np.mean(np.log(detcov))
         r_detcov_std = - np.std(np.log(detcov))

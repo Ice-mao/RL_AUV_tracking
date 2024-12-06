@@ -17,7 +17,7 @@ import logging
 import copy
 
 
-class WorldAuvMap(WorldBase):
+class WorldAuvRGB(WorldBase):
     """
         different from world:target is also an auv
     """
@@ -44,23 +44,19 @@ class WorldAuvMap(WorldBase):
         state_upper_bound = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
                                                       [self.top_corner[0], self.top_corner[1], np.pi])),
                                       [1.0] * 3))
-        grid_lower = [0.0] * (64 * 64)
-        grid_upper = [1.0] * (64 * 64)
 
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
             "images": spaces.Dict(
-                    {"left": spaces.Box(0, 255, shape=(128, 128, 3), dtype=np.uint8),
-                     "right": spaces.Box(0, 255, shape=(128, 128, 3), dtype=np.uint8)}
+                    {"left": spaces.Box(0, 1, shape=(224, 224, 3), dtype=np.float32),
+                     "right": spaces.Box(0, 1, shape=(224, 224, 3), dtype=np.float32)}
                 ),
-            "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=float),
+            "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
-    def get_reward(self, is_col, reward_param=METADATA['reward_param'],
-                   c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
-                   c_penalty=METADATA['c_penalty'], k_3=METADATA['k_3'], k_4=METADATA['k_4'], k_5=METADATA['k_5']):
+    def get_reward(self, is_col, reward_param=METADATA['reward_param']):
         detcov = [LA.det(b_target.cov) for b_target in self.belief_targets]
         r_detcov_mean = - np.mean(np.log(detcov))
         r_detcov_std = - np.std(np.log(detcov))
@@ -105,8 +101,11 @@ class WorldAuvMap(WorldBase):
                       np.radians(self.agent.state.vec[8])])  # dim:3
         # self.state.extend(obstacles_pt)
         state_observation.extend(action_waypoint.tolist())  # dim:3
-
         state_observation = np.array(state_observation)
+
+        images = {'left':self.sensors["auv0"]["LeftCamera"],
+                  'right':self.sensors["auv0"]["RightCamera"]}
+        images = util.image_preprocess(images)
         return copy.deepcopy(dict(images=images, state=state_observation))
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
@@ -114,27 +113,28 @@ class WorldAuvMap(WorldBase):
 
 
 if __name__ == '__main__':
-    from auv_control import scenario
 
-    print("Test World")
-    world = WorldAuvMap(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
-    world.reset()
-    print(world.size)
-    world.targets[0].planner.draw_traj(world.ocean, 30)
-    action_range_high = METADATA['action_range_high']
-    action_range_low = METADATA['action_range_low']
-    action_space = spaces.Box(low=np.float32(action_range_low), high=np.float32(action_range_high)
-                              , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
-    while True:
-        for _ in range(100000):
-            # if 'q' in world.agent.keyboard.pressed_keys:
-            #     break
-            # command = world.agent.keyboard.parse_keys()
-            action = action_space.sample()
-            world.step(action)
-            # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
-        world.reset()
-        world.targets[0].planner.draw_traj(world.ocean, 30)
+    from auv_control import scenario
+    #
+    # print("Test World")
+    # world = WorldAuvMap(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
+    # world.reset()
+    # print(world.size)
+    # world.targets[0].planner.draw_traj(world.ocean, 30)
+    # action_range_high = METADATA['action_range_high']
+    # action_range_low = METADATA['action_range_low']
+    # action_space = spaces.Box(low=np.float32(action_range_low), high=np.float32(action_range_high)
+    #                           , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
+    # while True:
+    #     for _ in range(100000):
+    #         # if 'q' in world.agent.keyboard.pressed_keys:
+    #         #     break
+    #         # command = world.agent.keyboard.parse_keys()
+    #         action = action_space.sample()
+    #         world.step(action)
+    #         # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
+    #     world.reset()
+    #     world.targets[0].planner.draw_traj(world.ocean, 30)
         # test for camera
         # import cv2
         # if "LeftCamera" in world.sensors['auv0']:

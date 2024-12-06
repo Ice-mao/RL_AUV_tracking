@@ -1,9 +1,28 @@
 import numpy as np
 from numpy import linalg as LA
 
+from PIL import Image
+from torchvision import transforms
+
 
 # Convention : VARIABLE_OBJECT_FRAME. If FRAME is omitted, it means it is with
 # respect to the global frame.
+def image_preprocess(images: dict)->dict:
+    "images include left and right"
+    for key in images:
+        rgb_image = images[key][:, :, :3]  # 取前 3 个通道 (H, W, 3)
+        pil_image = Image.fromarray(rgb_image)
+        preprocess = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+        tensor_image = preprocess(pil_image)
+        image = tensor_image.numpy()
+        images[key] = image
+    return images
+
 
 def wrap_around(x):
     # x \in [-pi,pi)
