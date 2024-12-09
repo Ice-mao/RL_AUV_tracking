@@ -1,18 +1,14 @@
 import holoocean
 import numpy as np
 from numpy import linalg as LA
-from auv_control.estimation import KFbelief, UKFbelief
-from auv_control.control import LQR
-from auv_control.planning import Traj, RRT
-from auv_control import State
+from auv_control.estimation import KFbelief
 
 from auv_env import util
-from auv_env.agent import AgentAuv, AgentSphere, AgentAuvTarget
-from auv_env.obstacle import Obstacle
+from auv_env.agent import AgentAuv, AgentAuvTarget
+from auv_env.envs.obstacle import Obstacle
 from metadata import METADATA
 
 from gymnasium import spaces
-import logging
 
 
 class World_AUV:

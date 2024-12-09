@@ -1,10 +1,8 @@
-import holoocean, cv2
+import holoocean
 import numpy as np
 from auv_control import scenario
-from auv_env.tools import KeyBoardCmd
-from pynput import keyboard
-from auv_env.obstacle import Obstacle
-from pynput import keyboard
+from auv_env.envs.tools import KeyBoardCmd
+from auv_env.envs.obstacle import Obstacle
 
 env = holoocean.make(scenario_cfg=scenario)
 # env = holoocean.make('PierHarbor-Hovering')
