@@ -1,12 +1,9 @@
 import numpy as np
 import holoocean
-from tqdm import tqdm
 
 from auv_control.estimation import InEKF
 from auv_control.control import LQR
-from auv_control.planning import Traj, RRT
 from auv_control import State
-from auv_env.tools import Plotter
 # from plotter import Plotter
 from auv_control import scenario
 import argparse

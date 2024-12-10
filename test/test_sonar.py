@@ -1,6 +1,6 @@
 import holoocean
 import matplotlib.pyplot as plt
-from auv_env.tools import KeyBoardCmd
+from auv_env.envs.tools import KeyBoardCmd
 import numpy as np
 
 #### GET SONAR CONFIG

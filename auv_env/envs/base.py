@@ -21,7 +21,7 @@ from metadata import METADATA
 
 from auv_env.maps import map_utils
 import auv_env.util as util
-from auv_env.obstacle import Obstacle
+from auv_env.envs.obstacle import Obstacle
 from auv_env.agent import AgentAuv, AgentSphere, AgentAuvTarget
 
 

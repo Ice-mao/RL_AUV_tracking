@@ -3,11 +3,10 @@
 from time import perf_counter
 
 import holoocean
-import matplotlib.pyplot as plt
 
 from gridmap.grid_map import *
 
-from auv_env.tools import KeyBoardCmd, ImagingSonar, PoseLocation
+from auv_env.envs.tools import KeyBoardCmd, ImagingSonar, PoseLocation
 
 P_prior = 0.5  # Prior occupancy probability
 P_occ = 0.9  # Probability that cell is occupied with total confidence

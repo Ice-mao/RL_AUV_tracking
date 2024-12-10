@@ -1,6 +1,5 @@
-import numpy as np
 from metadata import METADATA
-from auv_env.tools import KeyBoardCmd, ImagingSonar, RangeFinder
+from auv_env.envs.tools import KeyBoardCmd, ImagingSonar, RangeFinder
 import auv_env.util as util
 
 from auv_control.estimation import InEKF

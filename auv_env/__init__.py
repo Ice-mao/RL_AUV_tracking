@@ -1,8 +1,8 @@
 from gymnasium import wrappers
-from .base import TargetTrackingBase
-from .world_auv import World_AUV
-from .world_auv_map import WorldAuvMap
-from .world_auv_rgb import WorldAuvRGB
+from .envs.base import TargetTrackingBase
+from .envs.world_auv import World_AUV
+from .envs.world_auv_map import WorldAuvMap
+from .envs.world_auv_rgb import WorldAuvRGB
 
 class TargetTracking1(TargetTrackingBase):
     """
@@ -69,13 +69,13 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
     # 使用gym中对episode进行timestep限制的wrapper进行封装，保证环境的更新
     env = wrappers.TimeLimit(env0, max_episode_steps=t_steps)
     if ros:
-        from auv_env.ros_wrapper import Ros
+        from auv_env.wrappers.ros_wrapper import Ros
         env = Ros(env)
     if eval:
-        from auv_env.display_wrapper import Display2D
+        from auv_env.wrappers.display_wrapper import Display2D
         env = Display2D(env)
     if record:
-        from auv_env.display_wrapper import Video2D
+        from auv_env.wrappers.display_wrapper import Video2D
         env = Video2D(env, dirname=directory, local_view=local_view)
 
     return env

@@ -1,23 +1,18 @@
 import holoocean
 import numpy as np
 from numpy import linalg as LA
-from auv_control.estimation import KFbelief, UKFbelief
 from auv_control.control import LQR
-from auv_control.planning import Traj, RRT
-from auv_control import State
 
 from auv_env import util
 from auv_env.base import WorldBase
-from auv_env.agent import AgentAuv, AgentSphere, AgentAuvTarget
-from auv_env.obstacle import Obstacle
+from auv_env.envs.obstacle import Obstacle
 from metadata import METADATA
 
 from gymnasium import spaces
 import logging
-import copy
 
 
-class WorldAuvRGB(WorldBase):
+class WorldAuvMap(WorldBase):
     """
         different from world:target is also an auv
     """
@@ -32,29 +27,25 @@ class WorldAuvRGB(WorldBase):
                                np.concatenate((self.top_corner[:2], [np.pi]))]
         self.limit['target'] = [np.concatenate((self.bottom_corner[:2], np.array([-3, -3]))),
                                 np.concatenate((self.top_corner[:2], np.array([3, 3])))]
-        # ACTION:
-        self.action_space = spaces.Box(low=np.float32(METADATA['action_range_low']),
-                                       high=np.float32(METADATA['action_range_high']),
-                                       dtype=float)
         # STATE:
-        # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
-        state_lower_bound = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
+        # target distance、angle、协方差行列式值、bool;agent 自身定位;last action; 声呐图像
+        state_lower = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
                                                       [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
                                       [0.0] * 3))
-        state_upper_bound = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
+        grid_lower = [0.0] * (64 * 64)
+        lower_bound = np.concatenate((state_lower, grid_lower))
+
+        state_upper = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
                                                       [self.top_corner[0], self.top_corner[1], np.pi])),
                                       [1.0] * 3))
+        grid_upper = [1.0] * (64 * 64)
+        upper_bound = np.concatenate((state_upper, grid_upper))
+        self.limit['state'] = [lower_bound, upper_bound]
 
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
-        self.observation_space = spaces.Dict({
-            "images": spaces.Dict(
-                    {"left": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-                     "right": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32)}
-                ),
-            "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
-        })
+        self.observation_space = spaces.Box(self.limit['state'][0], self.limit['state'][1], dtype=np.float64)
 
     def get_reward(self, is_col, reward_param=METADATA['reward_param']):
         detcov = [LA.det(b_target.cov) for b_target in self.belief_targets]
@@ -82,58 +73,55 @@ class WorldAuvRGB(WorldBase):
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         # Find the closest obstacle coordinate.
-        # if self.agent.rangefinder.min_distance < self.sensor_r:
-        #     obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
-        # else:
-        #     obstacles_pt = (self.sensor_r, 0)
+        if self.agent.rangefinder.min_distance < self.sensor_r:
+            obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
+        else:
+            obstacles_pt = (self.sensor_r, 0)
 
-        state_observation = []
+        state = []
+        state.extend(self.agent.gridMap.to_grayscale_image().flatten())  # dim:64*64
         for i in range(self.num_targets):
             r_b, alpha_b = util.relative_distance_polar(
                 self.belief_targets[i].state[:2],
                 xy_base=self.agent.est_state.vec[:2],
                 theta_base=np.radians(self.agent.est_state.vec[8]))
-            state_observation.extend([r_b, alpha_b,
+            state.extend([r_b, alpha_b,
                           np.log(LA.det(self.belief_targets[i].cov)),
                           float(observed[i])])  # dim:4
-        state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
+        state.extend([self.agent.state.vec[0], self.agent.state.vec[1],
                       np.radians(self.agent.state.vec[8])])  # dim:3
         # self.state.extend(obstacles_pt)
-        state_observation.extend(action_waypoint.tolist())  # dim:3
-        state_observation = np.array(state_observation)
+        state.extend(action_waypoint.tolist())  # dim:3
 
-        images = {'left':self.sensors["auv0"]["LeftCamera"],
-                  'right':self.sensors["auv0"]["RightCamera"]}
-        images = util.image_preprocess(images)
-        return copy.deepcopy(dict(images=images, state=state_observation))
+        state = np.array(state)
+
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
 
 
 if __name__ == '__main__':
-
     from auv_control import scenario
-    #
-    # print("Test World")
-    # world = WorldAuvMap(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
-    # world.reset()
-    # print(world.size)
-    # world.targets[0].planner.draw_traj(world.ocean, 30)
-    # action_range_high = METADATA['action_range_high']
-    # action_range_low = METADATA['action_range_low']
-    # action_space = spaces.Box(low=np.float32(action_range_low), high=np.float32(action_range_high)
-    #                           , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
-    # while True:
-    #     for _ in range(100000):
-    #         # if 'q' in world.agent.keyboard.pressed_keys:
-    #         #     break
-    #         # command = world.agent.keyboard.parse_keys()
-    #         action = action_space.sample()
-    #         world.step(action)
-    #         # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
-    #     world.reset()
-    #     world.targets[0].planner.draw_traj(world.ocean, 30)
+
+    print("Test World")
+    world = WorldAuvMap(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
+    world.reset()
+    print(world.size)
+    world.targets[0].planner.draw_traj(world.ocean, 30)
+    action_range_high = METADATA['action_range_high']
+    action_range_low = METADATA['action_range_low']
+    action_space = spaces.Box(low=np.float32(action_range_low), high=np.float32(action_range_high)
+                              , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
+    while True:
+        for _ in range(100000):
+            # if 'q' in world.agent.keyboard.pressed_keys:
+            #     break
+            # command = world.agent.keyboard.parse_keys()
+            action = action_space.sample()
+            world.step(action)
+            # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
+        world.reset()
+        world.targets[0].planner.draw_traj(world.ocean, 30)
         # test for camera
         # import cv2
         # if "LeftCamera" in world.sensors['auv0']:

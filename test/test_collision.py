@@ -1,5 +1,5 @@
 from shapely.geometry import Point, Polygon
-from auv_env.obstacle import polygon_2_points
+from auv_env.envs.obstacle import polygon_2_points
 #
 #
 # # 定义点
