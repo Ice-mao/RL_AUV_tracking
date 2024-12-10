@@ -36,30 +36,27 @@ class AgentAuv(Agent):
     def __init__(self, dim, sampling_period, sensor, scenario):
         Agent.__init__(self, dim, sampling_period)
         # init the control part of Auv
-        if METADATA['random']:
+        if METADATA['agent']['random']:
             l_p = np.random.normal(40, 15)
         else:
             l_p = 50
         if l_p is not None:
             self.controller = LQR(l_p=l_p)
 
-        if METADATA['render']:
-            self.keyboard = KeyBoardCmd(20)
-
         # init the sonar and grid map part
-        if METADATA['use_sonar']:
+        if METADATA['agent']['use_sonar']:
             self.imagingsonar = ImagingSonar(scenario=scenario)  # to see if it is useful
             self.zmax = self.imagingsonar.zmax
         else:
             self.zmax = 8.0
-        self.P_prior = METADATA['p_prior']  # Prior occupancy probability
-        self.P_occ = METADATA['p_occ']  # Probability that cell is occupied with total confidence
-        self.P_free = METADATA['p_free']  # Probability that cell is free with total confidence
-        self.RESOLUTION = METADATA['resolution']  # Grid resolution in [m]
-        self.gridMap = GridMap(X_lim=np.array([METADATA['bottom_corner'][0],
-                                               METADATA['bottom_corner'][0] + METADATA['size'][0]]),
-                               Y_lim=np.array([METADATA['bottom_corner'][1],
-                                               METADATA['bottom_corner'][1] + METADATA['size'][1]]),
+        self.P_prior = METADATA['agent']['p_prior']  # Prior occupancy probability
+        self.P_occ = METADATA['agent']['p_occ']  # Probability that cell is occupied with total confidence
+        self.P_free = METADATA['agent']['p_free']  # Probability that cell is free with total confidence
+        self.RESOLUTION = METADATA['agent']['resolution']  # Grid resolution in [m]
+        self.gridMap = GridMap(X_lim=np.array([METADATA['scenario']['bottom_corner'][0],
+                                               METADATA['scenario']['bottom_corner'][0] + METADATA['scenario']['size'][0]]),
+                               Y_lim=np.array([METADATA['scenario']['bottom_corner'][1],
+                                               METADATA['scenario']['bottom_corner'][1] + METADATA['scenario']['size'][1]]),
                                resolution=self.RESOLUTION,
                                p=self.P_prior)
         # init the sensor part of AUV
@@ -304,7 +301,7 @@ class AgentAuvTarget(Agent):
         self.obstacles = obstacles
         self.scene = scene
         # init the part of Auv
-        if METADATA['random']:
+        if METADATA['target']['random']:
             data = [20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 200, 250]
             self.controller = LQR(l_p=np.random.choice(data), l_v=0.001)
         else:

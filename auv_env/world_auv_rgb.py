@@ -50,8 +50,8 @@ class WorldAuvRGB(WorldBase):
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
             "images": spaces.Dict(
-                    {"left": spaces.Box(0, 1, shape=(224, 224, 3), dtype=np.float32),
-                     "right": spaces.Box(0, 1, shape=(224, 224, 3), dtype=np.float32)}
+                    {"left": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+                     "right": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32)}
                 ),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
@@ -82,13 +82,12 @@ class WorldAuvRGB(WorldBase):
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         # Find the closest obstacle coordinate.
-        if self.agent.rangefinder.min_distance < self.sensor_r:
-            obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
-        else:
-            obstacles_pt = (self.sensor_r, 0)
+        # if self.agent.rangefinder.min_distance < self.sensor_r:
+        #     obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
+        # else:
+        #     obstacles_pt = (self.sensor_r, 0)
 
         state_observation = []
-        state_observation.extend(self.agent.gridMap.to_grayscale_image().flatten())  # dim:64*64
         for i in range(self.num_targets):
             r_b, alpha_b = util.relative_distance_polar(
                 self.belief_targets[i].state[:2],
