@@ -22,7 +22,7 @@ from metadata import METADATA
 from auv_env.maps import map_utils
 import auv_env.util as util
 from auv_env.envs.obstacle import Obstacle
-from auv_env.agent import AgentAuv, AgentSphere, AgentAuvTarget
+from auv_env.envs.agent import AgentAuv, AgentSphere, AgentAuvTarget
 
 
 class TargetTrackingBase(gym.Env):
@@ -30,30 +30,18 @@ class TargetTrackingBase(gym.Env):
         base class for env creation
     """
 
-    def __init__(self, world_class, map="TestMap", num_targets=1,
-                 is_training=True, show=True, verbose=True, **kwargs):
+    def __init__(self, world_class, map="TestMap", num_targets=1, show=True, verbose=True, **kwargs):
         gym.Env.__init__(self)
         np.random.seed()
         self.state = None
         # init some params
         self.num_targets = num_targets
-        self.is_training = is_training
-        self.policy_period = 0.5  # 控制周期
-        self.sensor_r_sd = METADATA['sensor_r_sd']
-        self.sensor_b_sd = METADATA['sensor_b_sd']
-        self.sensor_r = METADATA['sensor_r']
-        self.fov = METADATA['fov']
-        self.action_range_high = METADATA['action_range_high']
-        self.action_range_low = METADATA['action_range_low']
-        self.action_dim = METADATA['action_dim']
+        self.is_training = METADATA['is_training']
         # init the scenario
         self.world = world_class(map=map, show=show, verbose=verbose, num_targets=self.num_targets)
         # init the action space
         self.action_space = self.world.action_space
-        self.action_space = spaces.Box(low=np.float32(self.action_range_low), high=np.float32(self.action_range_high)
-                                       , shape=(len(self.action_range_high),))
         self.observation_space = self.world.observation_space
-        self.target_init_cov = METADATA['target_init_cov']
         self.reset_num = 0
 
     def reset(self, **kwargs):
@@ -96,18 +84,12 @@ class WorldBase:
         self.agent = None
         # init the param
         self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time
-        self.random = METADATA['random']  # bool for domain random
-        self.task_random = METADATA['task_random']
-        self.control_period = METADATA['control_period']
-        self.sensor_r = METADATA['sensor_r']
-        self.fov = METADATA['fov']
-        self.sensor_r_sd = METADATA['sensor_r_sd']
-        self.sensor_b_sd = METADATA['sensor_b_sd']
+        self.task_random = METADATA['env']['task_random']
+        self.control_period = METADATA['env']['control_period']
         self.num_targets = num_targets  # num of target
-        self.target_dim = METADATA['target_dim']
         self.action_range_scale = METADATA['action_range_scale']
-        self.noblock = METADATA['noblock']
-        self.insight = METADATA['insight']
+        self.noblock = METADATA['env']['noblock']
+        self.insight = METADATA['env']['insight'][0]
         if self.insight:
             self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         else:
@@ -118,12 +100,15 @@ class WorldBase:
 
         # Setup environment
         margin = 0.25
-        self.size = np.array([METADATA['size'][0] - 2 * margin, METADATA['size'][1] - 2 * margin, METADATA['size'][2]])
-        self.bottom_corner = np.array([METADATA['bottom_corner'][0] + margin, METADATA['bottom_corner'][1] + margin,
-                                       METADATA['bottom_corner'][2]])
-        self.fix_depth = METADATA['fix_depth']
-        self.margin = METADATA['margin']
-        self.margin2wall = METADATA['margin2wall']
+        self.size = np.array([METADATA['scenario']['size'][0] - 2 * margin,
+                              METADATA['scenario']['size'][1] - 2 * margin,
+                              METADATA['scenario']['size'][2]])
+        self.bottom_corner = np.array([METADATA['scenario']['bottom_corner'][0] + margin,
+                                       METADATA['scenario']['bottom_corner'][1] + margin,
+                                       METADATA['scenario']['bottom_corner'][2]])
+        self.fix_depth = METADATA['scenario']['fix_depth']
+        self.margin = METADATA['env']['margin']
+        self.margin2wall = METADATA['env']['margin2wall']
         # self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
         #                     lifetime=0)  # draw the area
 
@@ -146,10 +131,10 @@ class WorldBase:
         observed = []
         # 归一化展开
         r = action_waypoint[0] * self.action_range_scale[0]
-        theta = action_waypoint[1] * self.action_range_scale[1] - self.action_range_scale[1] / 2
+        theta = action_waypoint[1] * self.action_range_scale[1]
         global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
                                                          np.radians(self.agent.est_state.vec[8]))
-        angle = action_waypoint[2] * self.action_range_scale[2] - self.action_range_scale[2] / 2
+        angle = action_waypoint[2] * self.action_range_scale[2]
         global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
         self.agent_w = angle / 0.5
         if self.agent_u is not None:
@@ -189,6 +174,7 @@ class WorldBase:
             print(is_col, observed[0], reward)
         self.is_col = is_col
         return state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
+
     def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
         """
         :param sampling_period:
@@ -203,13 +189,13 @@ class WorldBase:
         self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
                                        , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
                                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
-                                       l_p=METADATA['lqr_l_p'])
+                                       l_p=METADATA['target']['lqr_l_p'])
                         for i in range(self.num_targets)]
         # Build target beliefs.
-        if self.random:
-            self.const_q = np.random.choice([0.01, 0.02, 0.05, 0.1, 0.4, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0])
+        if METADATA['target']['random']:
+            self.const_q = np.random.choice(METADATA['target']['const_q'][1])
         else:
-            self.const_q = METADATA['const_q']
+            self.const_q = METADATA['target']['const_q'][0]
         self.targetA = np.concatenate((np.concatenate((np.eye(2),
                                                        self.control_period * np.eye(2)), axis=1),
                                        [[0, 0, 1, 0], [0, 0, 0, 1]]))
@@ -218,7 +204,7 @@ class WorldBase:
                             self.control_period ** 2 / 2 * np.eye(2)), axis=1),
             np.concatenate((self.control_period ** 2 / 2 * np.eye(2),
                             self.control_period * np.eye(2)), axis=1)))
-        self.belief_targets = [KFbelief(dim=self.target_dim,
+        self.belief_targets = [KFbelief(dim=METADATA['target']['target_dim'],
                                         limit=self.limit['target'], A=self.targetA,
                                         W=self.target_noise_cov,
                                         obs_noise_func=self.observation_noise)
@@ -232,9 +218,9 @@ class WorldBase:
         self.obstacles.draw_obstacle()
 
         if self.task_random:
-            self.insight = np.random.choice([True, False])
+            self.insight = np.random.choice(METADATA['env']['insight'][1])
         else:
-            self.insight = METADATA['insight']
+            self.insight = METADATA['env']['insight'][0]
         print("insight is :", self.insight)
         if self.insight:
             self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
@@ -251,7 +237,6 @@ class WorldBase:
         self.agent_init_yaw = None
         self.target_init_pos = None
         self.target_init_yaw = None
-        self.target_init_cov = METADATA['target_init_cov']
         self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw, self.belief_init_pos \
             = self.get_init_pose_random()
 
@@ -302,7 +287,7 @@ class WorldBase:
             self.belief_targets[i].reset(
                 init_state=np.concatenate((self.belief_init_pos[:2], np.zeros(2))),
                 # init_state=np.concatenate((np.array([-10, -10]), np.zeros(2))),
-                init_cov=self.target_init_cov)
+                init_cov=METADATA['target']['target_init_cov'])
 
         # The targets are observed by the agent (z_0) and the beliefs are updated (b_0).
         observed = self.observe_and_update_belief()
@@ -325,10 +310,10 @@ class WorldBase:
         return self.bottom_corner + self.size
 
     def get_init_pose_random(self,
-                             lin_dist_range_a2t=METADATA['lin_dist_range_a2t'],
-                             ang_dist_range_a2t=METADATA['ang_dist_range_a2t'],
-                             lin_dist_range_t2b=METADATA['lin_dist_range_t2b'],
-                             ang_dist_range_t2b=METADATA['ang_dist_range_t2b'],
+                             lin_dist_range_a2t=METADATA['target']['lin_dist_range_a2t'],
+                             ang_dist_range_a2t=METADATA['target']['ang_dist_range_a2t'],
+                             lin_dist_range_t2b=METADATA['target']['lin_dist_range_t2b'],
+                             ang_dist_range_t2b=METADATA['target']['ang_dist_range_t2b'],
                              blocked=None, ):
         is_agent_valid = False
         print(self.insight)
@@ -363,8 +348,8 @@ class WorldBase:
                             target_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
                             # confirm is not insight
                             r, alpha = util.relative_distance_polar(target_init_pos, agent_init_pos, agent_init_yaw)
-                            if (r > METADATA['sensor_r'] or np.rad2deg(alpha) > METADATA['fov'] / 2
-                                    or np.rad2deg(alpha) < -METADATA['fov'] / 2):
+                            if (r > METADATA['agent']['sensor_r'] or np.rad2deg(alpha) > METADATA['agent']['fov'] / 2
+                                    or np.rad2deg(alpha) < -METADATA['agent']['fov'] / 2):
                                 is_not_insight = True
                             else:
                                 is_not_insight = False
@@ -447,8 +432,8 @@ class WorldBase:
 
     def observation_noise(self, z):
         # 测量噪声矩阵，假设独立
-        obs_noise_cov = np.array([[self.sensor_r_sd * self.sensor_r_sd, 0.0],
-                                  [0.0, self.sensor_b_sd * self.sensor_b_sd]])
+        obs_noise_cov = np.array([[METADATA['agent']['sensor_r_sd'] * METADATA['agent']['sensor_r_sd'], 0.0],
+                                  [0.0, METADATA['agent']['sensor_b_sd'] * METADATA['agent']['sensor_b_sd']]])
         return obs_noise_cov
 
     def observation(self, target):
@@ -459,8 +444,8 @@ class WorldBase:
                                                 xy_base=self.agent.state.vec[:2],
                                                 theta_base=np.radians(self.agent.state.vec[8]))
         # 判断是否观察到目标
-        observed = (r <= self.sensor_r) \
-                   & (abs(alpha) <= self.fov / 2 / 180 * np.pi) \
+        observed = (r <= METADATA['agent']['sensor_r']) \
+                   & (abs(alpha) <= METADATA['agent']['fov'] / 2 / 180 * np.pi) \
                    & self.obstacles.check_obstacle_block(target.state.vec[:2], self.agent.state.vec[:2],
                                                          self.margin)
         z = None
@@ -501,10 +486,10 @@ class WorldBase:
             just an example below
         """
         # Find the closest obstacle coordinate.
-        if self.agent.rangefinder.min_distance < self.sensor_r:
+        if self.agent.rangefinder.min_distance < METADATA['agent']['sensor_r']:
             obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
         else:
-            obstacles_pt = (self.sensor_r, 0)
+            obstacles_pt = (METADATA['agent']['sensor_r'], 0)
 
         state = []
         state.extend(self.agent.gridMap.to_grayscale_image().flatten())  # dim:64*64

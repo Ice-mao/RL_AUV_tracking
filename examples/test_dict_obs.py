@@ -1,14 +1,21 @@
 import auv_env
 import numpy as np
+import gymnasium as gym
+
+from tianshou.utils.space_info import SpaceInfo
 
 env = auv_env.make("AUVTracking_rgb",
-      render=1,
-      num_targets=1,
-      map="AUV_RGB",
-      # map="TestMap_AUV",
-      is_training=True,
-      t_steps=200,
-      )
+                   render=1,
+                   num_targets=1,
+                   eval=True,
+                   is_training=True,
+                   t_steps=200,
+                   )
+# print(env.observation_space)
+env = gym.wrappers.FlattenObservation(env)
+space_info = SpaceInfo.from_env(env)
+state_shape = space_info.observation_info.obs_shape
+action_shape = space_info.action_info.action_shape
 
 obs, _ = env.reset()
 while True:

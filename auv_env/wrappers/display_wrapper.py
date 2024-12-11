@@ -115,18 +115,18 @@ class Display2D(Wrapper):
             # ax.plot(self.traj[0], self.traj[1], 'b.', markersize=2)
 
             # show the agent's orientation
-            sensor_arc = patches.Arc((state[0], state[1]), METADATA['sensor_r'] * 2, METADATA['sensor_r'] * 2,
-                                     angle=state[8], theta1=-METADATA['fov'] / 2,
-                                     theta2=METADATA['fov'] / 2, edgecolor='black', facecolor='green'
+            sensor_arc = patches.Arc((state[0], state[1]), METADATA['agent']['sensor_r'] * 2, METADATA['agent']['sensor_r'] * 2,
+                                     angle=state[8], theta1=-METADATA['agent']['fov'] / 2,
+                                     theta2=METADATA['agent']['fov'] / 2, edgecolor='black', facecolor='green'
                                      , alpha=0.7)
             ax.add_patch(sensor_arc)
             ax.plot(
-                [state[0], state[0] + METADATA['sensor_r'] * np.cos(np.radians(state[8] + 0.5 * METADATA['fov']))],
-                [state[1], state[1] + METADATA['sensor_r'] * np.sin(np.radians(state[8] + 0.5 * METADATA['fov']))],
+                [state[0], state[0] + METADATA['agent']['sensor_r'] * np.cos(np.radians(state[8] + 0.5 * METADATA['agent']['fov']))],
+                [state[1], state[1] + METADATA['agent']['sensor_r'] * np.sin(np.radians(state[8] + 0.5 * METADATA['agent']['fov']))],
                 'k', linewidth=0.5)
             ax.plot(
-                [state[0], state[0] + METADATA['sensor_r'] * np.cos(np.radians(state[8] - 0.5 * METADATA['fov']))],
-                [state[1], state[1] + METADATA['sensor_r'] * np.sin(np.radians(state[8] - 0.5 * METADATA['fov']))],
+                [state[0], state[0] + METADATA['agent']['sensor_r'] * np.cos(np.radians(state[8] - 0.5 * METADATA['agent']['fov']))],
+                [state[1], state[1] + METADATA['agent']['sensor_r'] * np.sin(np.radians(state[8] - 0.5 * METADATA['agent']['fov']))],
                 'k', linewidth=0.5)
 
             # ax.text(self.mapmax[0]+1., self.mapmax[1]-5., 'v_target:%.2f'%np.sqrt(np.sum(self.env_core.targets[0].state[2:]**2)))

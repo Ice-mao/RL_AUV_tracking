@@ -116,7 +116,7 @@ class GridMap(object):
             i += 1
         return False
 
-    def get_front_obstacle(self, odom, r_max=METADATA['sensor_r'], **kwargs):
+    def get_front_obstacle(self, odom, r_max, **kwargs):
         """
         Return radial and angular distances of the front obstacle/boundary cell
         """
@@ -150,8 +150,7 @@ class GridMap(object):
         else:
             return ro_min_t, 0.0
 
-    def get_closest_obstacle(self, odom, ang_res=0.05,
-                fov=METADATA['fov']/180.0*np.pi, r_max=METADATA['sensor_r']):
+    def get_closest_obstacle(self, odom, fov, r_max, ang_res=0.05):
         """
         Return radial and angular distances of the closest obstacle/boundary cell
         """
@@ -189,8 +188,7 @@ class GridMap(object):
         else:
             return closest_obstacle
 
-    def update_visit_freq_map(self, odom, decay_factor=1.0, ang_res=0.05,
-                fov=METADATA['fov']/180.0*np.pi, r_max=METADATA['sensor_r'], observed=True):
+    def update_visit_freq_map(self, fov, r_max, odom, decay_factor=1.0, ang_res=0.05, observed=True):
         """
         Update the visit frequency map from the given odometry.
         """

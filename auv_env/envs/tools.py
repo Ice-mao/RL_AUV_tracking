@@ -3,6 +3,7 @@ import numpy as np
 from pynput import keyboard
 import matplotlib.pyplot as plt
 import cv2
+from metadata import METADATA
 
 
 class KeyBoardCmd:
@@ -236,20 +237,21 @@ class RangeFinder:
         self.get_scan = False
 
     def update(self, state):
-        # self.get_scan = False
-        # if 'RangeFinderSensor' in state:
-        #     self.get_scan = True
-        #     range_data = state['RangeFinderSensor']
-        #     # update the minimum distance and its angle to nearest obstacle
-        #     # if np.min(range_data) < self.LaserMaxDistance:
-        #     self.min_distance = np.min(range_data)
-        #     self.min_angle = (360 / self.LaserCount) * np.argmin(range_data)
-        #     # else:
-        #     #     self.min_distance = None
-        #     #     self.angle = None
-
-        # use just to simulate sonar update process
-        self.update_like_sonar(state)
+        if not METADATA['agent']['use_sonar']:
+            self.get_scan = False
+            if 'RangeFinderSensor' in state:
+                self.get_scan = True
+                range_data = state['RangeFinderSensor']
+                # update the minimum distance and its angle to nearest obstacle
+                # if np.min(range_data) < self.LaserMaxDistance:
+                self.min_distance = np.min(range_data)
+                self.min_angle = (360 / self.LaserCount) * np.argmin(range_data)
+                # else:
+                #     self.min_distance = None
+                #     self.angle = None
+        else:
+            # use just to simulate sonar update process
+            self.update_like_sonar(state)
 
     def update_like_sonar(self, state):
         self.get_scan = False

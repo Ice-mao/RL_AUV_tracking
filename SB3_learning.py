@@ -37,7 +37,6 @@ parser.add_argument('--env', help='environment ID', type=str, default='TargetTra
 parser.add_argument('--render', help='whether to render', type=int, default=0)
 parser.add_argument('--record', help='whether to record', type=int, default=0)
 parser.add_argument('--ros', help='whether to use ROS', type=int, default=0)
-parser.add_argument('--map', help='choose your map in holoocean', type=str, default='TestMap')
 parser.add_argument('--nb_targets', help='the number of targets', type=int, default=1)
 parser.add_argument('--nb_envs', help='the number of env', type=int, default=6)
 parser.add_argument('--max_episode_step', type=int, default=200)

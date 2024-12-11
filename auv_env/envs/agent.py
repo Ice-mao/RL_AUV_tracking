@@ -15,8 +15,8 @@ class Agent(object):
     def __init__(self, dim, sampling_period):
         self.dim = dim
         self.sampling_period = sampling_period
-        self.margin = METADATA['margin']
-        self.margin2wall = METADATA['margin2wall']
+        self.margin = METADATA['env']['margin']
+        self.margin2wall = METADATA['env']['margin2wall']
 
     def range_check(self):
         self.state = np.clip(self.state, self.limit[0], self.limit[1])
@@ -48,16 +48,23 @@ class AgentAuv(Agent):
             self.zmax = self.imagingsonar.zmax
         else:
             self.zmax = 8.0
-        self.P_prior = METADATA['agent']['p_prior']  # Prior occupancy probability
-        self.P_occ = METADATA['agent']['p_occ']  # Probability that cell is occupied with total confidence
-        self.P_free = METADATA['agent']['p_free']  # Probability that cell is free with total confidence
-        self.RESOLUTION = METADATA['agent']['resolution']  # Grid resolution in [m]
-        self.gridMap = GridMap(X_lim=np.array([METADATA['scenario']['bottom_corner'][0],
-                                               METADATA['scenario']['bottom_corner'][0] + METADATA['scenario']['size'][0]]),
-                               Y_lim=np.array([METADATA['scenario']['bottom_corner'][1],
-                                               METADATA['scenario']['bottom_corner'][1] + METADATA['scenario']['size'][1]]),
-                               resolution=self.RESOLUTION,
-                               p=self.P_prior)
+
+        if METADATA['agent']['grid']['use_grid']:
+            # count for grid map
+            self.count = 0
+            self.period = 10
+            # probability
+            self.P_prior = METADATA['agent']['grid']['p_prior']  # Prior occupancy probability
+            self.P_occ = METADATA['agent']['grid']['p_occ']  # Probability that cell is occupied with total confidence
+            self.P_free = METADATA['agent']['grid']['p_free']  # Probability that cell is free with total confidence
+            self.RESOLUTION = METADATA['agent']['grid']['resolution']  # Grid resolution in [m]
+            self.gridMap = GridMap(X_lim=np.array([METADATA['scenario']['bottom_corner'][0],
+                                                   METADATA['scenario']['bottom_corner'][0] + METADATA['scenario']['size'][0]]),
+                                   Y_lim=np.array([METADATA['scenario']['bottom_corner'][1],
+                                                   METADATA['scenario']['bottom_corner'][1] + METADATA['scenario']['size'][1]]),
+                                   resolution=self.RESOLUTION,
+                                   p=self.P_prior)
+
         # init the sensor part of AUV
         self.rangefinder = RangeFinder(scenario=scenario)
         self.state = State(sensor)
@@ -65,9 +72,6 @@ class AgentAuv(Agent):
         self.est_state = State(sensor)
         self.observer = InEKF(x_init=self.state.vec[0], y_init=self.state.vec[1])
 
-        # count for grid map
-        self.count = 0
-        self.period = 10
 
     def reset(self, sensor):
         self.state = State(sensor)
@@ -86,12 +90,12 @@ class AgentAuv(Agent):
         # print(self.est_state.vec[0], self.est_state.vec[1])
         # if METADATA['use_sonar']:
         #     self.update_gridmap(sensors)
-
-        if self.count == self.period:
-            self.update_gridmap_rangefinder_based(sensors)
-            self.count = 0
-        else:
-            self.count += 1
+        if METADATA['agent']['use_sonar']:
+            if self.count == self.period:
+                self.update_gridmap_rangefinder_based(sensors)
+                self.count = 0
+            else:
+                self.count += 1
 
         # Path planner
         des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,

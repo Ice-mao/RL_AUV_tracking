@@ -7,8 +7,8 @@ from auv_control.planning import Traj, RRT
 from auv_control import State
 
 from auv_env import util
-from auv_env.base import WorldBase
-from auv_env.agent import AgentAuv, AgentSphere, AgentAuvTarget
+from auv_env.envs.base import WorldBase
+from auv_env.envs.agent import AgentAuv, AgentSphere, AgentAuvTarget
 from auv_env.envs.obstacle import Obstacle
 from metadata import METADATA
 
@@ -35,7 +35,7 @@ class WorldAuvRGB(WorldBase):
         # ACTION:
         self.action_space = spaces.Box(low=np.float32(METADATA['action_range_low']),
                                        high=np.float32(METADATA['action_range_high']),
-                                       dtype=float)
+                                       dtype=np.float32)
         # STATE:
         # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
         state_lower_bound = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
@@ -82,10 +82,10 @@ class WorldAuvRGB(WorldBase):
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         # Find the closest obstacle coordinate.
-        # if self.agent.rangefinder.min_distance < self.sensor_r:
-        #     obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
-        # else:
-        #     obstacles_pt = (self.sensor_r, 0)
+        if self.agent.rangefinder.min_distance < METADATA['agent']['sensor_r']:
+            obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.min_angle))
+        else:
+            obstacles_pt = (METADATA['agent']['sensor_r'], 0)
 
         state_observation = []
         for i in range(self.num_targets):
@@ -98,14 +98,18 @@ class WorldAuvRGB(WorldBase):
                           float(observed[i])])  # dim:4
         state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
                       np.radians(self.agent.state.vec[8])])  # dim:3
-        # self.state.extend(obstacles_pt)
+        state_observation.extend(obstacles_pt)
         state_observation.extend(action_waypoint.tolist())  # dim:3
         state_observation = np.array(state_observation)
 
-        images = {'left':self.sensors["auv0"]["LeftCamera"],
-                  'right':self.sensors["auv0"]["RightCamera"]}
+        if 'LeftCamera' in self.sensors['auv0']:
+            images = {'left': self.sensors['auv0']['LeftCamera'],
+                      'right': self.sensors['auv0']['RightCamera']}
+        else:
+            images = {'left': np.zeros(shape=(512, 512, 4), dtype=np.uint8),
+                      'right': np.zeros(shape=(512, 512, 4), dtype=np.uint8)}
         images = util.image_preprocess(images)
-        return copy.deepcopy(dict(images=images, state=state_observation))
+        return copy.deepcopy({'images': images, 'state': state_observation})
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))

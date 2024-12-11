@@ -4,7 +4,7 @@ from numpy import linalg as LA
 from auv_control.control import LQR
 
 from auv_env import util
-from auv_env.base import WorldBase
+from auv_env.envs.base import WorldBase
 from auv_env.envs.obstacle import Obstacle
 from metadata import METADATA
 
@@ -73,10 +73,10 @@ class WorldAuvMap(WorldBase):
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         # Find the closest obstacle coordinate.
-        if self.agent.rangefinder.min_distance < self.sensor_r:
+        if self.agent.rangefinder.min_distance < METADATA['agent']['sensor_r']:
             obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
         else:
-            obstacles_pt = (self.sensor_r, 0)
+            obstacles_pt = (METADATA['agent']['sensor_r'], 0)
 
         state = []
         state.extend(self.agent.gridMap.to_grayscale_image().flatten())  # dim:64*64

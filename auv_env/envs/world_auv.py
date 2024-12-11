@@ -4,7 +4,7 @@ from numpy import linalg as LA
 from auv_control.estimation import KFbelief
 
 from auv_env import util
-from auv_env.agent import AgentAuv, AgentAuvTarget
+from auv_env.envs.agent import AgentAuv, AgentAuvTarget
 from auv_env.envs.obstacle import Obstacle
 from metadata import METADATA
 
@@ -17,58 +17,7 @@ class World_AUV:
     """
 
     def __init__(self, map, show, verbose, num_targets, **kwargs):
-        # define the entity
-        # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
-        self.map = map
-        self.ocean = holoocean.make(self.map)
-        scenario = holoocean.get_scenario(self.map)
-        self.ocean.should_render_viewport(METADATA['render'])
-        self.agent = None
-        # init the param
-        self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time
-        self.random = METADATA['random']  # bool for domain random
-        self.task_random = METADATA['task_random']
-        self.control_period = METADATA['control_period']
-        self.sensor_r = METADATA['sensor_r']
-        self.fov = METADATA['fov']
-        self.sensor_r_sd = METADATA['sensor_r_sd']
-        self.sensor_b_sd = METADATA['sensor_b_sd']
-        self.num_targets = num_targets  # num of target
-        self.target_dim = METADATA['target_dim']
-        self.action_range_scale = METADATA['action_range_scale']
-        self.noblock = METADATA['noblock']
-        self.insight = METADATA['insight']
-        if self.insight:
-            self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
-        else:
-            self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
-        # for record
-        self.record_cov_posterior = []
-        self.record_observed = []
-        
-        # Setup environment
-        margin = 0.25
-        self.size = np.array([METADATA['size'][0]-2*margin, METADATA['size'][1]-2*margin, METADATA['size'][2]])
-        self.bottom_corner = np.array([METADATA['bottom_corner'][0]+margin, METADATA['bottom_corner'][1]+margin,
-                                       METADATA['bottom_corner'][2]])
-        self.fix_depth = METADATA['fix_depth']
-        self.margin = METADATA['margin']
-        self.margin2wall = METADATA['margin2wall']
-        # self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
-        #                     lifetime=0)  # draw the area
-
-        # Setup obstacles
-        # rule is obstacles combined will rotate from their own center
-        self.obstacles = Obstacle(self.ocean, self.fix_depth)
-
-        # Record for reward obtain(diff from the control period and the sampling period)
-        self.agent_w = None
-        # for u calculate:when receive the new waypoints
-        self.agent_last_u = None
-        self.agent_u = None
-
-        # Cal random  pos of agent and target
-        self.reset()
+        super().__init__(map, show, verbose, num_targets, **kwargs)
 
     def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
         """
@@ -252,10 +201,10 @@ class World_AUV:
         return self.bottom_corner + self.size
 
     def get_init_pose_random(self,
-                             lin_dist_range_a2t=METADATA['lin_dist_range_a2t'],
-                             ang_dist_range_a2t=METADATA['ang_dist_range_a2t'],
-                             lin_dist_range_t2b=METADATA['lin_dist_range_t2b'],
-                             ang_dist_range_t2b=METADATA['ang_dist_range_t2b'],
+                             lin_dist_range_a2t=METADATA['target']['lin_dist_range_a2t'],
+                             ang_dist_range_a2t=METADATA['target']['ang_dist_range_a2t'],
+                             lin_dist_range_t2b=METADATA['target']['lin_dist_range_t2b'],
+                             ang_dist_range_t2b=METADATA['target']['ang_dist_range_t2b'],
                              blocked=None, ):
         is_agent_valid = False
         print(self.insight)

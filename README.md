@@ -31,6 +31,14 @@ python SB3_learning.py --env TargetTracking1 --map TestMap_AUV --nb_envs 5 --cho
 choice:(0:train 1:keep training 2:eval)
 
 render:(0:false 1:true)
+
+## Env Setup
+### world_auv_rgb
+obs: dict type, including 
+images[(3,224,224)*2] and state[(10)]
+
+action:[(3)]
+
 ## Simulation Process
 
 ![simulation](config/simulation.png)

@@ -1,12 +1,17 @@
+# import system lib
 import argparse
 import os
 import pprint
+import datetime
 
+# import tool lib
 import gymnasium as gym
 import numpy as np
+from numpy import linalg as LA
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+# import tianshou
 from tianshou.data import Collector, CollectStats, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import OUNoise
@@ -18,10 +23,28 @@ from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.utils.space_info import SpaceInfo
 
+# import custom lib
+from metadata import METADATA
+import auv_env
+from policy_net import SEED1, set_seed, CustomCNN, PPO_withgridmap
+
+# get the time
+current_time = datetime.datetime.now()
+time_string = current_time.strftime('%m-%d_%H')
+
 
 def get_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="MountainCarContinuous-v0")
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train; 1:keep train; 2:eval; 3:test',
+                        default=3)
+    # for env parse in
+    parser.add_argument('--env', choices=['TargetTracking1', 'TargetTracking2', 'AUVTracking_rgb'],
+                        help='environment ID', default='TargetTracking1')
+    parser.add_argument('--render', help='whether to render', type=int, default=0)
+    parser.add_argument('--record', help='whether to record', type=int, default=0)
+    parser.add_argument('--nb_envs', help='the number of env', type=int, default=3)
+    parser.add_argument('--max_episode_step', type=int, default=200)
+
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--buffer-size", type=int, default=50000)
     parser.add_argument("--actor-lr", type=float, default=3e-4)
@@ -41,7 +64,6 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--training-num", type=int, default=5)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device",
         type=str,
@@ -51,15 +73,46 @@ def get_args() -> argparse.Namespace:
 
 
 def test_sac(args: argparse.Namespace = get_args()) -> None:
+    if args.choice == '0' or args.choice == '1':
+        # new training
+        if args.choice == '0':
+            if METADATA['algorithm'] == "PPO":
+                log_dir = '../log/ppo_' + time_string + '/'
+                model_dir = '../models/ppo_' + time_string + '/'
+            elif METADATA['algorithm'] == "SAC":
+                log_dir = '../log/sac_' + time_string + '/'
+                model_dir = '../models/sac_' + time_string + '/'
+
+        # keep training
+        elif args.choice == '1':
+            model_dir = "../models/ppo_10-23_16/"
+            log_dir = "../log/ppo_10-23_16/"
+            model_name = "rl_model_10719996_steps.zip"
+
     env = gym.make(args.task)
     space_info = SpaceInfo.from_env(env)
     args.state_shape = space_info.observation_info.obs_shape
     args.action_shape = space_info.action_info.action_shape
     args.max_action = space_info.action_info.max_action
     # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
+    train_envs = DummyVectorEnv([lambda: auv_env.make(args.env,
+                                                      render=args.render,
+                                                      record=args.record,
+                                                      ros=args.ros,
+                                                      num_targets=args.nb_targets,
+                                                      is_training=True,
+                                                      eval=False,
+                                                      t_steps=args.max_episode_step,
+                                                      ) for _ in range(args.nb_envs)])
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = auv_env.make(args.env,
+                             render=args.render,
+                             record=args.record,
+                             ros=args.ros,
+                             num_targets=args.nb_targets,
+                             is_training=False,
+                             t_steps=args.max_episode_step,
+                             )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
