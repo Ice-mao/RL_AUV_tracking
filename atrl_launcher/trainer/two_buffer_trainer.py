@@ -6,7 +6,6 @@ from collections.abc import Callable
 from dataclasses import asdict
 
 import numpy as np
-import tqdm
 
 from tianshou.data import (
     AsyncCollector,
@@ -29,39 +28,43 @@ from tianshou.utils import (
 )
 from tianshou.utils.logging import set_numerical_fields_to_precision
 from tianshou.utils.torch_utils import policy_within_training_step
-from tianshou.trainer.base import BaseTrainer
+from atrl_launcher.trainer import SaveOnEpochTrainer
 
-class TwobufferTrainer(BaseTrainer):
+
+class TwoBufferTrainer(SaveOnEpochTrainer):
     """
      inherit from BaseTrainer and OffpolicyTrainer to get training Batch
      from the demo buffer and reinforcement replay buffer equally
     """
+
     def __init__(
-        self,
-        policy: BasePolicy,
-        max_epoch: int,
-        batch_size: int | None,
-        train_collector: BaseCollector | None = None,
-        test_collector: BaseCollector | None = None,
-        buffer: ReplayBuffer | None = None,
-        demo_buffer: ReplayBuffer | None = None, # use for the TwobufferTrainer
-        step_per_epoch: int | None = None,
-        repeat_per_collect: int | None = None,
-        episode_per_test: int | None = None,
-        update_per_step: float = 1.0,
-        step_per_collect: int | None = None,
-        episode_per_collect: int | None = None,
-        train_fn: Callable[[int, int], None] | None = None,
-        test_fn: Callable[[int, int | None], None] | None = None,
-        stop_fn: Callable[[float], bool] | None = None,
-        save_best_fn: Callable[[BasePolicy], None] | None = None,
-        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
-        resume_from_log: bool = False,
-        reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
-        logger: BaseLogger = LazyLogger(),
-        verbose: bool = True,
-        show_progress: bool = True,
-        test_in_train: bool = True,
+            self,
+            policy: BasePolicy,
+            max_epoch: int,
+            batch_size: int | None,
+            train_collector: BaseCollector | None = None,
+            test_collector: BaseCollector | None = None,
+            buffer: ReplayBuffer | None = None,
+            step_per_epoch: int | None = None,
+            repeat_per_collect: int | None = None,
+            episode_per_test: int | None = None,
+            update_per_step: float = 1.0,
+            step_per_collect: int | None = None,
+            episode_per_collect: int | None = None,
+            train_fn: Callable[[int, int], None] | None = None,
+            test_fn: Callable[[int, int | None], None] | None = None,
+            stop_fn: Callable[[float], bool] | None = None,
+            save_best_fn: Callable[[BasePolicy], None] | None = None,
+            save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
+            resume_from_log: bool = False,
+            reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
+            logger: BaseLogger = LazyLogger(),
+            verbose: bool = True,
+            show_progress: bool = True,
+            test_in_train: bool = True,
+            # new part
+            save_epoch_fn: Callable[[BasePolicy], None] | None = None,
+            demo_buffer: ReplayBuffer | None = None,  # use for the TwobufferTrainer
     ):
         super().__init__(
             policy=policy,
@@ -87,14 +90,15 @@ class TwobufferTrainer(BaseTrainer):
             verbose=verbose,
             show_progress=show_progress,
             test_in_train=test_in_train,
+            # add save_epoch_fn
+            save_epoch_fn=save_epoch_fn
         )
-
         # 处理 demo_buffer
         self.demo_buffer = demo_buffer
 
     def policy_update_fn(
-        self,
-        collect_stats: CollectStatsBase,
+            self,
+            collect_stats: CollectStatsBase,
     ) -> TrainingStats:
         """Perform `update_per_step * n_collected_steps` gradient steps by sampling mini-batches from the buffer.
 

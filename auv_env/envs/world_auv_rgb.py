@@ -39,20 +39,20 @@ class WorldAuvRGB(WorldBase):
         # STATE:
         # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
         state_lower_bound = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
-                                                      [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
-                                      [0.0] * 3))
+                                                            [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
+                                            [0.0, -np.pi, 0.0, 0.0, 0.0]))
         state_upper_bound = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
-                                                      [self.top_corner[0], self.top_corner[1], np.pi])),
-                                      [1.0] * 3))
+                                                            [self.top_corner[0], self.top_corner[1], np.pi])),
+                                            [METADATA['agent']['sensor_r'], np.pi, 1.0, 1.0, 1.0]))
 
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
             "images": spaces.Dict(
-                    {"left": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-                     "right": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32)}
-                ),
+                {"left": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+                 "right": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32)}
+            ),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
@@ -94,10 +94,10 @@ class WorldAuvRGB(WorldBase):
                 xy_base=self.agent.est_state.vec[:2],
                 theta_base=np.radians(self.agent.est_state.vec[8]))
             state_observation.extend([r_b, alpha_b,
-                          np.log(LA.det(self.belief_targets[i].cov)),
-                          float(observed[i])])  # dim:4
+                                      np.log(LA.det(self.belief_targets[i].cov)),
+                                      float(observed[i])])  # dim:4
         state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
-                      np.radians(self.agent.state.vec[8])])  # dim:3
+                                  np.radians(self.agent.state.vec[8])])  # dim:3
         state_observation.extend(obstacles_pt)
         state_observation.extend(action_waypoint.tolist())  # dim:3
         state_observation = np.array(state_observation)
@@ -116,7 +116,6 @@ class WorldAuvRGB(WorldBase):
 
 
 if __name__ == '__main__':
-
     from auv_control import scenario
     #
     # print("Test World")
@@ -138,11 +137,11 @@ if __name__ == '__main__':
     #         # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
     #     world.reset()
     #     world.targets[0].planner.draw_traj(world.ocean, 30)
-        # test for camera
-        # import cv2
-        # if "LeftCamera" in world.sensors['auv0']:
-        #     pixels = world.sensors['auv0']["LeftCamera"]
-        #     cv2.namedWindow("Camera Output")
-        #     cv2.imshow("Camera Output", pixels[:, :, 0:3])
-        #     cv2.waitKey(0)
-        #     cv2.destroyAllWindows()
+    # test for camera
+    # import cv2
+    # if "LeftCamera" in world.sensors['auv0']:
+    #     pixels = world.sensors['auv0']["LeftCamera"]
+    #     cv2.namedWindow("Camera Output")
+    #     cv2.imshow("Camera Output", pixels[:, :, 0:3])
+    #     cv2.waitKey(0)
+    #     cv2.destroyAllWindows()

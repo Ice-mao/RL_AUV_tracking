@@ -40,8 +40,13 @@ class DRQPolicy(DDPGPolicy[TSACTrainingStats], Generic[TSACTrainingStats]):  # t
         https://arxiv.org/pdf/2107.09645
 
     main idea:
+
     1、data augmentation
+
     2、因为encoder编码部分需要单独训练处理，所以我们需要单独定义encoder部分
+
+    新的参数：aug, encoder, encoder
+
     :param aug: data augment for the image input
     :param encoder: the actor network following the rules (s -> encoder_dim)
     :param encoder_optim: the optimizer for actor network.

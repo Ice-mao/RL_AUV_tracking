@@ -4,26 +4,33 @@ from .envs.world_auv import World_AUV
 from .envs.world_auv_map import WorldAuvMap
 from .envs.world_auv_rgb import WorldAuvRGB
 
+
 class TargetTracking1(TargetTrackingBase):
     """
     target is an auv.
     """
-    def __init__(self, map="TestMap", num_targets=1, show=True, verbose=True, **kwargs):
-        super().__init__(World_AUV, map, num_targets, show, verbose, **kwargs)
+
+    def __init__(self, map="TestMap", num_targets=1, show=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(World_AUV, map, num_targets, show, verbose, is_training, **kwargs)
+
 
 class TargetTracking2(TargetTrackingBase):
     """
     target is an auv with map.
     """
-    def __init__(self, map="TestMap_AUV", num_targets=1, show=True, verbose=True, **kwargs):
-        super().__init__(WorldAuvMap, map, num_targets, show, verbose, **kwargs)
+
+    def __init__(self, map="TestMap_AUV", num_targets=1, show=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(WorldAuvMap, map, num_targets, show, verbose, is_training, **kwargs)
+
 
 class AUVTracking_rgb(TargetTrackingBase):
     """
     target is an auv with map.
     """
-    def __init__(self, map="AUV_RGB", num_targets=1, show=True, verbose=True, **kwargs):
-        super().__init__(WorldAuvRGB, map, num_targets, show, verbose, **kwargs)
+
+    def __init__(self, map="AUV_RGB", num_targets=1, show=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(WorldAuvRGB, map, num_targets, show, verbose, is_training, **kwargs)
+
 
 def make(env_name, render=False, record=False, eval=False, ros=False, directory='',
          t_steps=100, num_targets=1, **kwargs):
@@ -33,11 +40,13 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
     env_name : str
         name of an environment. (e.g. 'TargetTracking-v0')
     render : bool
-        wether to render.
+        wether to render the ue5 .
     figID : int
         figure ID for rendering and/or recording.
     record : bool
         whether to record a video.
+    eval : bool
+        whether to show the running process.
     ros : bool
         whether to use ROS.
     directory :str

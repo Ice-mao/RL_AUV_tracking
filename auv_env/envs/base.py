@@ -30,13 +30,13 @@ class TargetTrackingBase(gym.Env):
         base class for env creation
     """
 
-    def __init__(self, world_class, map="TestMap", num_targets=1, show=True, verbose=True, **kwargs):
+    def __init__(self, world_class, map="TestMap", num_targets=1, show=True, verbose=True, is_training=False, **kwargs):
         gym.Env.__init__(self)
         np.random.seed()
         self.state = None
         # init some params
         self.num_targets = num_targets
-        self.is_training = METADATA['is_training']
+        self.is_training = is_training
         # init the scenario
         self.world = world_class(map=map, show=show, verbose=verbose, num_targets=self.num_targets)
         # init the action space
@@ -299,7 +299,8 @@ class WorldBase:
         observed = [True]
         # Compute the RL state.
         state = self.state_func(observed, action_waypoint=np.zeros(3))
-        return state, 0
+        info = {'reset_info': 'yes'}
+        return state, info
 
     @property
     def center(self):
