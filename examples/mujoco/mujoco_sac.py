@@ -66,6 +66,7 @@ def get_args() -> argparse.Namespace:
 
 
 def test_sac(args: argparse.Namespace = get_args()) -> None:
+    args.training_num = 2
     env, train_envs, test_envs = make_mujoco_env(
         args.task,
         args.seed,

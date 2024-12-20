@@ -22,7 +22,6 @@ from tianshou.env import DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv, BaseV
 from tianshou.exploration import OUNoise
 from tianshou.policy import SACPolicy, PPOPolicy
 from tianshou.policy.base import BasePolicy
-from atrl_launcher.trainer import OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net, ActorCritic
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -32,6 +31,8 @@ from tianshou.utils.space_info import SpaceInfo
 from metadata import METADATA
 import auv_env
 from atrl_launcher.wrapper.teacher_obs_wrapper import TeachObsWrapper
+from atrl_launcher.trainer import OffpolicyTrainer, OnpolicyTrainer
+from atrl_launcher.networks.rgb_net import Encoder, Actor, Critic
 
 
 def get_args() -> argparse.Namespace:
@@ -118,6 +119,7 @@ def train_sac(args: argparse.Namespace = get_args()) -> None:
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     # model
+    encoder = Encoder()
     net = Net(state_shape=args.state_shape, hidden_sizes=[256, 256, 256], device=args.device)
     actor = ActorProb(net, args.action_shape, device=args.device, unbounded=True, preprocess_net_output_dim=256).to(
         args.device)

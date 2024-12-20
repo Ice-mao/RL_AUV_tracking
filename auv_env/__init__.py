@@ -1,3 +1,4 @@
+import gymnasium as gym
 from gymnasium import wrappers
 from .envs.base import TargetTrackingBase
 from .envs.world_auv import World_AUV
@@ -85,3 +86,33 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
         env = Video2D(env, dirname=directory, local_view=local_view)
 
     return env
+
+
+##
+# Register Gym environments.
+##
+from .wrappers import TeachObsWrapper
+
+teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
+                                           render=0,
+                                           record=0,
+                                           num_targets=1,
+                                           is_training=False,
+                                           eval=False,
+                                           t_steps=200,
+                                           ))
+gym.register(
+    id="Teacher-v0",
+    # entry_point="AUVTracking_rgb",
+    entry_point=teacher_fns,
+    disable_env_checker=True,
+    kwargs={
+        # 'render': 0,
+        # 'record': 0,
+        # 'num_targets': 1,
+        # 'is_training': False,
+        # 'eval': False,
+        # 't_steps': 200
+    },
+    # max_episode_steps=200,
+)

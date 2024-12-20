@@ -37,10 +37,13 @@ class TargetTrackingBase(gym.Env):
         # init some params
         self.num_targets = num_targets
         self.is_training = is_training
+        self.action_space = spaces.Box(low=np.float32(METADATA['action_range_low']),
+                                       high=np.float32(METADATA['action_range_high']),
+                                       dtype=np.float32)
         # init the scenario
         self.world = world_class(map=map, show=show, verbose=verbose, num_targets=self.num_targets)
-        # init the action space
-        self.action_space = self.world.action_space
+        # # init the action space
+        # self.action_space = self.world.action_space
         self.observation_space = self.world.observation_space
         self.reset_num = 0
 
@@ -67,6 +70,9 @@ class TargetTrackingBase(gym.Env):
             action_waypoint = action
 
         return self.world.step(action_waypoint=action_waypoint)
+
+    def seed(self, seed):
+        np.random.seed(seed)
 
 
 class WorldBase:
@@ -122,7 +128,7 @@ class WorldBase:
         self.agent_last_u = None
         self.agent_u = None
         self.sensors = {}
-
+        self.set_limits()
         # Cal random  pos of agent and target
         self.reset()
 
@@ -273,7 +279,6 @@ class WorldBase:
         sensors = self.ocean.tick()
         self.sensors.update(sensors)
 
-        self.set_limits()
         self.build_models(sampling_period=self.sampling_period,
                           agent_init_state=self.sensors['auv0'],
                           target_init_state=self.sensors['target0'],  # TODO
