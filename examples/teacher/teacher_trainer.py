@@ -95,21 +95,23 @@ def make_teacher_env(
         task: str,
         num_train_envs: int,
         num_test_envs: int,
-) -> tuple[Env, BaseVectorEnv, BaseVectorEnv]:
+) -> tuple[BaseVectorEnv, BaseVectorEnv]:
     if 'Teacher' not in task:
         raise ValueError("you should use teacher env.")
     train_envs = SubprocVectorEnv([lambda: gym.make(task) for _ in range(num_train_envs)], )
     test_envs = SubprocVectorEnv([lambda: gym.make(task) for _ in range(num_test_envs)], )
-    env = gym.make(task)
-    return env, train_envs, test_envs
+    return train_envs, test_envs
 
 
 def train_sac(args: argparse.Namespace = get_args()) -> None:
     # env
-    env, train_envs, test_envs = make_teacher_env('Teacher-v0', args.nb_envs, 1)
-    space_info = SpaceInfo.from_env(env)
-    args.state_shape = space_info.observation_info.obs_shape
-    args.action_shape = space_info.action_info.action_shape
+    train_envs, test_envs = make_teacher_env('Teacher-v0', args.nb_envs, 1)
+    # space_info = SpaceInfo.from_env(env)
+    args.state_shape = (12,)
+    args.action_shape = (3, )
+    args.action_space = gym.spaces.Box(low=np.float32(METADATA['action_range_low']),
+                                       high=np.float32(METADATA['action_range_high']),
+                                       dtype=np.float32)
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
 
@@ -141,7 +143,7 @@ def train_sac(args: argparse.Namespace = get_args()) -> None:
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    action_dim = space_info.action_info.action_dim
+    action_dim = np.prod(args.action_shape)
     if args.auto_alpha:
         target_entropy = -action_dim
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
@@ -160,7 +162,7 @@ def train_sac(args: argparse.Namespace = get_args()) -> None:
         alpha=args.alpha,
         exploration_noise=OUNoise(0.0, args.noise_std),
         estimation_step=args.n_step,
-        action_space=env.action_space,
+        action_space=args.action_space,
     )
 
     if args.choice == 1 or args.choice == 2:

@@ -6,7 +6,7 @@ policy="SAC"
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
-    python teacher_trainer.py "$@" \
+    python examples/teacher/teacher_trainer.py "$@" \
     --choice 0 \
     --env AUVTracking_rgb \
     --policy SAC \
@@ -19,7 +19,7 @@ if [ "$policy" == "SAC" ]; then
     --actor-lr 3e-4 \
     --critic-lr 3e-4 \
     --alpha-lr 3e-4 \
-    --noise_std 1.2 \
+    --noise_std 0.12 \
     --gamma 0.99 \
     --tau 0.005 \
     --auto_alpha 1 \

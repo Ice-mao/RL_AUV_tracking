@@ -1,5 +1,4 @@
 import gymnasium as gym
-from gymnasium import wrappers
 from .envs.base import TargetTrackingBase
 from .envs.world_auv import World_AUV
 from .envs.world_auv_map import WorldAuvMap
@@ -74,7 +73,7 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
     else:
         raise ValueError('No such environment exists.')
     # 使用gym中对episode进行timestep限制的wrapper进行封装，保证环境的更新
-    env = wrappers.TimeLimit(env0, max_episode_steps=t_steps)
+    env = gym.wrappers.TimeLimit(env0, max_episode_steps=t_steps)
     if ros:
         from auv_env.wrappers.ros_wrapper import Ros
         env = Ros(env)
