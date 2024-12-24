@@ -1,27 +1,35 @@
-import auv_env
-import numpy as np
 import gymnasium as gym
+import auv_env
+from stable_baselines3.common.vec_env import VecEnv, SubprocVecEnv, VecMonitor
 
-from tianshou.utils.space_info import SpaceInfo
-from tianshou.env import DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv
-from atrl_launcher.wrapper import TeachObsWrapper
-from examples.mujoco.mujoco_env import make_mujoco_env
+import auv_env
+import torch
+import numpy as np
+from numpy import linalg as LA
+import csv
+import argparse
+from policy_net import SEED1, set_seed, CustomCNN
+from atrl_launcher.callbacks import SaveOnBestTrainingRewardCallback
 
-# print(env.observation_space)
+# tools
+import os
+import datetime
+from metadata import METADATA
 
-train_env = SubprocVectorEnv([lambda: gym.make('Teacher-v0') for _ in range(3)],)
-test_env = SubprocVectorEnv([lambda: gym.make('Teacher-v0') for _ in range(1)],)
-env = gym.make('Teacher-v0')
 
-space_info = SpaceInfo.from_env(env)
+def make_teacher_env(
+        task: str,
+        num_train_envs: int,
+        monitor_dir: str
+) -> VecEnv:
+    if 'Teacher' not in task:
+        raise ValueError("you should use teacher env.")
+    train_envs = SubprocVecEnv([lambda: gym.make(task) for _ in range(num_train_envs)], )
+    env = VecMonitor(train_envs, monitor_dir)
+    return env
 
-state_shape = space_info.observation_info.obs_shape
-action_shape = space_info.action_info.action_shape
 
-(obs, info) = env.reset()
-# a = env.reset()
-while True:
-    action = env.action_space.sample()
-    print(action)
-    # action = np.array([0.0, 0.0, 0.0])
-    obs, reward, done, _, inf = env.step(action)
+a = SubprocVecEnv([lambda: gym.make('Teacher-v0') for _ in range(3)])
+vec_env = make_teacher_env('Teacher-v0', 3, '../../log')
+obs = vec_env.reset()
+print(obs)

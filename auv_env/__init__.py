@@ -32,7 +32,7 @@ class AUVTracking_rgb(TargetTrackingBase):
         super().__init__(WorldAuvRGB, map, num_targets, show, verbose, is_training, **kwargs)
 
 
-def make(env_name, render=False, record=False, eval=False, ros=False, directory='',
+def make(env_name, render=False, record=False, eval=False, ros=False, directory='../',
          t_steps=100, num_targets=1, **kwargs):
     """
     Parameters:
@@ -83,7 +83,7 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
     if record:
         from auv_env.wrappers.display_wrapper import Video2D
         env = Video2D(env, dirname=directory, local_view=local_view)
-
+    #
     return env
 
 
