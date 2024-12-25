@@ -211,6 +211,7 @@ class PoseLocation:
             self.angle = 360 + self.angle
         self.direction = self.angle * np.pi / 180  # 用rad表示的方位角
 
+
 class RangeFinder:
     """
         Returns distances to nearest collisions in the directions specified by the parameters.
@@ -231,7 +232,7 @@ class RangeFinder:
                     self.LaserDebug = config['LaserDebug']
         self.min_distance = self.LaserMaxDistance
         self.min_angle = 0
-        self.azi = int(self.LaserCount/3)
+        self.azi = int(self.LaserCount / 3)
         self.azi_half = int(self.LaserCount / 6)
         self.angle = np.linspace(0, 360, self.LaserCount, endpoint=False)  # angle list
         self.get_scan = False
@@ -279,7 +280,6 @@ class RangeFinder:
             self.min_distance = np.min(range_data)
             self.min_angle = (360 / self.LaserCount) * np.argmin(range_data)
 
-
     def scan(self, pose, angle):
         distances_x = []
         distances_y = []
@@ -307,6 +307,39 @@ class RangeFinder:
         return (distances_x, distances_y, self.data)
 
 
+from collections import deque
+
+
+class ImageBuffer:
+    def __init__(self, buffer_size, image_shape):
+        """
+        初始化图像缓冲区
+        :param buffer_size: 缓冲区最大长度
+        :param image_shape: 图像的形状，例如 (3, 224, 224)
+        """
+        self.buffer_size = buffer_size
+        self.image_shape = image_shape
+        # 创建固定长度的队列，初始化为指定形状的空图像
+        self.buffer = deque([self._create_empty_image()] * buffer_size, maxlen=buffer_size)
+
+    def _create_empty_image(self):
+        return np.zeros(self.image_shape, dtype=np.float32)
+
+    def add_image(self, image):
+        """添加新图像到缓冲区"""
+        if image.shape != self.image_shape:
+            raise ValueError(f"图像形状不匹配，预期形状为 {self.image_shape}，但收到 {image.shape}")
+        self.buffer.append(image)
+
+    def get_buffer(self):
+        """获取当前缓冲区的图像列表"""
+        return list(self.buffer)
+
+    def __repr__(self):
+        """打印缓冲区状态"""
+        return f"ImageBuffer(buffer_size={self.buffer_size}, filled={len(self.buffer)})"
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -316,6 +349,8 @@ sns.set(context="paper", style="whitegrid", font_scale=0.8)
 """
     绘图类的使用
 """
+
+
 class Plotter:
     def __init__(self, names):
         # Where all the data is stored
@@ -368,10 +403,26 @@ class Plotter:
         for i in range(self.num_row):
             for j in range(self.num_col):
                 for k in range(self.num_items):
-                    self.lines[k][i][j].set_data(self.t, self.data[k,self.num_col*i+j])
+                    self.lines[k][i][j].set_data(self.t, self.data[k, self.num_col * i + j])
 
                 self.ax[i, j].relim()
                 self.ax[i, j].autoscale_view()
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+if __name__=='__main__':
+    # 初始化图像缓冲区
+    buffer_size = 5
+    image_shape = (3, 224, 224)  # 假设每张图像为 (3, 224, 224)
+    buffer = ImageBuffer(buffer_size, image_shape)
+
+    # 查看初始状态（缓冲区为空）
+    print(buffer.get_buffer())  # 输出 5 个空图像（全 0）
+
+    # 添加一些随机图像
+    for i in range(7):  # 插入 7 张图像，超出缓冲区大小
+        new_image = np.random.uniform(-1, 1, image_shape).astype(np.float32)
+        buffer.add_image(new_image)
+        print(f"添加第 {i + 1} 张图像")
+        print(buffer.get_buffer())  # 每次查看缓冲区状态

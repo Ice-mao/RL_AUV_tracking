@@ -33,3 +33,5 @@ a = SubprocVecEnv([lambda: gym.make('Teacher-v0') for _ in range(3)])
 vec_env = make_teacher_env('Teacher-v0', 3, '../../log')
 obs = vec_env.reset()
 print(obs)
+
+

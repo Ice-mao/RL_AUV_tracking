@@ -13,3 +13,16 @@ class TeachObsWrapper(gym.ObservationWrapper):
 
     def observation(self, obs):
         return obs["state"]
+
+
+class StudentObsWrapper(gym.ObservationWrapper):
+    """
+    This observation wrapper extract the image of observation space for RL
+    """
+
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = self.env.observation_space["image"]
+
+    def observation(self, obs):
+        return obs["image"]

@@ -10,6 +10,7 @@ from auv_env import util
 from auv_env.envs.base import WorldBase
 from auv_env.envs.agent import AgentAuv, AgentSphere, AgentAuvTarget
 from auv_env.envs.obstacle import Obstacle
+from auv_env.envs.tools import ImageBuffer
 from metadata import METADATA
 
 from gymnasium import spaces
@@ -23,6 +24,7 @@ class WorldAuvRGB(WorldBase):
     """
 
     def __init__(self, map, show, verbose, num_targets, **kwargs):
+        self.image_buffer = ImageBuffer(5, (3, 224, 224))
         super().__init__(map, show, verbose, num_targets, **kwargs)
 
     def set_limits(self):
@@ -50,8 +52,13 @@ class WorldAuvRGB(WorldBase):
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
             "images": spaces.Dict(
-                {"left": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-                 "right": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32)}
+                {
+                    "t-4": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+                    "t_3": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+                    "t_2": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+                    "t_1": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+                    "t": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+                }
             ),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
@@ -103,11 +110,10 @@ class WorldAuvRGB(WorldBase):
         state_observation = np.array(state_observation)
 
         if 'LeftCamera' in self.sensors['auv0']:
-            images = {'left': self.sensors['auv0']['LeftCamera'],
-                      'right': self.sensors['auv0']['RightCamera']}
-        else:
-            images = {'left': np.zeros(shape=(512, 512, 4), dtype=np.uint8),
-                      'right': np.zeros(shape=(512, 512, 4), dtype=np.uint8)}
+            self.image_buffer.add_image(self.sensors['auv0']['LeftCamera'])
+        images = self.image_buffer.get_buffer()
+        keys = list(self.observation_space['image'].spaces.keys())  # 获取 Dict 的键列表
+        image_dict = {key: img for key, img in zip(keys, self.image_buffer.get_buffer())}
         images = util.image_preprocess(images)
         return copy.deepcopy({'images': images, 'state': state_observation})
         # Update the visit map for the evaluation purpose.

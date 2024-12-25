@@ -15,7 +15,6 @@ from atrl_launcher.wrapper import TeachObsWrapper
 env = gym.make('Teacher-v0')
 # print(env.observation_space)
 # env = gym.wrappers.FlattenObservation(env)
-env = TeachObsWrapper(env)
 space_info = SpaceInfo.from_env(env)
 
 state_shape = space_info.observation_info.obs_shape

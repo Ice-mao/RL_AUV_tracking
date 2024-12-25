@@ -1,1 +1,1 @@
-from .teacher_obs_wrapper import TeachObsWrapper
+from .obs_wrapper import TeachObsWrapper, StudentObsWrapper
