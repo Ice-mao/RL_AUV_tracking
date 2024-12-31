@@ -15,6 +15,7 @@ import csv
 import argparse
 from policy_net import SEED1, set_seed, CustomCNN
 from atrl_launcher.callbacks import SaveOnBestTrainingRewardCallback
+from atrl_launcher.networks.student_network import Encoder
 
 # tools
 import os
@@ -76,13 +77,13 @@ else:
     METADATA['render'] = False
 
 
-def make_teacher_env(
+def make_student_env(
         task: str,
         num_train_envs: int,
         monitor_dir: str
 ) -> VecEnv:
-    if 'Teacher' not in task:
-        raise ValueError("you should use teacher env.")
+    if 'Student' not in task:
+        raise ValueError("you should use student env.")
     train_envs = SubprocVecEnv([lambda: gym.make(task) for _ in range(num_train_envs)], )
     env = VecMonitor(train_envs, monitor_dir)
     return env
@@ -110,11 +111,11 @@ def learn(env, log_dir):
 
     if args.policy == 'SAC':
         policy_kwargs = dict(
-            # features_extractor_class=CustomCNN,
-            # features_extractor_kwargs=dict(features_dim=256),
-            net_arch=[dict(pi=[512, 512, 512], qf=[512, 512])],  # for AC policy
+            features_extractor_class=Encoder,
+            features_extractor_kwargs=dict(features_dim=512, num_images=5, resnet_output_dim=128),
+            net_arch=dict(pi=[512, 512, 512], qf=[512, 512]),  # for AC policy
         )
-        model = SAC("MlpPolicy", env, verbose=1, learning_rate=args.lr, buffer_size=args.buffer_size,
+        model = SAC("CnnPolicy", env, verbose=1, learning_rate=args.lr, buffer_size=args.buffer_size,
                     learning_starts=args.start_timesteps, batch_size=args.batch_size, tau=args.tau, gamma=args.gamma,
                     train_freq=2, gradient_steps=1, action_noise=NormalActionNoise(np.array(0.0), np.array(0.12)),
                     target_update_interval=10,
@@ -125,21 +126,17 @@ def learn(env, log_dir):
     elif args.policy == 'PPO':
         # policy_kwargs = dict(net_arch=dict(pi=[256, 256, 256], qf=[256, 256]))  # set for off-policy network
         policy_kwargs = dict(
-            # features_extractor_class=CustomCNN,
-            # features_extractor_kwargs=dict(features_dim=256),
-            # net_arch=[512, 512],
-            net_arch=dict(pi=[512, 512, 512], vf=[512, 512]),
+            features_extractor_class=Encoder,
+            features_extractor_kwargs=dict(features_dim=512, num_images=5, resnet_output_dim=128),
+            net_arch=dict(pi=[256, 256, 128], vf=[512, 512]),
         )
-        model = PPO("MlpPolicy", env, verbose=1, learning_rate=args.lr, batch_size=args.batch_size,
+        model = PPO("CnnPolicy", env, verbose=1, learning_rate=args.lr, batch_size=args.batch_size,
                     n_epochs=10, n_steps=args.n_steps,
                     gae_lambda=args.gae_lambda, clip_range=args.eps_clip, clip_range_vf=args.value_clip,
                     ent_coef=args.ent_coef, vf_coef=args.vf_coef,
                     max_grad_norm=args.max_grad_norm, normalize_advantage=bool(args.norm_adv),
                     policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device=args.device
                     )
-        # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
-        #             clip_range_vf=0.1,
-        #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
         model.learn(total_timesteps=args.timesteps, tb_log_name="first_run", log_interval=1, callback=callback)
         model.save(args.log_dir + 'final_model')
 
@@ -157,7 +154,7 @@ def keep_learn(env, log_dir, model_name):
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 
     model.learn(total_timesteps=args.timesteps, tb_log_name="second_run", reset_num_timesteps=False,
-                log_interval=5, callback=callback)
+                log_interval=1, callback=callback)
     model.save(log_dir + 'final_model')
 
 
@@ -263,14 +260,14 @@ if __name__ == "__main__":
         set_seed(args.seed)
         if args.choice == '0':
             log_dir = os.path.join(args.log_dir, args.policy, time_string)
-            env = make_teacher_env('Teacher-v0', args.nb_envs, log_dir)
+            env = make_student_env('Student-v0', args.nb_envs, log_dir)
             args.state_space = env.observation_space
             args.action_space = env.action_space
             learn(env, log_dir)
         if args.choice == '1':
             model_name = args.resume_path_model
             log_dir = os.path.dirname(model_name)
-            env = make_teacher_env('Teacher-v0', args.nb_envs, log_dir)
+            env = make_student_env('Student-v0', args.nb_envs, log_dir)
             keep_learn(env, log_dir, model_name)
 
     elif args.choice == '2':

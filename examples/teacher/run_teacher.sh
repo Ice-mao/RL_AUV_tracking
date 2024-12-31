@@ -32,7 +32,7 @@ if [ "$policy" == "SAC" ]; then
     --n-step 2 \
     --batch-size 128 \
     --test_episode 10 \
-    --log-dir ../../log
+    --log-dir ../../log/teacher
 #    --resume-path-model \
 
 elif [ "$policy" == "PPO" ]; then
@@ -63,7 +63,7 @@ elif [ "$policy" == "PPO" ]; then
         \
         --timesteps 1000000 \
         --batch-size 128 \
-        --log-dir ../../log
+        --log-dir ../../log/teacher
     #    --resume-path \
 else
     echo "Unknown policy"

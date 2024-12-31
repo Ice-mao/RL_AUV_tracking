@@ -24,8 +24,68 @@ class WorldAuvRGB(WorldBase):
     """
 
     def __init__(self, map, show, verbose, num_targets, **kwargs):
-        self.image_buffer = ImageBuffer(5, (3, 224, 224))
+        self.image_buffer = ImageBuffer(5, (3, 224, 224), time_gap=0.5)
         super().__init__(map, show, verbose, num_targets, **kwargs)
+        
+    def reset(self):
+        self.image_buffer.reset()
+        return super().reset()
+
+    def step(self, action_waypoint):
+        global_waypoint = np.zeros(3)
+        observed = []
+        # 归一化展开
+        r = action_waypoint[0] * self.action_range_scale[0]
+        theta = action_waypoint[1] * self.action_range_scale[1]
+        global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
+                                                         np.radians(self.agent.est_state.vec[8]))
+        angle = action_waypoint[2] * self.action_range_scale[2]
+        global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
+        self.agent_w = angle / 0.5
+        if self.agent_u is not None:
+            self.agent_last_u = self.agent_u
+        for j in range(50):
+            for i in range(self.num_targets):
+                target = 'target'+str(i)
+                if self.has_discovered[i]:
+                    self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
+                    self.ocean.act(target, self.target_u)
+                else:
+                    self.target_u = np.zeros(8)
+                    self.ocean.act(target, self.target_u)
+            if j == 0:
+                self.agent_u = self.u
+            self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
+            self.ocean.act("auv0", self.u)
+            sensors = self.ocean.tick()
+            # update
+            if 'LeftCamera' in sensors['auv0']:
+                self.image_buffer.add_image(sensors['auv0']['LeftCamera'], self.sensors['t'])
+            self.sensors['auv0'].update(sensors['auv0'])
+            for i in range(self.num_targets):
+                target = 'target'+str(i)
+                self.sensors[target].update(sensors[target])
+
+
+        # The targets are observed by the agent (z_t+1) and the beliefs are updated.
+        observed = self.observe_and_update_belief()
+        is_col = not (self.obstacles.check_obstacle_collision(self.agent.state.vec[:2], self.margin2wall)
+                      and self.in_bound(self.agent.state.vec[:2])
+                      and np.linalg.norm(self.agent.state.vec[:2] - self.targets[0].state.vec[:2]) > self.margin)
+
+        # Compute a reward from b_t+1|t+1 or b_t+1|t.
+        reward, done, mean_nlogdetcov, std_nlogdetcov = self.get_reward(is_col=is_col)
+        # Predict the target for the next step, b_t+2|t+1
+        for i in range(self.num_targets):
+            self.belief_targets[i].predict()
+
+        # Compute the RL state.
+        state = self.state_func(observed, action_waypoint)
+        self.record_observed = observed
+        if METADATA['render']:
+            print(is_col, observed[0], reward)
+        self.is_col = is_col
+        return state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
 
     def set_limits(self):
         # LIMIT
@@ -51,15 +111,16 @@ class WorldAuvRGB(WorldBase):
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
-            "images": spaces.Dict(
-                {
-                    "t-4": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-                    "t_3": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-                    "t_2": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-                    "t_1": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-                    "t": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-                }
-            ),
+            # "images": spaces.Dict(
+            #     {
+            #         "t-4": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+            #         "t_3": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+            #         "t_2": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+            #         "t_1": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+            #         "t": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+            #     }
+            # ),
+            "images": spaces.Box(low=-3, high=3, shape=(5, 3, 224, 224), dtype=np.float32),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
@@ -109,12 +170,8 @@ class WorldAuvRGB(WorldBase):
         state_observation.extend(action_waypoint.tolist())  # dim:3
         state_observation = np.array(state_observation)
 
-        if 'LeftCamera' in self.sensors['auv0']:
-            self.image_buffer.add_image(self.sensors['auv0']['LeftCamera'])
-        images = self.image_buffer.get_buffer()
-        keys = list(self.observation_space['image'].spaces.keys())  # 获取 Dict 的键列表
-        image_dict = {key: img for key, img in zip(keys, self.image_buffer.get_buffer())}
-        images = util.image_preprocess(images)
+        images = np.stack(self.image_buffer.get_buffer())
+        # images = util.image_preprocess(images)
         return copy.deepcopy({'images': images, 'state': state_observation})
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:

@@ -4,6 +4,7 @@ from pynput import keyboard
 import matplotlib.pyplot as plt
 import cv2
 from metadata import METADATA
+from auv_env import util
 
 
 class KeyBoardCmd:
@@ -311,7 +312,7 @@ from collections import deque
 
 
 class ImageBuffer:
-    def __init__(self, buffer_size, image_shape):
+    def __init__(self, buffer_size, image_shape, time_gap):
         """
         初始化图像缓冲区
         :param buffer_size: 缓冲区最大长度
@@ -319,17 +320,26 @@ class ImageBuffer:
         """
         self.buffer_size = buffer_size
         self.image_shape = image_shape
+        self.time_gap = time_gap
         # 创建固定长度的队列，初始化为指定形状的空图像
-        self.buffer = deque([self._create_empty_image()] * buffer_size, maxlen=buffer_size)
+        self.buffer = deque([self._create_empty_image()] * self.buffer_size, maxlen=self.buffer_size)
+        self.t = 0
+
+    def reset(self):
+        self.buffer = deque([self._create_empty_image()] * self.buffer_size, maxlen=self.buffer_size)
+        self.t = 0
 
     def _create_empty_image(self):
         return np.zeros(self.image_shape, dtype=np.float32)
 
-    def add_image(self, image):
+    def add_image(self, image, t):
         """添加新图像到缓冲区"""
+        image = util.image_preprocess(image)
         if image.shape != self.image_shape:
             raise ValueError(f"图像形状不匹配，预期形状为 {self.image_shape}，但收到 {image.shape}")
-        self.buffer.append(image)
+        if t - self.t >= self.time_gap:
+            self.t = t
+            self.buffer.append(image)
 
     def get_buffer(self):
         """获取当前缓冲区的图像列表"""
@@ -343,9 +353,6 @@ class ImageBuffer:
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
-import seaborn as sns
-
-sns.set(context="paper", style="whitegrid", font_scale=0.8)
 """
     绘图类的使用
 """

@@ -159,7 +159,10 @@ class WorldBase:
             self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()
-            self.sensors.update(sensors)
+            self.sensors['auv0'].update(sensors['auv0'])
+            for i in range(self.num_targets):
+                target = 'target'+str(i)
+                self.sensors[target].update(sensors[target])
 
         # The targets are observed by the agent (z_t+1) and the beliefs are updated.
         observed = self.observe_and_update_belief()

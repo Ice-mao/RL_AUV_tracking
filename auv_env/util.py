@@ -7,21 +7,30 @@ from torchvision import transforms
 
 # Convention : VARIABLE_OBJECT_FRAME. If FRAME is omitted, it means it is with
 # respect to the global frame.
-def image_preprocess(images: dict)->dict:
-    "images include left and right"
-    for key in images:
-        rgb_image = images[key][:, :, :3]  # 取前 3 个通道 (H, W, 3)
-        pil_image = Image.fromarray(rgb_image)
-        preprocess = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-        tensor_image = preprocess(pil_image)
-        image = tensor_image.numpy()
-        images[key] = image
-    return images
+def image_preprocess(image: np.ndarray) -> np.ndarray:
+    # for key in images:
+    #     rgb_image = images[key][:, :, :3]  # 取前 3 个通道 (H, W, 3)
+    #     pil_image = Image.fromarray(rgb_image)
+    #     preprocess = transforms.Compose([
+    #         transforms.Resize(256),
+    #         transforms.CenterCrop(224),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    #     ])
+    #     tensor_image = preprocess(pil_image)
+    #     image = tensor_image.numpy()
+    #     images[key] = image
+    rgb_image = image[:, :, :3]  # 取前 3 个通道 (H, W, 3)
+    pil_image = Image.fromarray(rgb_image)
+    preprocess = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    tensor_image = preprocess(pil_image)
+    image = tensor_image.numpy()
+    return image
 
 
 def wrap_around(x):
@@ -271,5 +280,6 @@ def get_nlogdetcov_bounds_step(P0, A, W, TH):
 
 
 if __name__ == "__main__":
-    ans = polar_distance_global(np.array([5, np.pi / 2]), np.array([5, 0]), theta_base=0)
-    print(ans)
+    image = np.full((256, 256, 4), [0, 0, 255, 1], dtype=np.uint8)
+    ouput = image_preprocess(image)
+    print('debug')

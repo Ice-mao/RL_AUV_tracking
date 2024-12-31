@@ -46,7 +46,7 @@ class TemporalBlock(nn.Module):
 
 
 class TemporalConvNet(nn.Module):
-    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2, device='cuda'):
+    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2):
         super(TemporalConvNet, self).__init__()
         layers = []
         num_levels = len(num_channels)
@@ -57,7 +57,7 @@ class TemporalConvNet(nn.Module):
             layers += [TemporalBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,
                                      padding=(kernel_size-1) * dilation_size, dropout=dropout)]
 
-        self.network = nn.Sequential(*layers).to(device)
+        self.network = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.network(x)

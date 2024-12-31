@@ -22,7 +22,7 @@ class StudentObsWrapper(gym.ObservationWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.observation_space = self.env.observation_space["image"]
+        self.observation_space = self.env.observation_space["images"]
 
     def observation(self, obs):
-        return obs["image"]
+        return obs["images"]

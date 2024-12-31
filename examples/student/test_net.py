@@ -1,4 +1,5 @@
 import gymnasium as gym
+from gymnasium import spaces
 import auv_env
 from stable_baselines3.common.vec_env import VecEnv, SubprocVecEnv, VecMonitor
 
@@ -8,6 +9,8 @@ import numpy as np
 from numpy import linalg as LA
 import csv
 import argparse
+
+from auv_env import StudentObsWrapper
 from policy_net import SEED1, set_seed, CustomCNN
 from atrl_launcher.callbacks import SaveOnBestTrainingRewardCallback
 
@@ -17,9 +20,30 @@ import datetime
 from metadata import METADATA
 
 
-env = gym.make('Teacher-v0')
+# observation_space = spaces.Dict({
+#             "images": spaces.Dict(
+#                 {
+#                     "t-4": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+#                     "t_3": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+#                     "t_2": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+#                     "t_1": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+#                     "t": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
+#                 }
+#             ),
+#             "state": spaces.Box(low=-1, high=1, dtype=np.float32),
+#         })
+# env = SubprocVecEnv([lambda: gym.make('Teacher-v0') for _ in range(1)])
 env = gym.make('Student-v0')
-obs, info = env.reset()
+# env = StudentObsWrapper(auv_env.make(env_name='AUVTracking_rgb',
+#                                              render=False,
+#                                              record=False,
+#                                              num_targets=1,
+#                                              is_training=False,
+#                                              eval=False,
+#                                              t_steps=200,
+#                                              ))
+obs= env.reset()
+
 # a = env.reset()
 while True:
     action = env.action_space.sample()
