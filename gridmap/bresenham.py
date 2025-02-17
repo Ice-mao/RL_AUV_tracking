@@ -4,7 +4,7 @@ import numpy as np
 
 def bresenham(gridMap, x1, y1, x2, y2):
 	"""
-	Bresenham's line drawing algorithm - working for all 4 quadrants!
+	Bresenham's line drawing algorithms - working for all 4 quadrants!
 	"""
 	
 	# Output pixels

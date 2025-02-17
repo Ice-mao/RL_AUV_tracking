@@ -1,6 +1,6 @@
 log/
 build/
 install/
-examples/mujoco
+examples/imitation/test
 
 global*

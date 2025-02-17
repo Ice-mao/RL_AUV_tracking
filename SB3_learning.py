@@ -4,7 +4,7 @@ import stable_baselines3
 from stable_baselines3 import DQN
 from stable_baselines3 import PPO, SAC
 from stable_baselines3 import HerReplayBuffer
-from sb3_contrib import RecurrentPPO
+# from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback, CallbackList
 from stable_baselines3.common.monitor import Monitor
@@ -112,10 +112,10 @@ def main():
     if args.choice == '0' or args.choice == '1':
         # new training
         if args.choice == '0':
-            if METADATA['algorithm'] == "PPO":
+            if METADATA['algorithms'] == "PPO":
                 log_dir = '../log/ppo_' + time_string + '/'
                 model_dir = '../models/ppo_' + time_string + '/'
-            elif METADATA['algorithm'] == "SAC":
+            elif METADATA['algorithms'] == "SAC":
                 log_dir = '../log/sac_' + time_string + '/'
                 model_dir = '../models/sac_' + time_string + '/'
 
@@ -184,7 +184,7 @@ def learn(env, model_dir, log_dir):
     )  # 设置网络结构为自定义的网络架构（支持自定义输入）
 
     # 算法选择
-    if METADATA['algorithm'] == "DQN":
+    if METADATA['algorithms'] == "DQN":
         model = DQN("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
                     batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
                     exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
@@ -194,7 +194,7 @@ def learn(env, model_dir, log_dir):
         # model = DQN.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
 
     # PPO
-    if METADATA['algorithm'] == "PPO":
+    if METADATA['algorithms'] == "PPO":
         if METADATA['policy'] == 'MLP':
             policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
             model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.00005, batch_size=128, n_epochs=4,
@@ -210,7 +210,7 @@ def learn(env, model_dir, log_dir):
                         clip_range_vf=0.1,
                         batch_size=64, tensorboard_log=log_dir, device="cuda")
 
-    if METADATA['algorithm'] == "SAC":
+    if METADATA['algorithms'] == "SAC":
         model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
                     learning_starts=100, batch_size=128, tau=0.005, gamma=0.99, train_freq=1,
                     gradient_steps=1, action_noise=None,
@@ -239,10 +239,10 @@ def keep_learn(env, model_dir, log_dir, model_name):
     )
     callback = CallbackList([callback, checkpoint_callback])
 
-    if METADATA['algorithm'] == "PPO":
+    if METADATA['algorithms'] == "PPO":
         model = PPO.load(model_dir + model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    if METADATA['algorithm'] == "SAC":
+    if METADATA['algorithms'] == "SAC":
         model = SAC.load(model_dir + model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 
@@ -273,10 +273,10 @@ def evaluate(model_dir):
                        t_steps=args.max_episode_step
                        )
     # get render parmater true
-    if METADATA['algorithm'] == "PPO":
+    if METADATA['algorithms'] == "PPO":
         model = PPO.load(model_dir, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    if METADATA['algorithm'] == "SAC":
+    if METADATA['algorithms'] == "SAC":
         model = SAC.load(model_dir, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')

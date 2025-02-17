@@ -34,7 +34,7 @@ METADATA_v1 = {
     'lqr_l_p': 50,  # control the target's veocity
 
     # reinforcement learning setting.
-    'algorithm': 'PPO',  # PPO、SAC
+    'algorithms': 'PPO',  # PPO、SAC
     'policy': 'CNN',  # CNN、MLP 记得同时修改环境
     'random': False,  # for domain randomization.
     'task_random': False,  # if False, according to 'insight' to determine
@@ -124,7 +124,7 @@ METADATA_RGB = {
 
     # reinforcement learning setting.
     'is_training': True,
-    'algorithm': 'PPO',  # PPO、SAC
+    'algorithms': 'PPO',  # PPO、SAC
     'policy': 'CNN',  # CNN、MLP 记得同时修改环境
     # # action set
     'action_range_high': [1, 1, 1],
@@ -158,7 +158,6 @@ TTENV_EVAL_SET = {
             'ang_dist_range_t2b': (-np.pi / 2, np.pi / 2),
             'insight': True,
             'noblock': True,
-            'target_speed_limit': 2.5,
             'const_q': 0.5,
         },
     'Discovery':
@@ -172,7 +171,6 @@ TTENV_EVAL_SET = {
             'ang_dist_range_b2t': (-np.pi / 2, np.pi / 2),
             'insight': False,
             'noblock': True,
-            'target_speed_limit': 2.5,
             'const_q': 0.1,
         },
     'Navigation':
@@ -195,7 +193,6 @@ TTENV_EVAL_MULTI_SET = [
         'lin_dist_range_b2t': (0.0, 3.0),
         'ang_dist_range_b2t': (-np.pi / 2, np.pi / 2),
         'blocked': None,
-        'target_speed_limit': 1.0,
         'const_q': 0.02,
     }
 ]

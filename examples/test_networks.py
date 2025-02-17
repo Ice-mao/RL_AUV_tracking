@@ -1,5 +1,5 @@
 import numpy as np
-# from atrl_launcher.policys.drqv2 import RandomShiftsAug
+# from tianshou_launcher.policys.drqv2 import RandomShiftsAug
 #
 # random_image = np.random.uniform(-3, 3, size=(3, 224, 224)).astype(np.float32)
 #

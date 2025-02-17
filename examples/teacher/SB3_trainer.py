@@ -1,20 +1,18 @@
 import gymnasium as gym
 
 from stable_baselines3 import PPO, SAC
-from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
-from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecEnv
-# from stable_baselines3.common.logger
-
+from stable_baselines3.common.noise import NormalActionNoise
+#
 import auv_env
 import torch
 import numpy as np
 from numpy import linalg as LA
 import csv
 import argparse
-from policy_net import SEED1, set_seed, CustomCNN
-from atrl_launcher.callbacks import SaveOnBestTrainingRewardCallback
+from policy_net import set_seed
+from sb3_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
 
 # tools
 import os
@@ -30,7 +28,7 @@ parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train
 # for env set
 parser.add_argument('--env', type=str, choices=['TargetTracking1', 'TargetTracking2', 'AUVTracking_rgb'],
                     help='environment ID', default='TargetTracking1')
-parser.add_argument('--policy', type=str, choices=['PPO', 'SAC', 'BC'], help='algorithm select',
+parser.add_argument('--policy', type=str, choices=['PPO', 'SAC', 'BC'], help='algorithms select',
                     default='SAC')
 parser.add_argument('--render', help='whether to render', type=int, default=0)
 parser.add_argument('--record', help='whether to record', type=int, default=0)
@@ -96,7 +94,7 @@ def make_callback(
         save_freq=max(20000 // args.nb_envs, 1),
         save_path=log_dir,
         name_prefix="rl_model",
-        save_replay_buffer=False,
+        save_replay_buffer=True,
         save_vecnormalize=True,
     )
     callback = CallbackList([callback, checkpoint_callback])
@@ -104,7 +102,6 @@ def make_callback(
 
 
 def learn(env, log_dir):
-    os.makedirs(log_dir, exist_ok=True)
     # callback
     callback = make_callback(log_dir)
 
@@ -112,12 +109,14 @@ def learn(env, log_dir):
         policy_kwargs = dict(
             # features_extractor_class=CustomCNN,
             # features_extractor_kwargs=dict(features_dim=256),
-            net_arch=[dict(pi=[512, 512, 512], qf=[512, 512])],  # for AC policy
+            net_arch=dict(pi=[256, 256, 256], qf=[256, 256]),  # for AC policy
         )
         model = SAC("MlpPolicy", env, verbose=1, learning_rate=args.lr, buffer_size=args.buffer_size,
                     learning_starts=args.start_timesteps, batch_size=args.batch_size, tau=args.tau, gamma=args.gamma,
-                    train_freq=2, gradient_steps=1, action_noise=NormalActionNoise(np.array(0.0), np.array(0.12)),
+                    train_freq=1, gradient_steps=1,
+                    action_noise=NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.08])),
                     target_update_interval=10,
+
                     policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device=args.device
                     )
         model.learn(total_timesteps=args.timesteps, tb_log_name="first_run", log_interval=5, callback=callback)
@@ -146,7 +145,6 @@ def learn(env, log_dir):
 
 def keep_learn(env, log_dir, model_name):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    os.makedirs(log_dir, exist_ok=True)
     callback = make_callback(log_dir)
 
     if args.policy == 'SAC':
@@ -169,7 +167,7 @@ def evaluate(model_name: str):
     """
     from metadata import TTENV_EVAL_SET
     # 0 tracking 1 discovery 2 navagation
-    METADATA.update(TTENV_EVAL_SET[0])
+    METADATA.update(TTENV_EVAL_SET['Tracking'])
 
     env = SubprocVecEnv([lambda: gym.make('Teacher-v0-render') for _ in range(1)], )
 
@@ -263,13 +261,15 @@ if __name__ == "__main__":
         set_seed(args.seed)
         if args.choice == '0':
             log_dir = os.path.join(args.log_dir, args.policy, time_string)
-            env = make_teacher_env('Teacher-v0', args.nb_envs, log_dir)
+            os.makedirs(log_dir, exist_ok=True)
+            env = make_teacher_env('Teacher-v0', args.nb_envs, log_dir+'/')
             args.state_space = env.observation_space
             args.action_space = env.action_space
             learn(env, log_dir)
         if args.choice == '1':
             model_name = args.resume_path_model
             log_dir = os.path.dirname(model_name)
+            os.makedirs(log_dir, exist_ok=True)
             env = make_teacher_env('Teacher-v0', args.nb_envs, log_dir)
             keep_learn(env, log_dir, model_name)
 

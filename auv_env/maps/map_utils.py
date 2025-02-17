@@ -288,7 +288,7 @@ class GridMap(object):
 
 def bresenham2D(sx, sy, ex, ey):
     """
-    Bresenham's ray tracing algorithm in 2D from ESE650 2017 TA resources
+    Bresenham's ray tracing algorithms in 2D from ESE650 2017 TA resources
     Inputs:
         (sx, sy)  start point of ray
         (ex, ey)  end point of ray

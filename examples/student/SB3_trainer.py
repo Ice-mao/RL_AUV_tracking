@@ -1,7 +1,6 @@
 import gymnasium as gym
 
 from stable_baselines3 import PPO, SAC
-from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecEnv
@@ -13,9 +12,9 @@ import numpy as np
 from numpy import linalg as LA
 import csv
 import argparse
-from policy_net import SEED1, set_seed, CustomCNN
-from atrl_launcher.callbacks import SaveOnBestTrainingRewardCallback
-from atrl_launcher.networks.student_network import Encoder
+from policy_net import set_seed
+from sb3_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
+from sb3_launcher.networks import Encoder
 
 # tools
 import os
@@ -31,7 +30,7 @@ parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train
 # for env set
 parser.add_argument('--env', type=str, choices=['TargetTracking1', 'TargetTracking2', 'AUVTracking_rgb'],
                     help='environment ID', default='TargetTracking1')
-parser.add_argument('--policy', type=str, choices=['PPO', 'SAC', 'BC'], help='algorithm select',
+parser.add_argument('--policy', type=str, choices=['PPO', 'SAC', 'BC'], help='algorithms select',
                     default='SAC')
 parser.add_argument('--render', help='whether to render', type=int, default=0)
 parser.add_argument('--record', help='whether to record', type=int, default=0)

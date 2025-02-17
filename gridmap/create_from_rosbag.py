@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
 			##################### Grid map update section #####################
 
-			# x1 and y1 for Bresenham's algorithm
+			# x1 and y1 for Bresenham's algorithms
 			x1, y1 = gridMap.discretize(x_odom, y_odom)
 
 			# for BGR image of the grid map
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
 			for (dist_x, dist_y, dist) in zip(distances_x, distances_y, distances):
 
-				# x2 and y2 for Bresenham's algorithm
+				# x2 and y2 for Bresenham's algorithms
 				x2, y2 = gridMap.discretize(dist_x, dist_y)
 
 				# draw a discrete line of free pixels, [robot position -> laser hit spot), 确定测量范围内的free space

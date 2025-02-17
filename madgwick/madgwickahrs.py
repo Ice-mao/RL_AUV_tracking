@@ -75,7 +75,7 @@ class MadgwickAHRS:
         h = q * (Quaternion(0, magnetometer[0], magnetometer[1], magnetometer[2]) * q.conj())
         b = np.array([0, norm(h[1:3]), 0, h[3]])
 
-        # Gradient descent algorithm corrective step
+        # Gradient descent algorithms corrective step
         f = np.array([
             2*(q[1]*q[3] - q[0]*q[2]) - accelerometer[0],
             2*(q[0]*q[1] + q[2]*q[3]) - accelerometer[1],
@@ -125,7 +125,7 @@ class MadgwickAHRS:
             return
         accelerometer /= norm(accelerometer)
 
-        # Gradient descent algorithm corrective step
+        # Gradient descent algorithms corrective step
         f = np.array([
             2*(q[1]*q[3] - q[0]*q[2]) - accelerometer[0],
             2*(q[0]*q[1] + q[2]*q[3]) - accelerometer[1],

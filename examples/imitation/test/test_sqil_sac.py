@@ -1,0 +1,50 @@
+import datasets
+from imitation.data import huggingface_utils
+
+# Download some expert trajectories from the HuggingFace Datasets Hub.
+dataset = datasets.load_dataset('hugging_data')
+
+# Convert the dataset to a format usable by the imitation library.
+expert_trajectories = huggingface_utils.TrajectoryDatasetSequence(dataset["train"])
+
+from imitation.data import rollout
+
+trajectory_stats = rollout.rollout_stats(expert_trajectories)
+
+print(
+    f"We have {trajectory_stats['n_traj']} trajectories. "
+    f"The average length of each trajectory is {trajectory_stats['len_mean']}. "
+    f"The average return of each trajectory is {trajectory_stats['return_mean']}."
+)
+
+from imitation.algorithms import sqil
+from imitation.util.util import make_vec_env
+import numpy as np
+from stable_baselines3 import sac
+
+SEED = 42
+
+venv = make_vec_env(
+    "Pendulum-v1",
+    rng=np.random.default_rng(seed=SEED),
+)
+
+sqil_trainer = sqil.SQIL(
+    venv=venv,
+    demonstrations=expert_trajectories,
+    policy="MlpPolicy",
+    rl_algo_class=sac.SAC,
+    rl_kwargs=dict(seed=SEED),
+)
+
+from stable_baselines3.common.evaluation import evaluate_policy
+
+reward_before_training, _ = evaluate_policy(sqil_trainer.policy, venv, 100)
+print(f"Reward before training: {reward_before_training}")
+
+sqil_trainer.train(
+    total_timesteps=100000,
+)  # Note: set to 300_000 to obtain good results
+reward_after_training, _ = evaluate_policy(sqil_trainer.policy, venv, 100)
+print(f"Reward after training: {reward_after_training}")
+sqil_trainer.policy.save("sqil_pendulum_trained")

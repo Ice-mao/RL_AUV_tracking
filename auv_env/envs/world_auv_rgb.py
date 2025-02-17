@@ -24,6 +24,7 @@ class WorldAuvRGB(WorldBase):
     """
 
     def __init__(self, map, show, verbose, num_targets, **kwargs):
+        self.obs = {}
         self.image_buffer = ImageBuffer(5, (3, 224, 224), time_gap=0.5)
         super().__init__(map, show, verbose, num_targets, **kwargs)
         
@@ -111,15 +112,6 @@ class WorldAuvRGB(WorldBase):
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
-            # "images": spaces.Dict(
-            #     {
-            #         "t-4": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-            #         "t_3": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-            #         "t_2": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-            #         "t_1": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-            #         "t": spaces.Box(-3, 3, shape=(3, 224, 224), dtype=np.float32),
-            #     }
-            # ),
             "images": spaces.Box(low=-3, high=3, shape=(5, 3, 224, 224), dtype=np.float32),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
@@ -172,11 +164,17 @@ class WorldAuvRGB(WorldBase):
 
         images = np.stack(self.image_buffer.get_buffer())
         # images = util.image_preprocess(images)
+        self.obs = {'images': images, 'state': state_observation}
         return copy.deepcopy({'images': images, 'state': state_observation})
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
 
+    def state_func_images(self):
+        return self.obs['images']
+
+    def state_func_state(self):
+        return self.obs['state']
 
 if __name__ == '__main__':
     from auv_control import scenario

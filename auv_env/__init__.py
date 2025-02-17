@@ -92,6 +92,14 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
 ##
 from .wrappers import TeachObsWrapper, StudentObsWrapper
 
+fns = lambda: make(env_name='AUVTracking_rgb',
+                   render=False,
+                   record=False,
+                   num_targets=1,
+                   is_training=False,
+                   eval=False,
+                   t_steps=200,
+                   )
 teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
                                            render=False,
                                            record=False,
@@ -124,6 +132,11 @@ student_fns_render = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
                                                     eval=False,
                                                     t_steps=200,
                                                     ))
+gym.register(
+    id="auv_rgb-v0",
+    entry_point=fns,
+    disable_env_checker=True,
+)
 gym.register(
     id="Teacher-v0",
     entry_point=teacher_fns,

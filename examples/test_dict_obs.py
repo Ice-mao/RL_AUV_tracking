@@ -3,7 +3,7 @@ import numpy as np
 import gymnasium as gym
 
 from tianshou.utils.space_info import SpaceInfo
-from atrl_launcher.wrapper import TeachObsWrapper
+from tianshou_launcher.wrapper import TeachObsWrapper
 
 # env = auv_env.make("AUVTracking_rgb",
 #                    render=1,
