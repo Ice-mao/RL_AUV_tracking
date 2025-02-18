@@ -111,10 +111,11 @@ if __name__ == "__main__":
     dataset_1 = datasets.load_from_disk("../../log/imitation/trajs_1")
     dataset_2 = datasets.load_from_disk("../../log/imitation/trajs_2")
     dataset_3 = datasets.load_from_disk("../../log/imitation/trajs_3")
+    dataset_4 = datasets.load_from_disk("../../log/imitation/trajs_4")
     # dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
     dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3, dataset_4])
     transitions = huggingface_utils.TrajectoryDatasetSequence(dataset)
-    del dataset, dataset_0, dataset_1, dataset_2, dataset_3
+    del dataset, dataset_0, dataset_1, dataset_2, dataset_3, dataset_4
     # transitions = serialize.load(path="trajs_0")
     # transitions = custom_load(path="trajs_0")
 
@@ -147,7 +148,7 @@ if __name__ == "__main__":
     now = datetime.datetime.now().strftime("%m%d_%H%M")
 
     # 构建保存路径
-    save_path = f"../../log/imitation/auv_student_data_26_epoch_100_{now}"
+    save_path = f"../../log/imitation/auv_student_data_46_epoch_1000_{now}"
     model.save(save_path)
 
     #print("Evaluating the trained policy.")
