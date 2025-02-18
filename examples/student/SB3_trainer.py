@@ -259,14 +259,14 @@ if __name__ == "__main__":
         set_seed(args.seed)
         if args.choice == '0':
             log_dir = os.path.join(args.log_dir, args.policy, time_string)
-            env = make_student_env('Student-v0', args.nb_envs, log_dir)
+            env = make_student_env('Student-v0-norender', args.nb_envs, log_dir)
             args.state_space = env.observation_space
             args.action_space = env.action_space
             learn(env, log_dir)
         if args.choice == '1':
             model_name = args.resume_path_model
             log_dir = os.path.dirname(model_name)
-            env = make_student_env('Student-v0', args.nb_envs, log_dir)
+            env = make_student_env('Student-v0-norender', args.nb_envs, log_dir)
             keep_learn(env, log_dir, model_name)
 
     elif args.choice == '2':
