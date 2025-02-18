@@ -96,7 +96,7 @@ def create_sac_policy(env) -> SACPolicy:
 if __name__ == "__main__":
     rng = np.random.default_rng(0)
     env = make_vec_env(
-        "Student-v0",
+        "Student-v0-norender",
         rng=rng,
         n_envs=1,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     dataset_2 = datasets.load_from_disk("../../log/imitation/trajs_2")
     dataset_3 = datasets.load_from_disk("../../log/imitation/trajs_3")
     # dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
-    dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2])
+    dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3, dataset_4])
     transitions = huggingface_utils.TrajectoryDatasetSequence(dataset)
     del dataset, dataset_0, dataset_1, dataset_2, dataset_3
     # transitions = serialize.load(path="trajs_0")
@@ -141,13 +141,13 @@ if __name__ == "__main__":
     print("build bc_trainer")
     
     print("Training a policy using Behavior Cloning")
-    bc_trainer.train(n_epochs=100)
+    bc_trainer.train(n_epochs=1000)
     model.actor = bc_trainer.policy
     import datetime
     now = datetime.datetime.now().strftime("%m%d_%H%M")
 
     # 构建保存路径
-    save_path = f"../log/auv_student_data_26_epoch_1100_{now}"
+    save_path = f"../../log/imitation/auv_student_data_26_epoch_100_{now}"
     model.save(save_path)
 
     #print("Evaluating the trained policy.")
