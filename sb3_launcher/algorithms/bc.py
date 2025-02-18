@@ -131,12 +131,10 @@ class BehaviorCloningLossCalculator:
         mean_actions, log_std, _ = policy.get_action_dist_params(tensor_obs)
         actions_pi, _ = policy.action_dist.log_prob_from_params(mean_actions, log_std)
         log_prob = policy.action_dist.log_prob(acts)
-        # entropy = -log_prob.mean()
-        entropy = None
+        entropy = -log_prob.mean()       
 
         prob_true_act = th.exp(log_prob).mean()
         log_prob = log_prob.mean()
-        entropy = entropy.mean() if entropy is not None else None
 
         l2_norms = [th.sum(th.square(w)) for w in policy.parameters()]
         l2_norm = sum(l2_norms) / 2  # divide by 2 to cancel with gradient of square
