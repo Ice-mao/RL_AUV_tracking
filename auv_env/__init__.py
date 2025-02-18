@@ -28,8 +28,8 @@ class AUVTracking_rgb(TargetTrackingBase):
     target is an auv with map.
     """
 
-    def __init__(self, map="AUV_RGB", num_targets=1, show=True, verbose=True, is_training=False, **kwargs):
-        super().__init__(WorldAuvRGB, map, num_targets, show, verbose, is_training, **kwargs)
+    def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(WorldAuvRGB, map, num_targets, show_viewport, verbose, is_training, **kwargs)
 
 
 def make(env_name, render=False, record=False, eval=False, ros=False, directory='../',
@@ -108,9 +108,10 @@ teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
                                            eval=False,
                                            t_steps=200,
                                            ))
-teacher_fns_render = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
+teacher_fns_norender = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
                                                   render=True,
                                                   record=False,
+                                                  show_viewport=False,
                                                   num_targets=1,
                                                   is_training=False,
                                                   eval=False,
@@ -124,9 +125,10 @@ student_fns = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
                                              eval=False,
                                              t_steps=200,
                                              ))
-student_fns_render = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
+student_fns_norender = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
                                                     render=True,
                                                     record=False,
+                                                    show_viewport=False,
                                                     num_targets=1,
                                                     is_training=False,
                                                     eval=False,
@@ -144,7 +146,7 @@ gym.register(
 )
 gym.register(
     id="Teacher-v0-render",
-    entry_point=teacher_fns_render,
+    entry_point=teacher_fns_norender,
     disable_env_checker=True,
 )
 gym.register(
@@ -154,6 +156,6 @@ gym.register(
 )
 gym.register(
     id="Student-v0-render",
-    entry_point=student_fns_render,
+    entry_point=student_fns_norender,
     disable_env_checker=True,
 )

@@ -30,7 +30,7 @@ class TargetTrackingBase(gym.Env):
         base class for env creation
     """
 
-    def __init__(self, world_class, map="TestMap", num_targets=1, show=True, verbose=True, is_training=False, **kwargs):
+    def __init__(self, world_class, map="TestMap", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
         gym.Env.__init__(self)
         np.random.seed()
         self.state = None
@@ -41,7 +41,7 @@ class TargetTrackingBase(gym.Env):
                                        high=np.float32(METADATA['action_range_high']),
                                        dtype=np.float32)
         # init the scenario
-        self.world = world_class(map=map, show=show, verbose=verbose, num_targets=self.num_targets)
+        self.world = world_class(map=map, show_viewport=show_viewport, verbose=verbose, num_targets=self.num_targets)
         # # init the action space
         # self.action_space = self.world.action_space
         self.observation_space = self.world.observation_space
