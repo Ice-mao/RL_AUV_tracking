@@ -41,7 +41,7 @@ class TargetTrackingBase(gym.Env):
                                        high=np.float32(METADATA['action_range_high']),
                                        dtype=np.float32)
         # init the scenario
-        self.world = world_class(map=map, show_viewport=show_viewport, verbose=verbose, num_targets=self.num_targets)
+        self.world = world_class(map=map, show=show_viewport, verbose=verbose, num_targets=self.num_targets)
         # # init the action space
         # self.action_space = self.world.action_space
         self.observation_space = self.world.observation_space
@@ -84,7 +84,7 @@ class WorldBase:
         # define the entity
         # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
         self.map = map
-        self.ocean = holoocean.make(self.map)
+        self.ocean = holoocean.make(self.map, show_viewport=show)
         scenario = holoocean.get_scenario(self.map)
         self.ocean.should_render_viewport(METADATA['render'])
         self.agent = None

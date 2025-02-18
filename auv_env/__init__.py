@@ -103,13 +103,14 @@ fns = lambda: make(env_name='AUVTracking_rgb',
 teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
                                            render=False,
                                            record=False,
+                                           show_viewport=True,
                                            num_targets=1,
                                            is_training=False,
                                            eval=False,
                                            t_steps=200,
                                            ))
 teacher_fns_norender = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
-                                                  render=True,
+                                                  render=False,
                                                   record=False,
                                                   show_viewport=False,
                                                   num_targets=1,
@@ -120,13 +121,14 @@ teacher_fns_norender = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
 student_fns = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
                                              render=False,
                                              record=False,
+                                             show_viewport=True,
                                              num_targets=1,
                                              is_training=False,
                                              eval=False,
                                              t_steps=200,
                                              ))
 student_fns_norender = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
-                                                    render=True,
+                                                    render=False,
                                                     record=False,
                                                     show_viewport=False,
                                                     num_targets=1,
@@ -145,7 +147,7 @@ gym.register(
     disable_env_checker=True,
 )
 gym.register(
-    id="Teacher-v0-render",
+    id="Teacher-v0-norender",
     entry_point=teacher_fns_norender,
     disable_env_checker=True,
 )
@@ -155,7 +157,7 @@ gym.register(
     disable_env_checker=True,
 )
 gym.register(
-    id="Student-v0-render",
+    id="Student-v0-norender",
     entry_point=student_fns_norender,
     disable_env_checker=True,
 )
