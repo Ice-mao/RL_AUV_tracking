@@ -101,6 +101,11 @@ if __name__ == "__main__":
         n_envs=1,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
     )
+    from gymnasium import spaces
+    action_space = spaces.Box(low=np.float32([0, -1, -1]),
+                                       high=np.float32([1, 1, 1]),
+                                       dtype=np.float32)
+    obs_space = spaces.Box(low=-3, high=3, shape=(5, 3, 224, 224), dtype=np.float32)
     print("Load the transitions")
     dataset_0 = datasets.load_from_disk("../../log/imitation/trajs_0")
     dataset_1 = datasets.load_from_disk("../../log/imitation/trajs_1")
@@ -121,25 +126,20 @@ if __name__ == "__main__":
     model = SAC("CnnPolicy", env, verbose=1, buffer_size=10,
                 policy_kwargs=policy_kwargs, device="cuda"
                 )
-    model.load("../log/auv_student_data_10_epoch_100_0216_1358.zip")
+    # model.load("../log/auv_student_data_10_epoch_100_0216_1358.zip")
     bc_trainer = BC(
         observation_space=env.observation_space,
         action_space=env.action_space,
         demonstrations=transitions,
         batch_size=32,
-        minibatch_size=8,
+        minibatch_size=16,
         rng=rng,
         policy=model.actor,
         device="cuda",
     )
     del transitions
     print("build bc_trainer")
-    evaluation_env = make_vec_env(
-        "Student-v0",
-        rng=rng,
-        n_envs=1,
-    )
-
+    
     print("Training a policy using Behavior Cloning")
     bc_trainer.train(n_epochs=100)
     model.actor = bc_trainer.policy
@@ -150,11 +150,11 @@ if __name__ == "__main__":
     save_path = f"../log/auv_student_data_26_epoch_1100_{now}"
     model.save(save_path)
 
-    print("Evaluating the trained policy.")
-    reward, _ = evaluate_policy(
-        model.actor,  # type: ignore[arg-type]
-        evaluation_env,
-        n_eval_episodes=3,
-        render=True,  # comment out to speed up
-    )
-    print(f"Reward after training: {reward}")
+    #print("Evaluating the trained policy.")
+    #reward, _ = evaluate_policy(
+    #    model.actor,  # type: ignore[arg-type]
+    #    evaluation_env,
+    #    n_eval_episodes=3,
+    #    render=True,  # comment out to speed up
+    #)
+    #print(f"Reward after training: {reward}")
