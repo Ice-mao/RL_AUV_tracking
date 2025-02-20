@@ -30,7 +30,7 @@ if [ "$policy" == "SAC" ]; then
     --step-per-collect 5 \
     --update-per-step 0.2 \
     --n-step 2 \
-    --batch-size 128 \
+    --batch-size 64 \
     --test_episode 10 \
     --log-dir ../../log/sudent
 #    --resume-path-model \
