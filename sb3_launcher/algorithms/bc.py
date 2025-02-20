@@ -144,7 +144,7 @@ class BehaviorCloningLossCalculator:
         ent_loss = -self.ent_weight * (entropy if entropy is not None else th.zeros(1, device=policy.device))
         neglogp = -log_prob
         l2_loss = self.l2_weight * l2_norm
-        loss = neglogp + ent_loss + l2_loss
+        loss = neglogp+ ent_loss + l2_loss
 
         return BCTrainingMetrics(
             neglogp=neglogp,

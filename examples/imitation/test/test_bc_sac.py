@@ -120,7 +120,7 @@ if __name__ == "__main__":
         device="cuda",
         optimizer_kwargs=dict(lr=0.0001),
         l2_weight=0.0001,
-        ent_weight=0.0001
+        ent_weight=0.0
     )
 
     # print("Evaluating the expert policy.")
