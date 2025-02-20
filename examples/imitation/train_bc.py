@@ -132,7 +132,7 @@ if __name__ == "__main__":
         observation_space=env.observation_space,
         action_space=env.action_space,
         demonstrations=transitions,
-        batch_size=32,
+        batch_size=512,
         minibatch_size=16,
         rng=rng,
         policy=model.actor,
@@ -154,11 +154,17 @@ if __name__ == "__main__":
     save_path = f"../../log/imitation/auv_student_data_46_epoch_1000_{now}"
     model.save(save_path)
 
-    #print("Evaluating the trained policy.")
-    #reward, _ = evaluate_policy(
-    #    model.actor,  # type: ignore[arg-type]
-    #    evaluation_env,
-    #    n_eval_episodes=3,
-    #    render=True,  # comment out to speed up
-    #)
-    #print(f"Reward after training: {reward}")
+    print("Evaluating the trained policy.")
+    evaluation_env = make_vec_env(
+        "Student-v0-norender",
+        rng=rng,
+        n_envs=1,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+    )
+    reward, _ = evaluate_policy(
+        model.actor,  # type: ignore[arg-type]
+        evaluation_env,
+        n_eval_episodes=3,
+        render=True,  # comment out to speed up
+    )
+    print(f"Reward after training: {reward}")
