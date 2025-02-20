@@ -1,13 +1,13 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="PPO"
+policy="SAC"
 
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
     python SB3_trainer.py "$@" \
-    --device cpu \
+    --device cuda \
     --choice 0 \
     --env AUVTracking_rgb \
     --policy SAC \

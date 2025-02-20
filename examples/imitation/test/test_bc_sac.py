@@ -118,6 +118,9 @@ if __name__ == "__main__":
         rng=rng,
         policy=model.actor,
         device="cuda",
+        optimizer_kwargs=dict(lr=0.0001),
+        l2_weight=0.0001,
+        ent_weight=0.0001
     )
 
     # print("Evaluating the expert policy.")
