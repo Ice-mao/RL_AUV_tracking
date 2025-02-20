@@ -150,12 +150,14 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
             buffer_size=0,
             observation_space=observation_space,
             action_space=action_space,
+            device=device
         )
-        self.set_demonstrations(demonstrations)
+        self.set_demonstrations(demonstrations, device)
 
     def set_demonstrations(
         self,
         demonstrations: algo_base.AnyTransitions,
+        device: Union[th.device, str] = "auto",
     ) -> None:
         """Set the expert demonstrations to be injected when sampling from the buffer.
 
@@ -191,6 +193,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
             observation_space=self.observation_space,
             action_space=self.action_space,
             handle_timeout_termination=False,
+            device=device
         )
 
         for transition in demonstrations:

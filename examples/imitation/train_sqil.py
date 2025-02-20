@@ -103,6 +103,7 @@ if __name__ == "__main__":
         "Student-v0-norender",
         rng=rng,
         n_envs=4,
+        parallel=True,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
     )
     from gymnasium import spaces
@@ -139,8 +140,8 @@ if __name__ == "__main__":
         demonstrations=transitions,
         policy="CnnPolicy",
         rl_algo_class=SAC,
-        rl_kwargs=dict(verbose=1, buffer_size=40000, learning_rate=0.01,
-                    learning_starts=1000, batch_size=256,
+        rl_kwargs=dict(verbose=1, buffer_size=40000, learning_rate=0.0001,
+                    learning_starts=1000, batch_size=64,
                     train_freq=2, gradient_steps=1,
                     target_update_interval=10, tensorboard_log="../../log/imitation/sqil/",
                     policy_kwargs=policy_kwargs, device="cuda:1"),
@@ -157,7 +158,7 @@ if __name__ == "__main__":
     now = datetime.datetime.now().strftime("%m%d_%H%M")
 
     # 构建保存路径
-    save_path = f"../../log/imitation/auv_student_data_46_epoch_1000_{now}"
+    save_path = f"../../log/imitation/sqil/auv_student_{now}"
     sqil_trainer.policy.save(save_path)
 
     # print("Evaluating the trained policy.")
