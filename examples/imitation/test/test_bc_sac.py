@@ -93,8 +93,8 @@ if __name__ == "__main__":
     expert = load_policy("ppo", env, path="bipedal_expert.zip")
 
     ## get transitions
-    transitions = sample_expert_transitions(expert)
-    # transitions = serialize.load(path="trajectories")
+    # transitions = sample_expert_transitions(expert)
+    transitions = serialize.load(path="trajectories")
 
     ## get policy
     # ppo_policy = create_ppo_policy(env)

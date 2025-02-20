@@ -64,5 +64,5 @@ if __name__ == "__main__":
     )
     rollouts = sample_expert_transitions(expert, env)
     # serialize.save(path="trajs_0", trajectories=rollouts)
-    custom_save(path="../../log/imitation/trajs_4", trajectories=rollouts)
+    custom_save(path="../../log/imitation/trajs_5", trajectories=rollouts)
     print("debug before")
