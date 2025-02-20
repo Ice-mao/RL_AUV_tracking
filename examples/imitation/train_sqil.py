@@ -102,7 +102,7 @@ if __name__ == "__main__":
     env = make_vec_env(
         "Student-v0-norender",
         rng=rng,
-        n_envs=1,
+        n_envs=4,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
     )
     from gymnasium import spaces
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     dataset_2 = datasets.load_from_disk("../../log/imitation/trajs_2")
     dataset_3 = datasets.load_from_disk("../../log/imitation/trajs_3")
     dataset_4 = datasets.load_from_disk("../../log/imitation/trajs_4")
-    dataset = datasets.concatenate_datasets([dataset_0, dataset_1])
+    dataset = datasets.concatenate_datasets([dataset_0])
     # dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3, dataset_4])
     transitions = huggingface_utils.TrajectoryDatasetSequence(dataset)
     del dataset, dataset_0, dataset_1, dataset_2, dataset_3, dataset_4
@@ -129,32 +129,36 @@ if __name__ == "__main__":
         features_extractor_kwargs=dict(features_dim=256, num_images=5, resnet_output_dim=128),
         net_arch=dict(pi=[256, 256, 256], qf=[256, 256]),  # for AC policy
     )
-    model = SAC("CnnPolicy", env, verbose=1, buffer_size=10,
-                policy_kwargs=policy_kwargs, device="cuda"
-                )
+    # model = SAC("CnnPolicy", env, verbose=1, buffer_size=10,
+    #             policy_kwargs=policy_kwargs, device="cuda"
+    #             )
     # model.load("../log/auv_student_data_10_epoch_100_0216_1358.zip")
-    from imitation.algorithms import sqil
+    from sb3_launcher.algorithms import sqil
     sqil_trainer = sqil.SQIL(
         venv=env,
         demonstrations=transitions,
         policy="CnnPolicy",
         rl_algo_class=SAC,
-        rl_kwargs=dict(verbose=1, buffer_size=10,
-                policy_kwargs=policy_kwargs, device="cuda"),
+        rl_kwargs=dict(verbose=1, buffer_size=40000, learning_rate=0.01,
+                    learning_starts=1000, batch_size=256,
+                    train_freq=2, gradient_steps=1,
+                    target_update_interval=10, tensorboard_log="../../log/imitation/sqil/",
+                    policy_kwargs=policy_kwargs, device="cuda"),
     )
     del transitions
     print("build bc_trainer")
 
     print("Training a policy using Behavior Cloning")
-    bc_trainer.train(n_epochs=1000)
-    model.actor = bc_trainer.policy
+    sqil_trainer.train(
+        total_timesteps=1000000,
+    )  # Note: set to 300_000 to obtain good results
     import datetime
 
     now = datetime.datetime.now().strftime("%m%d_%H%M")
 
     # 构建保存路径
     save_path = f"../../log/imitation/auv_student_data_46_epoch_1000_{now}"
-    model.save(save_path)
+    sqil_trainer.policy.save(save_path)
 
     # print("Evaluating the trained policy.")
     # reward, _ = evaluate_policy(

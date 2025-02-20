@@ -34,7 +34,11 @@ sqil_trainer = sqil.SQIL(
     demonstrations=expert_trajectories,
     policy="MlpPolicy",
     rl_algo_class=sac.SAC,
-    rl_kwargs=dict(seed=SEED),
+    rl_kwargs=dict(verbose=1, buffer_size=100000, learning_rate=0.01,
+                   learning_starts=1000, batch_size=256,
+                   train_freq=2, gradient_steps=1,
+                   target_update_interval=10, tensorboard_log="../../log/imitation/sqil/",
+                   device="cuda"),
 )
 
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -43,7 +47,7 @@ reward_before_training, _ = evaluate_policy(sqil_trainer.policy, venv, 100)
 print(f"Reward before training: {reward_before_training}")
 
 sqil_trainer.train(
-    total_timesteps=100000,
+    total_timesteps=300000,
 )  # Note: set to 300_000 to obtain good results
 reward_after_training, _ = evaluate_policy(sqil_trainer.policy, venv, 100)
 print(f"Reward after training: {reward_after_training}")

@@ -41,7 +41,6 @@ class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
         custom_logger: Optional[logger.HierarchicalLogger] = None,
         rl_algo_class: Type[off_policy_algorithm.OffPolicyAlgorithm] = dqn.DQN,
         rl_kwargs: Optional[Dict[str, Any]] = None,
-        replay_buffer_size: Optional[int]= 1e4,
     ):
         """Builds SQIL.
 
