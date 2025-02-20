@@ -116,7 +116,8 @@ def learn(env, log_dir):
         )
         model = SAC("CnnPolicy", env, verbose=1, learning_rate=args.lr, buffer_size=args.buffer_size,
                     learning_starts=args.start_timesteps, batch_size=args.batch_size, tau=args.tau, gamma=args.gamma,
-                    train_freq=2, gradient_steps=1, action_noise=NormalActionNoise(np.array(0.0), np.array(0.12)),
+                    train_freq=2, gradient_steps=1,
+                    action_noise=NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.03])),
                     target_update_interval=10,
                     policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device=args.device
                     )
