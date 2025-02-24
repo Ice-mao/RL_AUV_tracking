@@ -239,7 +239,8 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         new_sample_size, expert_sample_size = util.split_in_half(batch_size)
         new_sample = super().sample(new_sample_size, env)
         expert_sample = self.expert_buffer.sample(expert_sample_size, env)
-
+        if new_sample[0].device != expert_sample[0].device:
+            print("two replay buffer is not in the same device")
         return type_aliases.ReplayBufferSamples(
             *(
                 th.cat((getattr(new_sample, name), getattr(expert_sample, name)))

@@ -17,7 +17,7 @@ print(
     f"The average return of each trajectory is {trajectory_stats['return_mean']}."
 )
 
-from imitation.algorithms import sqil
+from sb3_launcher.algorithms import sqil
 from imitation.util.util import make_vec_env
 import numpy as np
 from stable_baselines3 import sac
