@@ -27,6 +27,7 @@ SEED = 42
 venv = make_vec_env(
     "Pendulum-v1",
     rng=np.random.default_rng(seed=SEED),
+    # parallel=True,
 )
 
 sqil_trainer = sqil.SQIL(
@@ -34,7 +35,7 @@ sqil_trainer = sqil.SQIL(
     demonstrations=expert_trajectories,
     policy="MlpPolicy",
     rl_algo_class=sac.SAC,
-    rl_kwargs=dict(verbose=1, buffer_size=100000, learning_rate=0.01,
+    rl_kwargs=dict(verbose=1, buffer_size=100000, learning_rate=0.0003,
                    learning_starts=1000, batch_size=256,
                    train_freq=2, gradient_steps=1,
                    target_update_interval=10, tensorboard_log="../../log/imitation/sqil/",
