@@ -125,7 +125,7 @@ if __name__ == "__main__":
         net_arch=dict(pi=[256, 256, 256], qf=[256, 256]),  # for AC policy
     )
     model = SAC("CnnPolicy", env, verbose=1, buffer_size=10,
-                policy_kwargs=policy_kwargs, device="cuda"
+            policy_kwargs=policy_kwargs, device="cuda:1"
                 )
     # model.load("../log/auv_student_data_10_epoch_100_0216_1358.zip")
     bc_trainer = BC(
@@ -136,7 +136,7 @@ if __name__ == "__main__":
         minibatch_size=32,
         rng=rng,
         policy=model.actor,
-        device="cuda",
+        device="cuda:1",
         optimizer_kwargs=dict(lr=0.0001),
         l2_weight=0.0001,
         ent_weight=0.0
