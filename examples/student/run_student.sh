@@ -12,7 +12,7 @@ if [ "$policy" == "SAC" ]; then
     --env AUVTracking_rgb \
     --policy SAC \
     --render 0 \
-    --nb_envs 5 \
+    --nb_envs 4 \
     --max_episode_step 200 \
     \
     --seed 42 \
