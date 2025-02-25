@@ -139,11 +139,11 @@ if __name__ == "__main__":
         demonstrations=transitions,
         policy="CnnPolicy",
         rl_algo_class=SAC,
-        rl_kwargs=dict(verbose=1, buffer_size=40000, learning_rate=0.0003,
+        rl_kwargs=dict(verbose=1, buffer_size=20000, learning_rate=0.0003,
                     learning_starts=1000, batch_size=64,
                     train_freq=2, gradient_steps=1,
                     target_update_interval=10, tensorboard_log="../../log/imitation/sqil/",
-                    policy_kwargs=policy_kwargs, device="cuda"),
+                    policy_kwargs=policy_kwargs, device="cuda:1"),
     )
     del transitions
     print("build bc_trainer")
