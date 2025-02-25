@@ -89,9 +89,9 @@ def make_teacher_env(
 def make_callback(
         log_dir: str,
 ) -> CallbackList:
-    callback = SaveOnBestTrainingRewardCallback(check_freq=5000, log_dir=log_dir, save_path=log_dir)
+    callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=log_dir, save_path=log_dir)
     checkpoint_callback = CheckpointCallback(
-        save_freq=max(20000 // args.nb_envs, 1),
+        save_freq=max(10000 // args.nb_envs, 1),
         save_path=log_dir,
         name_prefix="rl_model",
         save_replay_buffer=True,
@@ -169,7 +169,7 @@ def evaluate(model_name: str):
     # 0 tracking 1 discovery 2 navagation
     METADATA.update(TTENV_EVAL_SET['Tracking'])
 
-    env = SubprocVecEnv([lambda: gym.make('Teacher-v0-render') for _ in range(1)], )
+    env = SubprocVecEnv([lambda: gym.make('Teacher-v0-norender') for _ in range(1)], )
 
     if args.policy == 'SAC':
         model = SAC.load(model_name, device='cuda', env=env,

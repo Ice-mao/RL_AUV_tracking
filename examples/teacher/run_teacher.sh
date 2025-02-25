@@ -8,11 +8,11 @@ if [ "$policy" == "SAC" ]; then
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
     python SB3_trainer.py "$@" \
     --device cuda \
-    --choice 2 \
+    --choice 0 \
     --env AUVTracking_rgb \
     --policy SAC \
     --render 1 \
-    --nb_envs 5 \
+    --nb_envs 4 \
     --max_episode_step 200 \
     \
     --seed 42 \

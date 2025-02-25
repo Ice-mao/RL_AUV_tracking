@@ -168,7 +168,7 @@ def evaluate(model_name: str):
     # 0 tracking 1 discovery 2 navagation
     METADATA.update(TTENV_EVAL_SET[0])
 
-    env = SubprocVecEnv([lambda: gym.make('Teacher-v0-render') for _ in range(1)], )
+    env = SubprocVecEnv([lambda: gym.make('Student-v0-norender') for _ in range(1)], )
 
     if args.policy == 'SAC':
         model = SAC.load(model_name, device='cuda', env=env,
@@ -260,6 +260,7 @@ if __name__ == "__main__":
         set_seed(args.seed)
         if args.choice == '0':
             log_dir = os.path.join(args.log_dir, args.policy, time_string)
+            os.makedirs(log_dir, exist_ok=True)
             env = make_student_env('Student-v0-norender', args.nb_envs, log_dir+'/')
             args.state_space = env.observation_space
             args.action_space = env.action_space

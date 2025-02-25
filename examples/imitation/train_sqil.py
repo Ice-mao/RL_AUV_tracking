@@ -143,7 +143,7 @@ if __name__ == "__main__":
                     learning_starts=1000, batch_size=64,
                     train_freq=2, gradient_steps=1,
                     target_update_interval=10, tensorboard_log="../../log/imitation/sqil/",
-                    policy_kwargs=policy_kwargs, device="cuda:1"),
+                    policy_kwargs=policy_kwargs, device="cuda"),
     )
     del transitions
     print("build bc_trainer")
