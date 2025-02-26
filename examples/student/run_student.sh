@@ -32,7 +32,7 @@ if [ "$policy" == "SAC" ]; then
     --n-step 2 \
     --batch-size 64 \
     --test_episode 10 \
-    --log-dir ../../log/student \
+    --log-dir /home/mengao/rl/RL_AUV_tracking/log/student \
 #    --resume-path-model \
 
 elif [ "$policy" == "PPO" ]; then

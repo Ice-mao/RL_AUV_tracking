@@ -118,7 +118,7 @@ if __name__ == "__main__":
     dataset_3 = datasets.load_from_disk("../../log/imitation/trajs_3")
     dataset_4 = datasets.load_from_disk("../../log/imitation/trajs_4")
     # dataset = datasets.concatenate_datasets([dataset_0])
-    dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
+    dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2])
     transitions = huggingface_utils.TrajectoryDatasetSequence(dataset)
     del dataset, dataset_0, dataset_1, dataset_2, dataset_3, dataset_4
     # transitions = serialize.load(path="trajs_0")
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         demonstrations=transitions,
         policy="CnnPolicy",
         rl_algo_class=SAC,
-        rl_kwargs=dict(verbose=1, buffer_size=20000, learning_rate=0.0003,
+        rl_kwargs=dict(verbose=1, buffer_size=10000, learning_rate=0.0003,
                     learning_starts=1000, batch_size=64,
                     train_freq=2, gradient_steps=1,
                     target_update_interval=10, tensorboard_log="../../log/imitation/sqil/",
