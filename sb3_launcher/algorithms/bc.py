@@ -128,29 +128,51 @@ class BehaviorCloningLossCalculator:
 
         # policy.evaluate_actions's type signatures are incorrect.
         # See https://github.com/DLR-RM/stable-baselines3/issues/1679
+        # mean_actions, log_std, _ = policy.get_action_dist_params(tensor_obs)
+        # actions_pi, _ = policy.action_dist.log_prob_from_params(mean_actions, log_std)
+        # log_prob = policy.action_dist.log_prob(acts)
+        # entropy = -log_prob.mean()
+        #
+        # prob_true_act = th.exp(log_prob).mean()
+        # log_prob = log_prob.mean()
+        #
+        # l2_norms = [th.sum(th.square(w)) for w in policy.parameters()]
+        # l2_norm = sum(l2_norms) / 2  # divide by 2 to cancel with gradient of square
+        # # sum of list defaults to float(0) if len == 0.
+        # assert isinstance(l2_norm, th.Tensor)
+        #
+        # ent_loss = -self.ent_weight * (entropy if entropy is not None else th.zeros(1, device=policy.device))
+        # neglogp = -log_prob
+        # l2_loss = self.l2_weight * l2_norm
+        # loss = neglogp+ ent_loss + l2_loss
+
+        # return BCTrainingMetrics(
+        #     neglogp=neglogp,
+        #     entropy=entropy,
+        #     ent_loss=ent_loss,
+        #     prob_true_act=prob_true_act,
+        #     l2_norm=l2_norm,
+        #     l2_loss=l2_loss,
+        #     loss=loss,
+        # )
+
         mean_actions, log_std, _ = policy.get_action_dist_params(tensor_obs)
         actions_pi, _ = policy.action_dist.log_prob_from_params(mean_actions, log_std)
-        log_prob = policy.action_dist.log_prob(acts)
-        entropy = -log_prob.mean()       
-
-        prob_true_act = th.exp(log_prob).mean()
-        log_prob = log_prob.mean()
+        act_loss = th.mean((acts - actions_pi) ** 2)
 
         l2_norms = [th.sum(th.square(w)) for w in policy.parameters()]
         l2_norm = sum(l2_norms) / 2  # divide by 2 to cancel with gradient of square
         # sum of list defaults to float(0) if len == 0.
         assert isinstance(l2_norm, th.Tensor)
 
-        ent_loss = -self.ent_weight * (entropy if entropy is not None else th.zeros(1, device=policy.device))
-        neglogp = -log_prob
         l2_loss = self.l2_weight * l2_norm
-        loss = neglogp+ ent_loss + l2_loss
+        loss = act_loss + l2_loss
 
         return BCTrainingMetrics(
-            neglogp=neglogp,
-            entropy=entropy,
-            ent_loss=ent_loss,
-            prob_true_act=prob_true_act,
+            neglogp=act_loss,
+            entropy=act_loss,
+            ent_loss=act_loss,
+            prob_true_act=act_loss,
             l2_norm=l2_norm,
             l2_loss=l2_loss,
             loss=loss,

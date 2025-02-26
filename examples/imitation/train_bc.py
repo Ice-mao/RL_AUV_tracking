@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import datasets
+import torch
 from typing import Mapping, Sequence, cast
 
 from stable_baselines3 import PPO, SAC
@@ -94,6 +95,7 @@ def create_sac_policy(env) -> SACPolicy:
 
 
 if __name__ == "__main__":
+    device = "cuda:1"
     rng = np.random.default_rng(0)
     env = make_vec_env(
         "Student-v0-norender",
@@ -113,7 +115,7 @@ if __name__ == "__main__":
     dataset_3 = datasets.load_from_disk("../../log/imitation/trajs_3")
     dataset_4 = datasets.load_from_disk("../../log/imitation/trajs_4")
     # dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
-    dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3, dataset_4])
+    dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
     transitions = huggingface_utils.TrajectoryDatasetSequence(dataset)
     del dataset, dataset_0, dataset_1, dataset_2, dataset_3, dataset_4
     # transitions = serialize.load(path="trajs_0")
@@ -125,7 +127,7 @@ if __name__ == "__main__":
         net_arch=dict(pi=[256, 256, 256], qf=[256, 256]),  # for AC policy
     )
     model = SAC("CnnPolicy", env, verbose=1, buffer_size=10,
-            policy_kwargs=policy_kwargs, device="cuda:1"
+            policy_kwargs=policy_kwargs, device=device
                 )
     # model.load("../log/auv_student_data_10_epoch_100_0216_1358.zip")
     bc_trainer = BC(
@@ -136,7 +138,7 @@ if __name__ == "__main__":
         minibatch_size=32,
         rng=rng,
         policy=model.actor,
-        device="cuda:1",
+        device=device,
         optimizer_kwargs=dict(lr=0.0001),
         l2_weight=0.0001,
         ent_weight=0.0
@@ -146,25 +148,27 @@ if __name__ == "__main__":
     
     print("Training a policy using Behavior Cloning")
     bc_trainer.train(n_epochs=1000)
-    model.actor = bc_trainer.policy
-    import datetime
-    now = datetime.datetime.now().strftime("%m%d_%H%M")
 
     # 构建保存路径
-    save_path = f"../../log/imitation/auv_student_data_46_epoch_1000_{now}"
+    import datetime
+    now = datetime.datetime.now().strftime("%m%d_%H%M")
+    save_path = f"../../log/imitation/auv_student_data_36_epoch_1000_{now}"
+    torch.save(bc_trainer.policy, save_path+"_policy.pth")
+
+    model.actor.load_state_dict(bc_trainer.policy.state_dict())
     model.save(save_path)
 
-    print("Evaluating the trained policy.")
-    evaluation_env = make_vec_env(
-        "Student-v0-norender",
-        rng=rng,
-        n_envs=1,
-        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
-    )
-    reward, _ = evaluate_policy(
-        model.actor,  # type: ignore[arg-type]
-        evaluation_env,
-        n_eval_episodes=3,
-        render=True,  # comment out to speed up
-    )
-    print(f"Reward after training: {reward}")
+    # print("Evaluating the trained policy.")
+    # evaluation_env = make_vec_env(
+    #     "Student-v0-norender",
+    #     rng=rng,
+    #     n_envs=1,
+    #     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+    # )
+    # reward, _ = evaluate_policy(
+    #     model.actor,  # type: ignore[arg-type]
+    #     evaluation_env,
+    #     n_eval_episodes=5,
+    #     render=True,  # comment out to speed up
+    # )
+    # print(f"Reward after training: {reward}")

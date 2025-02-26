@@ -4,3 +4,4 @@ install/
 examples/imitation/test
 
 global*
+**/__pycache__

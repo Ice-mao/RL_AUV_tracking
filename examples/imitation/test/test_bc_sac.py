@@ -95,7 +95,13 @@ if __name__ == "__main__":
     ## get transitions
     # transitions = sample_expert_transitions(expert)
     transitions = serialize.load(path="trajectories")
+    trajectory_stats = rollout.rollout_stats(transitions)
 
+    print(
+        f"We have {trajectory_stats['n_traj']} trajectories. "
+        f"The average length of each trajectory is {trajectory_stats['len_mean']}. "
+        f"The average return of each trajectory is {trajectory_stats['return_mean']}."
+    )
     ## get policy
     # ppo_policy = create_ppo_policy(env)
     # sac_policy = create_sac_policy(env)
@@ -118,40 +124,45 @@ if __name__ == "__main__":
         rng=rng,
         policy=model.actor,
         device="cuda",
+        batch_size=64,
         optimizer_kwargs=dict(lr=0.0001),
         l2_weight=0.0001,
         ent_weight=0.0
     )
 
-    # print("Evaluating the expert policy.")
-    # reward, _ = evaluate_policy(
-    #     expert,  # type: ignore[arg-type]
-    #     evaluation_env,
-    #     n_eval_episodes=3,
-    #     render=True,  # comment out to speed up
-    # )
-    # print(f"Reward expert: {reward}")
-    #
-    # print("Evaluating the untrained policy.")
-    # reward, _ = evaluate_policy(
-    #     bc_trainer.policy,  # type: ignore[arg-type]
-    #     evaluation_env,
-    #     n_eval_episodes=3,
-    #     render=True,  # comment out to speed up
-    # )
-    # print(f"Reward before training: {reward}")
+    print("Evaluating the expert policy.")
+    reward, _ = evaluate_policy(
+        expert,  # type: ignore[arg-type]
+        evaluation_env,
+        n_eval_episodes=10,
+        render=True,  # comment out to speed up
+    )
+    print(f"Reward expert: {reward}")
+
+    print("Evaluating the untrained policy.")
+    reward, _ = evaluate_policy(
+        bc_trainer.policy,  # type: ignore[arg-type]
+        evaluation_env,
+        n_eval_episodes=10,
+        render=True,  # comment out to speed up
+    )
+    print(f"Reward before training: {reward}")
 
     print("Training a policy using Behavior Cloning")
     bc_trainer.train(n_epochs=100)
 
-    model.actor = bc_trainer.policy
+    model.actor.load_state_dict(bc_trainer.policy.state_dict())
     model.save("bipedal_trained")
+
+    import torch
+    torch.save(bc_trainer.policy, "bipedal_traine_policy.pth")
+
 
     print("Evaluating the trained policy.")
     reward, _ = evaluate_policy(
-        bc_trainer.policy,  # type: ignore[arg-type]
+        model.actor,  # type: ignore[arg-type]
         evaluation_env,
-        n_eval_episodes=3,
+        n_eval_episodes=10,
         render=False,  # comment out to speed up
     )
     print(f"Reward after training: {reward}")
