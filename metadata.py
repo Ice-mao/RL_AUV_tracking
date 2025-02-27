@@ -66,7 +66,7 @@ METADATA_v1 = {
 """
 METADATA_RGB = {
     'version': 1,
-    'render': True,
+    'render': False,
     'eval_fixed': False,
     # env set
     'env': {

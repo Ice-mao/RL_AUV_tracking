@@ -122,18 +122,19 @@ class Obstacle:
                                           self.rot_angs[i], self.sub_coordinates[i])
                 # drew the obstacle's boundary
                 # need the -1 factor, because the coordinates of line is opposite
-                self.env.draw_line([points[0][0], points[0][1], self.fix_depth],
-                                   [points[1][0], points[1][1], self.fix_depth],
-                                   thickness=5.0, lifetime=0.0)
-                self.env.draw_line([points[1][0], points[1][1], self.fix_depth],
-                                   [points[2][0], points[2][1], self.fix_depth],
-                                   thickness=5.0, lifetime=0.0)
-                self.env.draw_line([points[2][0], points[2][1], self.fix_depth],
-                                   [points[3][0], points[3][1], self.fix_depth],
-                                   thickness=5.0, lifetime=0.0)
-                self.env.draw_line([points[3][0], points[3][1], self.fix_depth],
-                                   [points[0][0], points[0][1], self.fix_depth],
-                                   thickness=5.0, lifetime=0.0)
+                if METADATA['render']:
+                    self.env.draw_line([points[0][0], points[0][1], self.fix_depth],
+                                       [points[1][0], points[1][1], self.fix_depth],
+                                       thickness=5.0, lifetime=0.0)
+                    self.env.draw_line([points[1][0], points[1][1], self.fix_depth],
+                                       [points[2][0], points[2][1], self.fix_depth],
+                                       thickness=5.0, lifetime=0.0)
+                    self.env.draw_line([points[2][0], points[2][1], self.fix_depth],
+                                       [points[3][0], points[3][1], self.fix_depth],
+                                       thickness=5.0, lifetime=0.0)
+                    self.env.draw_line([points[3][0], points[3][1], self.fix_depth],
+                                       [points[0][0], points[0][1], self.fix_depth],
+                                       thickness=5.0, lifetime=0.0)
                 self.polygons.append(Polygon(points))
 
                 loc_center = rotate_point(obstacle['center'][j], self.sub_center, self.rot_angs[i])

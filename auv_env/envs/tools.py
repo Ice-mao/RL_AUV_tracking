@@ -334,10 +334,12 @@ class ImageBuffer:
 
     def add_image(self, image, t):
         """添加新图像到缓冲区"""
-        image = util.image_preprocess(image)
-        if image.shape != self.image_shape:
-            raise ValueError(f"图像形状不匹配，预期形状为 {self.image_shape}，但收到 {image.shape}")
-        if t - self.t >= self.time_gap:
+        if abs(t - self.t) >= self.time_gap:
+            image = util.image_preprocess(image)
+            if image.shape != self.image_shape:
+                raise ValueError(f"图像形状不匹配，预期形状为 {self.image_shape}，但收到 {image.shape}")
+            # else:
+            #     print("get new image")
             self.t = t
             self.buffer.append(image)
 

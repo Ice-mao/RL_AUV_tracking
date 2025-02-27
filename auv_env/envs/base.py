@@ -221,8 +221,9 @@ class WorldBase:
 
     def reset(self):
         self.ocean.reset()
-        self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
-                            lifetime=0)  # draw the area
+        if METADATA['render']:
+            self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
+                                lifetime=0)  # draw the area
         self.obstacles.reset()
         self.obstacles.draw_obstacle()
 

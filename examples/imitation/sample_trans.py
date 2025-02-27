@@ -59,10 +59,10 @@ if __name__ == "__main__":
     env = make_vec_env(
         "auv_rgb-v0",
         rng=rng,
-        n_envs=2,
+        n_envs=1,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
     )
     rollouts = sample_expert_transitions(expert, env)
     # serialize.save(path="trajs_0", trajectories=rollouts)
-    custom_save(path="../../log/imitation/trajs_6", trajectories=rollouts)
+    custom_save(path="../../log/imitation/trajs_3", trajectories=rollouts)
     print("debug before")

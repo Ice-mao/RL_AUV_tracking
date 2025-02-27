@@ -157,6 +157,9 @@ class BehaviorCloningLossCalculator:
         # )
 
         mean_actions, log_std, _ = policy.get_action_dist_params(tensor_obs)
+        print("mean_actions", mean_actions)
+        # th.clamp(mean_actions, -1, 1)
+
         actions_pi, _ = policy.action_dist.log_prob_from_params(mean_actions, log_std)
         act_loss = th.mean((acts - actions_pi) ** 2)
 

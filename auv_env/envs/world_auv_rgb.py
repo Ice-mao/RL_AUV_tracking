@@ -61,7 +61,7 @@ class WorldAuvRGB(WorldBase):
             sensors = self.ocean.tick()
             # update
             if 'LeftCamera' in sensors['auv0']:
-                self.image_buffer.add_image(sensors['auv0']['LeftCamera'], self.sensors['t'])
+                self.image_buffer.add_image(sensors['auv0']['LeftCamera'], sensors['t'])
             self.sensors['auv0'].update(sensors['auv0'])
             for i in range(self.num_targets):
                 target = 'target'+str(i)
