@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as init
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from torchvision import models
 from tianshou_launcher.networks.tcn import TemporalConvNet
@@ -55,7 +56,12 @@ class EncoderResNet(nn.Module):
         # 去掉最后的全连接层，保留到倒数第二层
         self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1]) # 去掉 fc 层
         self.fc = nn.Linear(in_features=512, out_features=encoder_dim, bias=True)
+        self._init_fc()
 
+    def _init_fc(self):
+        # 初始化新增的 fc 层
+        init.xavier_normal_(self.fc.weight, gain=init.calculate_gain('tanh'))
+        init.zeros_(self.fc.bias)
     def forward(self, x):
         # 输入 x: [batch_size, 3, H, W]
         features = self.feature_extractor(x)  # 输出: [batch_size, 512, 1, 1]
@@ -77,7 +83,18 @@ class Encoder(BaseFeaturesExtractor):
                                    dropout=0.2)
         self.trunk = nn.Sequential(nn.Linear(num_channels[-1], features_dim),
                                    nn.LayerNorm(features_dim), nn.Tanh())
-        self.apply(utils.weight_init)
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for module in self.tcn.modules():
+            if isinstance(module, nn.Conv1d):
+                init.orthogonal_(module.weight)
+                if module.bias is not None:
+                    init.zeros_(module.bias)
+
+        # 初始化 Trunk 的 Linear 层
+        init.xavier_normal_(self.trunk[0].weight, gain=init.calculate_gain('tanh'))
+        init.zeros_(self.trunk[0].bias)
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         # 输入 images: [batch_size, num_images, 3, H, W]

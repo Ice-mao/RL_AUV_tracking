@@ -113,29 +113,29 @@ if __name__ == "__main__":
     dataset_1 = datasets.load_from_disk("../../log/imitation/trajs_1")
     dataset_2 = datasets.load_from_disk("../../log/imitation/trajs_2")
     dataset_3 = datasets.load_from_disk("../../log/imitation/trajs_3")
-    # dataset_4 = datasets.load_from_disk("../../log/imitation/trajs_4")
+    dataset_4 = datasets.load_from_disk("../../log/imitation/trajs_4")
     # dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
     dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
     transitions = huggingface_utils.TrajectoryDatasetSequence(dataset)
-    del dataset, dataset_0, dataset_1, dataset_2, dataset_3
+    del dataset, dataset_0, dataset_1, dataset_2, dataset_3, dataset_4
     # transitions = serialize.load(path="trajs_0")
     # transitions = custom_load(path="trajs_0")
 
     policy_kwargs = dict(
         features_extractor_class=Encoder,
         features_extractor_kwargs=dict(features_dim=256, num_images=5, resnet_output_dim=128),
-        net_arch=dict(pi=[256, 256, 256], qf=[256, 256]),  # for AC policy
+        net_arch=dict(pi=[256, 256], qf=[256]),  # for AC policy
     )
     model = SAC("CnnPolicy", env, verbose=1, buffer_size=10,
             policy_kwargs=policy_kwargs, device=device
-                )
+            )
     # model.load("../log/auv_student_data_10_epoch_100_0216_1358.zip")
     bc_trainer = BC(
         observation_space=env.observation_space,
         action_space=env.action_space,
         demonstrations=transitions,
         batch_size=128,
-        minibatch_size=32,
+        minibatch_size=64,
         rng=rng,
         policy=model.actor,
         device=device,
