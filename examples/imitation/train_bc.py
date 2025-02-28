@@ -113,11 +113,11 @@ if __name__ == "__main__":
     dataset_1 = datasets.load_from_disk("../../log/imitation/trajs_1")
     dataset_2 = datasets.load_from_disk("../../log/imitation/trajs_2")
     dataset_3 = datasets.load_from_disk("../../log/imitation/trajs_3")
-    dataset_4 = datasets.load_from_disk("../../log/imitation/trajs_4")
+    # dataset_4 = datasets.load_from_disk("../../log/imitation/trajs_4")
     # dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
     dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2, dataset_3])
     transitions = huggingface_utils.TrajectoryDatasetSequence(dataset)
-    del dataset, dataset_0, dataset_1, dataset_2, dataset_3, dataset_4
+    del dataset, dataset_0, dataset_1, dataset_2, dataset_3
     # transitions = serialize.load(path="trajs_0")
     # transitions = custom_load(path="trajs_0")
 
