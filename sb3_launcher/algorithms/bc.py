@@ -184,8 +184,6 @@ class BehaviorCloningLossCalculator:
         # )
         # actions_pi, log_prob = policy.action_log_prob(tensor_obs)
         mean_actions, log_std, _ = policy.get_action_dist_params(tensor_obs)
-        print("mean_actions,max:", mean_actions.max())
-        print("min:", mean_actions.min())
         actions_pi, log_prob = policy.action_dist.log_prob_from_params(mean_actions, log_std)
         # log_prob = policy.action_dist.log_prob(acts)
 
@@ -204,7 +202,9 @@ class BehaviorCloningLossCalculator:
 
         l2_loss = self.l2_weight * l2_norm
         loss = act_loss + ent_loss + l2_loss
-
+        print("mean_actions:", mean_actions.max().item(), mean_actions.min().item())
+        print("act_loss:", act_loss.item(), "ent_loss:", ent_loss.item(),
+              "l2_loss:", l2_loss.item())
         return BCTrainingMetrics(
             neglogp=act_loss,
             entropy=entropy,
