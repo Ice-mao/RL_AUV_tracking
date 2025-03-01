@@ -134,14 +134,14 @@ if __name__ == "__main__":
         observation_space=env.observation_space,
         action_space=env.action_space,
         demonstrations=transitions,
-        batch_size=128,
-        minibatch_size=64,
+        batch_size=256,
+        minibatch_size=128,
         rng=rng,
         policy=model.actor,
         device=device,
         optimizer_kwargs=dict(lr=0.0001),
         l2_weight=0.0001,
-        ent_weight=0.0
+        ent_weight=0.0001
     )
     del transitions
     print("build bc_trainer")
