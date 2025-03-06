@@ -2,6 +2,7 @@ log/
 build/
 install/
 examples/imitation/test
+test/
 
 global*
 *.pyc
