@@ -1,6 +1,6 @@
 import holoocean
 import numpy as np
-import keyboard
+from pynput import keyboard
 import matplotlib.pyplot as plt
 import cv2
 from metadata import METADATA

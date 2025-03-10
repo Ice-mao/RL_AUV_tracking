@@ -480,8 +480,9 @@ class WorldBase:
             self.record_cov_posterior.append(self.belief_targets[i].cov)
         return observed
 
+    from typing import Dict
     @abstractmethod
-    def get_reward(self, is_col: bool, params: dict[str, float]):
+    def get_reward(self, is_col: bool, params: Dict[str, float]):
         """
         calulate the reward should return
         :param is_col:
@@ -489,8 +490,9 @@ class WorldBase:
         :return:
         """
 
+    from typing import Union
     @abstractmethod
-    def state_func(self, observed, action_waypoint) -> np.ndarray | dict:
+    def state_func(self, observed, action_waypoint) -> Union[np.ndarray, dict]:
         """
             should define your own state_func when you inherit the child class.
             just an example below

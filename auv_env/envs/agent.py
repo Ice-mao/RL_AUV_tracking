@@ -436,6 +436,30 @@ class AgentAuvTarget(Agent):
                     or (pos[1] < self.bottom_corner[1] + self.margin2wall)
                     or (pos[1] > self.size[1] + self.bottom_corner[1] - self.margin2wall))
 
+class AgentAuvManual(Agent):
+    """
+        use for target manual
+    """
+
+    def __init__(self, dim, sampling_period, sensor, fixed_depth, scene):
+        Agent.__init__(self, dim, sampling_period)
+        self.fix_depth = fixed_depth
+        self.scene = scene
+        self.controller = KeyBoardCmd(force=10)
+        self.state = State(sensor)
+
+    def reset(self):
+        return 0
+    
+    def update(self, sensors, t):
+         # update time
+        self.time = t
+        # true state
+        self.state = State(sensors)
+        command = self.controller.parse_keys()
+        return command
+
+
 
 #########################
 # agent model:

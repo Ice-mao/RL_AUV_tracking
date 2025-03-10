@@ -3,6 +3,7 @@ from .envs.base import TargetTrackingBase
 from .envs.world_auv import World_AUV
 from .envs.world_auv_map import WorldAuvMap
 from .envs.world_auv_rgb import WorldAuvRGB
+from .envs.world_auv_rgb_sample import WorldAuvRGBSample
 
 
 class TargetTracking1(TargetTrackingBase):
@@ -30,6 +31,14 @@ class AUVTracking_rgb(TargetTrackingBase):
 
     def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
         super().__init__(WorldAuvRGB, map, num_targets, show_viewport, verbose, is_training, **kwargs)
+
+class AUVTracking_rgb_sample(TargetTrackingBase):
+    """
+    target is an auv with map.
+    """
+
+    def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(WorldAuvRGBSample, map, num_targets, show_viewport, verbose, is_training, **kwargs)
 
 
 def make(env_name, render=False, record=False, eval=False, ros=False, directory='../',
@@ -70,6 +79,8 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
         env0 = TargetTracking2(num_targets=num_targets, **kwargs)
     elif env_name == 'AUVTracking_rgb':
         env0 = AUVTracking_rgb(num_targets=num_targets, **kwargs)
+    elif env_name == 'AUVTracking_rgb_sample':
+        env0 = AUVTracking_rgb_sample(num_targets=num_targets, **kwargs)
     else:
         raise ValueError('No such environment exists.')
     # 使用gym中对episode进行timestep限制的wrapper进行封装，保证环境的更新
@@ -136,6 +147,14 @@ student_fns_norender = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb'
                                                     eval=False,
                                                     t_steps=200,
                                                     ))
+sample_fns = lambda: make(env_name='AUVTracking_rgb_sample',
+                        render=True,
+                        record=False,
+                        num_targets=1,
+                        is_training=False,
+                        eval=False,
+                        t_steps=200,
+                        )
 gym.register(
     id="auv_rgb-v0",
     entry_point=fns,
@@ -161,3 +180,9 @@ gym.register(
     entry_point=student_fns_norender,
     disable_env_checker=True,
 )
+gym.register(
+    id="Student-v0-sample",
+    entry_point=sample_fns,
+    disable_env_checker=True,
+)
+

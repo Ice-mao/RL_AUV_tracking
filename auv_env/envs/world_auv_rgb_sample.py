@@ -18,7 +18,7 @@ import logging
 import copy
 
 
-class WorldAuvRGB(WorldBase):
+class WorldAuvRGBSample(WorldBase):
     """
         different from world:target is also an auv
     """
@@ -30,7 +30,81 @@ class WorldAuvRGB(WorldBase):
         
     def reset(self):
         self.image_buffer.reset()
-        return super().reset()
+        
+        self.ocean.reset()
+        if METADATA['render']:
+            self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
+                                lifetime=0)  # draw the area
+
+        if self.task_random:
+            self.insight = np.random.choice(METADATA['env']['insight'][1])
+        else:
+            self.insight = METADATA['env']['insight'][0]
+        print("insight is :", self.insight)
+        if self.insight:
+            self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        else:
+            self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        # reset the reward record
+        self.agent_w = None
+        self.agent_last_state = None
+        self.agent_last_u = None
+
+        # reset the random position
+        if METADATA['eval_fixed']:
+            self.agent_init_pos = np.array([-12.05380736, -17.06450028, -5.])
+            self.agent_init_yaw = -0.9176929024434316
+            self.target_init_pos = np.array([-8.92739928, -17.99615254, -5.])
+            self.target_init_yaw = -0.28961582668513486
+        random_pos = np.random.uniform(-1,1,3)
+        random_pos[2] = -5
+        self.belief_init_pos = self.target_init_pos + random_pos
+
+        print(self.agent_init_pos, self.agent_init_yaw)
+        print(self.target_init_pos, self.target_init_yaw)
+
+        # Set the pos and tick the scenario
+        self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
+                                           rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
+        self.u = np.zeros(8)
+        self.ocean.act("auv0", self.u)
+
+        for i in range(self.num_targets):
+            target = 'target' + str(i)
+            self.ocean.agents[target].teleport(location=self.target_init_pos,
+                                               rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
+            self.target_u = np.zeros(8)
+            self.ocean.act(target, self.target_u)
+
+        sensors = self.ocean.tick()
+        self.sensors.update(sensors)
+
+        self.build_models(sampling_period=self.sampling_period,
+                          agent_init_state=self.sensors['auv0'],
+                          target_init_state=self.sensors['target0'],  # TODO
+                          time=self.sensors['t'])
+        # reset model
+        self.agent.reset(self.sensors['auv0'])
+        for i in range(self.num_targets):
+            target = 'target' + str(i)
+            self.targets[i].reset()
+            self.belief_targets[i].reset(
+                init_state=np.concatenate((self.belief_init_pos[:2], np.zeros(2))),
+                # init_state=np.concatenate((np.array([-10, -10]), np.zeros(2))),
+                init_cov=METADATA['target']['target_init_cov'])
+
+        # The targets are observed by the agent (z_0) and the beliefs are updated (b_0).
+        observed = self.observe_and_update_belief()
+
+        # Predict the target for the next step, b_1|0.
+        for i in range(self.num_targets):
+            self.belief_targets[i].predict()
+
+        observed = [True]
+        # Compute the RL state.
+        state = self.state_func(observed, action_waypoint=np.zeros(3))
+        info = {'reset_info': 'yes'}
+        return state, info
     
     def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
         """
@@ -43,11 +117,10 @@ class WorldAuvRGB(WorldBase):
         # Build a robot
         self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state,
                               scenario=self.map)
-        self.targets = [AgentAuvManual(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
-                                       , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
-                                       bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
-                                       l_p=METADATA['target']['lqr_l_p'])
-                        for i in range(self.num_targets)]
+        self.targets = [AgentAuvManual(dim=3, sampling_period=sampling_period, fixed_depth=self.fix_depth,
+                            sensor=target_init_state,
+                            scene=self.ocean)
+                        for _ in range(self.num_targets)]
         # Build target beliefs.
         if METADATA['target']['random']:
             self.const_q = np.random.choice(METADATA['target']['const_q'][1])
@@ -83,12 +156,8 @@ class WorldAuvRGB(WorldBase):
         for j in range(50):
             for i in range(self.num_targets):
                 target = 'target'+str(i)
-                if self.has_discovered[i]:
-                    self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
-                    self.ocean.act(target, self.target_u)
-                else:
-                    self.target_u = np.zeros(8)
-                    self.ocean.act(target, self.target_u)
+                self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
+                self.ocean.act(target, self.target_u)
             if j == 0:
                 self.agent_u = self.u
             self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
@@ -215,24 +284,22 @@ if __name__ == '__main__':
     from auv_control import scenario
     #
     # print("Test World")
-    # world = WorldAuvMap(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
-    # world.reset()
-    # print(world.size)
-    # world.targets[0].planner.draw_traj(world.ocean, 30)
-    # action_range_high = METADATA['action_range_high']
-    # action_range_low = METADATA['action_range_low']
-    # action_space = spaces.Box(low=np.float32(action_range_low), high=np.float32(action_range_high)
-    #                           , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
-    # while True:
-    #     for _ in range(100000):
-    #         # if 'q' in world.agent.keyboard.pressed_keys:
-    #         #     break
-    #         # command = world.agent.keyboard.parse_keys()
-    #         action = action_space.sample()
-    #         world.step(action)
-    #         # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
-    #     world.reset()
-    #     world.targets[0].planner.draw_traj(world.ocean, 30)
+    world = WorldAuvRGBSample( map='AUV_RGB', show=True, verbose=True, num_targets=1)
+    world.reset()
+    print(world.size)
+    action_range_high = METADATA['action_range_high']
+    action_range_low = METADATA['action_range_low']
+    action_space = spaces.Box(low=np.float32(action_range_low), high=np.float32(action_range_high)
+                              , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
+    while True:
+        for _ in range(100000):
+            # if 'q' in world.agent.keyboard.pressed_keys:
+            #     break
+            # command = world.agent.keyboard.parse_keys()
+            action = action_space.sample()
+            world.step(action)
+            # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
+        world.reset()
     # test for camera
     # import cv2
     # if "LeftCamera" in world.sensors['auv0']:
