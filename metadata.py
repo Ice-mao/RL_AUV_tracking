@@ -34,8 +34,6 @@ METADATA_v1 = {
     'lqr_l_p': 50,  # control the target's veocity
 
     # reinforcement learning setting.
-    'algorithms': 'PPO',  # PPO、SAC
-    'policy': 'CNN',  # CNN、MLP 记得同时修改环境
     'random': False,  # for domain randomization.
     'task_random': False,  # if False, according to 'insight' to determine
     'action_range_high': [1, 1, 1],
@@ -222,7 +220,7 @@ METADATA_RGB_SAMPLE = {
     },
 }
 # Designate a metadata version to be used throughout the target tracking env.
-METADATA = METADATA_RGB_SAMPLE
+METADATA = METADATA_RGB
 
 TTENV_EVAL_SET = {
     'Tracking':
