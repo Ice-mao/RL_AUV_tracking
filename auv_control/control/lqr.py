@@ -60,14 +60,14 @@ class LQR:
 
         self.Q = np.zeros(12)
         # test for (v,w)
-        # self.Q[0:3] = 0 # position
-        # self.Q[3:6] = 10 # velocity
+        self.Q[0:3] = 0 # position
+        self.Q[3:6] = 10 # velocity
+        self.Q[6:9] = 0  # 0.01 # rotation
+        self.Q[9:12] = 10  # angular velocity
+        # self.Q[0:3] = l_p  # position
+        # self.Q[3:6] = l_v  # velocity
         # self.Q[6:9] = [.01, .01, .01]  # 0.01 # rotation
         # self.Q[9:12] = 0.01  # angular velocity
-        self.Q[0:3] = l_p  # position
-        self.Q[3:6] = l_v  # velocity
-        self.Q[6:9] = [.01, .01, .01]  # 0.01 # rotation
-        self.Q[9:12] = 0.01  # angular velocity
         self.Q = np.diag(self.Q)
 
         self.R = np.zeros(6)

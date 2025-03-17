@@ -8,7 +8,7 @@ from auv_control import State
 
 from auv_env import util
 from auv_env.envs.base import WorldBase
-from auv_env.envs.agent import AgentAuv, AgentSphere, AgentAuvTarget, AgentAuvManual
+from auv_env.envs.agent import AgentAuv, AgentSphere, AgentAuvTarget
 from auv_env.envs.obstacle import Obstacle
 from auv_env.envs.tools import ImageBuffer
 from metadata import METADATA
@@ -31,41 +31,6 @@ class WorldAuvRGB(WorldBase):
     def reset(self):
         self.image_buffer.reset()
         return super().reset()
-    
-    def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
-        """
-        :param sampling_period:
-        :param agent_init_state:list [[x,y,z],yaw(theta)]
-        :param target_init_state:list [[x,y,z],yaw(theta)]
-        :param kwargs:
-        :return:
-        """
-        # Build a robot
-        self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state,
-                              scenario=self.map)
-        self.targets = [AgentAuvManual(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
-                                       , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
-                                       bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
-                                       l_p=METADATA['target']['lqr_l_p'])
-                        for i in range(self.num_targets)]
-        # Build target beliefs.
-        if METADATA['target']['random']:
-            self.const_q = np.random.choice(METADATA['target']['const_q'][1])
-        else:
-            self.const_q = METADATA['target']['const_q'][0]
-        self.targetA = np.concatenate((np.concatenate((np.eye(2),
-                                                       self.control_period * np.eye(2)), axis=1),
-                                       [[0, 0, 1, 0], [0, 0, 0, 1]]))
-        self.target_noise_cov = self.const_q * np.concatenate((
-            np.concatenate((self.control_period ** 3 / 3 * np.eye(2),
-                            self.control_period ** 2 / 2 * np.eye(2)), axis=1),
-            np.concatenate((self.control_period ** 2 / 2 * np.eye(2),
-                            self.control_period * np.eye(2)), axis=1)))
-        self.belief_targets = [KFbelief(dim=METADATA['target']['target_dim'],
-                                        limit=self.limit['target'], A=self.targetA,
-                                        W=self.target_noise_cov,
-                                        obs_noise_func=self.observation_noise)
-                               for _ in range(self.num_targets)]
 
     def step(self, action_waypoint):
         global_waypoint = np.zeros(3)
@@ -136,11 +101,11 @@ class WorldAuvRGB(WorldBase):
                                        dtype=np.float32)
         # STATE:
         # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
-        state_lower_bound = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
-                                                            [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
+        state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
+                                                            # [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
                                             [0.0, -np.pi, 0.0, 0.0, 0.0]))
-        state_upper_bound = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
-                                                            [self.top_corner[0], self.top_corner[1], np.pi])),
+        state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
+                                                            # [self.top_corner[0], self.top_corner[1], np.pi])),
                                             [METADATA['agent']['sensor_r'], np.pi, 1.0, 1.0, 1.0]))
 
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
@@ -191,8 +156,8 @@ class WorldAuvRGB(WorldBase):
             state_observation.extend([r_b, alpha_b,
                                       np.log(LA.det(self.belief_targets[i].cov)),
                                       float(observed[i])])  # dim:4
-        state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
-                                  np.radians(self.agent.state.vec[8])])  # dim:3
+        # state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
+        #                           np.radians(self.agent.state.vec[8])])  # dim:3
         state_observation.extend(obstacles_pt)
         state_observation.extend(action_waypoint.tolist())  # dim:3
         state_observation = np.array(state_observation)

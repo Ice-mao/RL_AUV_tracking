@@ -52,10 +52,14 @@ class WorldAuvRGBSample(WorldBase):
 
         # reset the random position
         if METADATA['eval_fixed']:
-            self.agent_init_pos = np.array([-12.05380736, -17.06450028, -5.])
-            self.agent_init_yaw = -0.9176929024434316
-            self.target_init_pos = np.array([-8.92739928, -17.99615254, -5.])
-            self.target_init_yaw = -0.28961582668513486
+            # self.agent_init_pos = np.array([-12.05380736, -17.06450028, -5.])
+            # self.agent_init_yaw = -0.9176929024434316
+            # self.target_init_pos = np.array([-8.92739928, -17.99615254, -5.])
+            # self.target_init_yaw = -0.28961582668513486
+            self.agent_init_pos = np.array([-19.264, -12.536, self.fix_depth])  # 西南角落
+            self.agent_init_yaw = 0.785  # 45度（朝东北）
+            self.target_init_pos = np.array([-16.901, -10.172, self.fix_depth])
+            self.target_init_yaw = -0.785  # -45度（朝西北）
         random_pos = np.random.uniform(-1,1,3)
         random_pos[2] = -5
         self.belief_init_pos = self.target_init_pos + random_pos
@@ -134,6 +138,9 @@ class WorldAuvRGBSample(WorldBase):
                             self.control_period ** 2 / 2 * np.eye(2)), axis=1),
             np.concatenate((self.control_period ** 2 / 2 * np.eye(2),
                             self.control_period * np.eye(2)), axis=1)))
+        # TODO
+        # self.limit['target'] = [np.concatenate((np.array([0, 0]), np.array([-3, -3]))),
+        #                 np.concatenate((np.array([640, 640]), np.array([3, 3])))]
         self.belief_targets = [KFbelief(dim=METADATA['target']['target_dim'],
                                         limit=self.limit['target'], A=self.targetA,
                                         W=self.target_noise_cov,
@@ -205,11 +212,11 @@ class WorldAuvRGBSample(WorldBase):
                                        dtype=np.float32)
         # STATE:
         # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
-        state_lower_bound = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
-                                                            [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
+        state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets
+                                                            ,
                                             [0.0, -np.pi, 0.0, 0.0, 0.0]))
-        state_upper_bound = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
-                                                            [self.top_corner[0], self.top_corner[1], np.pi])),
+        state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets
+                                                            ,
                                             [METADATA['agent']['sensor_r'], np.pi, 1.0, 1.0, 1.0]))
 
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
@@ -260,8 +267,8 @@ class WorldAuvRGBSample(WorldBase):
             state_observation.extend([r_b, alpha_b,
                                       np.log(LA.det(self.belief_targets[i].cov)),
                                       float(observed[i])])  # dim:4
-        state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
-                                  np.radians(self.agent.state.vec[8])])  # dim:3
+        # state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
+        #                           np.radians(self.agent.state.vec[8])])  # dim:3
         state_observation.extend(obstacles_pt)
         state_observation.extend(action_waypoint.tolist())  # dim:3
         state_observation = np.array(state_observation)

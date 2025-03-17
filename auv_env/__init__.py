@@ -37,7 +37,7 @@ class AUVTracking_rgb_sample(TargetTrackingBase):
     target is an auv with map.
     """
 
-    def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+    def __init__(self, map="AUV_RGB_Dam", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
         super().__init__(WorldAuvRGBSample, map, num_targets, show_viewport, verbose, is_training, **kwargs)
 
 
@@ -152,9 +152,17 @@ sample_fns = lambda: make(env_name='AUVTracking_rgb_sample',
                         record=False,
                         num_targets=1,
                         is_training=False,
-                        eval=False,
+                        eval=True,
                         t_steps=200,
                         )
+sample_fns_teacher = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb_sample',
+                        render=True,
+                        record=False,
+                        num_targets=1,
+                        is_training=False,
+                        eval=True,
+                        t_steps=200,
+                        ))
 gym.register(
     id="auv_rgb-v0",
     entry_point=fns,
@@ -183,6 +191,11 @@ gym.register(
 gym.register(
     id="Student-v0-sample",
     entry_point=sample_fns,
+    disable_env_checker=True,
+)
+gym.register(
+    id="Student-v0-sample-teacher",
+    entry_point=sample_fns_teacher,
     disable_env_checker=True,
 )
 

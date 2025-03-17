@@ -162,9 +162,9 @@ METADATA_RGB_SAMPLE = {
 
     # init the scenario's param
     'scenario': {
-        'size': [40, 40, 20],
-        'bottom_corner': [-20, -20, -20],
-        'fix_depth': -5,
+        'size': [500, 500, 100],
+        'bottom_corner': [-500, -500, -100],
+        'fix_depth': -45,
     },
 
     # init agent's param
