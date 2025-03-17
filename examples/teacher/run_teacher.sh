@@ -1,7 +1,7 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="SAC"
+policy="PPO"
 
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
@@ -15,7 +15,7 @@ if [ "$policy" == "SAC" ]; then
     --nb_envs 4 \
     --max_episode_step 200 \
     \
-    --seed 42 \
+    --seed 41 \
     --buffer-size 100000 \
     --lr 1e-4 \
     --alpha-lr 3e-4 \
@@ -30,7 +30,7 @@ if [ "$policy" == "SAC" ]; then
     --step-per-collect 5 \
     --update-per-step 0.2 \
     --n-step 2 \
-    --batch-size 128 \
+    --batch-size 256 \
     --test_episode 10 \
     --log-dir ../../log/teacher \
     --resume-path /home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/SAC/01-13_12/rl_model_1240000_steps.zip \
@@ -40,19 +40,19 @@ elif [ "$policy" == "PPO" ]; then
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
     python SB3_trainer.py "$@" \
         --device cuda \
-        --choice 2 \
+        --choice 0 \
         --env AUVTracking_rgb \
         --policy PPO \
         --render 0 \
         --nb_envs 5 \
         --max_episode_step 200 \
         \
-        --seed 42 \
+        --seed 46 \
         --buffer-size 100000 \
         --lr 3e-4 \
         --gamma 0.99 \
         \
-        --n-steps 512 \
+        --n-steps 1024 \
         --vf-coef 0.25 \
         --ent-coef 0.0 \
         --gae-lambda 0.95 \
@@ -62,7 +62,7 @@ elif [ "$policy" == "PPO" ]; then
         --norm-adv 0 \
         \
         --timesteps 1000000 \
-        --batch-size 128 \
+        --batch-size 256 \
         --log-dir ../../log/teacher \
         --resume-path /data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/PPO/01-02_13/rl_model_1840000_steps.zip \
 
