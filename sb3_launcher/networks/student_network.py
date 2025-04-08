@@ -3,16 +3,85 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import numpy as np
+from typing import Callable
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+import torchvision
 from torchvision import models
 from tianshou_launcher.networks.tcn import TemporalConvNet
 
 from tianshou_launcher import utils
 from gymnasium import spaces
+
+def get_resnet(name:str, weights=None, **kwargs) -> nn.Module:
+    """
+    name: resnet18, resnet34, resnet50
+    weights: "IMAGENET1K_V1", None
+    """
+    # Use standard ResNet implementation from torchvision
+    func = getattr(torchvision.models, name)
+    resnet = func(weights=weights, **kwargs)
+
+    # remove the final fully connected layer
+    # for resnet18, the output dim should be 512
+    resnet.fc = torch.nn.Identity()
+    return resnet
+
+def replace_submodules(
+        root_module: nn.Module,
+        predicate: Callable[[nn.Module], bool],
+        func: Callable[[nn.Module], nn.Module]) -> nn.Module:
+    """
+    Replace all submodules selected by the predicate with
+    the output of func.
+
+    predicate: Return true if the module is to be replaced.
+    func: Return new module to use.
+    """
+    if predicate(root_module):
+        return func(root_module)
+
+    bn_list = [k.split('.') for k, m
+        in root_module.named_modules(remove_duplicate=True)
+        if predicate(m)]
+    for *parent, k in bn_list:
+        parent_module = root_module
+        if len(parent) > 0:
+            parent_module = root_module.get_submodule('.'.join(parent))
+        if isinstance(parent_module, nn.Sequential):
+            src_module = parent_module[int(k)]
+        else:
+            src_module = getattr(parent_module, k)
+        tgt_module = func(src_module)
+        if isinstance(parent_module, nn.Sequential):
+            parent_module[int(k)] = tgt_module
+        else:
+            setattr(parent_module, k, tgt_module)
+    # verify that all modules are replaced
+    bn_list = [k.split('.') for k, m
+        in root_module.named_modules(remove_duplicate=True)
+        if predicate(m)]
+    assert len(bn_list) == 0
+    return root_module
+
+def replace_bn_with_gn(
+    root_module: nn.Module,
+    features_per_group: int=16) -> nn.Module:
+    """
+    Relace all BatchNorm layers with GroupNorm.
+    """
+    replace_submodules(
+        root_module=root_module,
+        predicate=lambda x: isinstance(x, nn.BatchNorm2d),
+        func=lambda x: nn.GroupNorm(
+            num_groups=x.num_features//features_per_group,
+            num_channels=x.num_features)
+    )
+    return root_module
+
 
 class RandomShiftsAug(nn.Module):
     def __init__(self, pad):
@@ -51,7 +120,7 @@ class RandomShiftsAug(nn.Module):
 class EncoderResNet(nn.Module):
     def __init__(self, encoder_dim=128):
         super(EncoderResNet, self).__init__()
-        # 加载预训练的 ResNet-50 模型
+        # 加载预训练的 ResNet-18 模型
         resnet = models.resnet18('IMAGENET1K_V1')
         # 去掉最后的全连接层，保留到倒数第二层
         self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1]) # 去掉 fc 层
@@ -74,12 +143,15 @@ class Encoder(BaseFeaturesExtractor):
     """
         Viusal encoder
     """
-    def __init__(self, observation_space: spaces.Box, features_dim: int = 512, num_images: int = 5, resnet_output_dim=64):
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 512, num_images: int = 5):
         super().__init__(observation_space, features_dim)
         self.num_images = num_images
-        self.resnet = EncoderResNet(encoder_dim=resnet_output_dim)
-        num_channels = [128, 64]
-        self.tcn = TemporalConvNet(num_inputs=resnet_output_dim, num_channels=num_channels, kernel_size=3,
+        # self.resnet = EncoderResNet(encoder_dim=resnet_output_dim)
+        self.resnet = get_resnet('resnet18', "IMAGENET1K_V1")
+        self.resnet = replace_bn_with_gn(self.resnet)
+        
+        num_channels = [256, 128]
+        self.tcn = TemporalConvNet(num_inputs=512, num_channels=num_channels, kernel_size=3,
                                    dropout=0.2)
         self.trunk = nn.Sequential(nn.Linear(num_channels[-1], features_dim),
                                    nn.LayerNorm(features_dim), nn.Tanh())
@@ -130,7 +202,7 @@ if __name__ == "__main__":
 
     obs_space = spaces.Box(low=-3, high=3, shape=(5, 3, 224, 224), dtype=np.float32)
     # 初始化网络
-    model = Encoder(observation_space=obs_space, features_dim=512, num_images=num_images, resnet_output_dim=128).to('cuda')
+    model = Encoder(observation_space=obs_space, features_dim=512, num_images=num_images).to('cuda')
     output = model(images)  # 输出编码结果
 
     print("输出编码结果的形状:", output.shape)  # [batch_size, tcn_output_dim]

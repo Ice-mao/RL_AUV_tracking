@@ -26,15 +26,145 @@ class WorldAuvRGBSample(WorldBase):
     def __init__(self, map, show, verbose, num_targets, **kwargs):
         self.obs = {}
         self.image_buffer = ImageBuffer(5, (3, 224, 224), time_gap=0.5)
-        super().__init__(map, show, verbose, num_targets, **kwargs)
+                # define the entity
+        # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
+        self.map = map
+        self.ocean = holoocean.make(self.map, show_viewport=show)
+        scenario = holoocean.get_scenario(self.map)
+        self.ocean.should_render_viewport(METADATA['render'])
+        self.agent = None
+        # init the param
+        self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time
+        self.task_random = METADATA['env']['task_random']
+        self.control_period = METADATA['env']['control_period']
+        self.num_targets = num_targets  # num of target
+        self.action_range_scale = METADATA['action_range_scale']
+        self.noblock = METADATA['env']['noblock']
+        self.insight = METADATA['env']['insight'][0]
+        if self.insight:
+            self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        else:
+            self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
+        # for record
+        self.record_cov_posterior = []
+        self.record_observed = []
+
+        # Setup environment
+        margin = 0.25
+        self.size = np.array([METADATA['scenario']['size'][0] - 2 * margin,
+                              METADATA['scenario']['size'][1] - 2 * margin,
+                              METADATA['scenario']['size'][2]])
+        self.bottom_corner = np.array([METADATA['scenario']['bottom_corner'][0] + margin,
+                                       METADATA['scenario']['bottom_corner'][1] + margin,
+                                       METADATA['scenario']['bottom_corner'][2]])
+        self.fix_depth = METADATA['scenario']['fix_depth']
+        self.margin = METADATA['env']['margin']
+        self.margin2wall = METADATA['env']['margin2wall']
+
+        # Record for reward obtain(diff from the control period and the sampling period)
+        self.agent_w = None
+        # for u calculate:when receive the new waypoints
+        self.agent_last_u = None
+        self.agent_u = None
+        self.sensors = {}
+        self.set_limits()
+        # Cal random  pos of agent and target
+        self.reset()
+    
+    def step(self, action_waypoint):
+        global_waypoint = np.zeros(3)
+        observed = []
+        # 归一化展开
+        r = action_waypoint[0] * self.action_range_scale[0]
+        theta = action_waypoint[1] * self.action_range_scale[1]
+        global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
+                                                         np.radians(self.agent.est_state.vec[8]))
+        angle = action_waypoint[2] * self.action_range_scale[2]
+        global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
+        self.agent_w = angle / 0.5
+        if self.agent_u is not None:
+            self.agent_last_u = self.agent_u
+        for j in range(50):
+            for i in range(self.num_targets):
+                target = 'target'+str(i)
+                if self.has_discovered[i]:
+                    self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
+                    self.ocean.act(target, self.target_u)
+                else:
+                    self.target_u = np.zeros(8)
+                    self.ocean.act(target, self.target_u)
+            if j == 0:
+                self.agent_u = self.u
+            self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
+            self.ocean.act("auv0", self.u)
+            sensors = self.ocean.tick()
+            self.sensors['auv0'].update(sensors['auv0'])
+            for i in range(self.num_targets):
+                target = 'target'+str(i)
+                self.sensors[target].update(sensors[target])
+
+        # The targets are observed by the agent (z_t+1) and the beliefs are updated.
+        observed = self.observe_and_update_belief()
+        is_col = not (self.obstacles.check_obstacle_collision(self.agent.state.vec[:2], self.margin2wall)
+                      and self.in_bound(self.agent.state.vec[:2])
+                      and np.linalg.norm(self.agent.state.vec[:2] - self.targets[0].state.vec[:2]) > self.margin)
+
+        # Compute a reward from b_t+1|t+1 or b_t+1|t.
+        reward, done, mean_nlogdetcov, std_nlogdetcov = self.get_reward(is_col=is_col)
+        # Predict the target for the next step, b_t+2|t+1
+        for i in range(self.num_targets):
+            self.belief_targets[i].predict()
+
+        # Compute the RL state.
+        state = self.state_func(observed, action_waypoint)
+        self.record_observed = observed
+        if METADATA['render']:
+            print(is_col, observed[0], reward)
+        self.is_col = is_col
+        return state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
+    
+    def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
+        """
+        :param sampling_period:
+        :param agent_init_state:list [[x,y,z],yaw(theta)]
+        :param target_init_state:list [[x,y,z],yaw(theta)]
+        :param kwargs:
+        :return:
+        """
+        # Build a robot
+        self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state,
+                              scenario=self.map)
+        self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
+                                       , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
+                                       bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
+                                       l_p=METADATA['target']['lqr_l_p'])
+                        for i in range(self.num_targets)]
+        # Build target beliefs.
+        if METADATA['target']['random']:
+            self.const_q = np.random.choice(METADATA['target']['const_q'][1])
+        else:
+            self.const_q = METADATA['target']['const_q'][0]
+        self.targetA = np.concatenate((np.concatenate((np.eye(2),
+                                                       self.control_period * np.eye(2)), axis=1),
+                                       [[0, 0, 1, 0], [0, 0, 0, 1]]))
+        self.target_noise_cov = self.const_q * np.concatenate((
+            np.concatenate((self.control_period ** 3 / 3 * np.eye(2),
+                            self.control_period ** 2 / 2 * np.eye(2)), axis=1),
+            np.concatenate((self.control_period ** 2 / 2 * np.eye(2),
+                            self.control_period * np.eye(2)), axis=1)))
+        self.belief_targets = [KFbelief(dim=METADATA['target']['target_dim'],
+                                        limit=self.limit['target'], A=self.targetA,
+                                        W=self.target_noise_cov,
+                                        obs_noise_func=self.observation_noise)
+                               for _ in range(self.num_targets)]
         
     def reset(self):
         self.image_buffer.reset()
         
         self.ocean.reset()
-        if METADATA['render']:
-            self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
-                                lifetime=0)  # draw the area
+        # if METADATA['render']:
+        #     self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
+        #                         lifetime=0)  # draw the area
 
         if self.task_random:
             self.insight = np.random.choice(METADATA['env']['insight'][1])
@@ -56,9 +186,9 @@ class WorldAuvRGBSample(WorldBase):
             # self.agent_init_yaw = -0.9176929024434316
             # self.target_init_pos = np.array([-8.92739928, -17.99615254, -5.])
             # self.target_init_yaw = -0.28961582668513486
-            self.agent_init_pos = np.array([-19.264, -12.536, self.fix_depth])  # 西南角落
+            self.agent_init_pos = np.array([-29.264, -22.536, self.fix_depth])  # 西南角落
             self.agent_init_yaw = 0.785  # 45度（朝东北）
-            self.target_init_pos = np.array([-16.901, -10.172, self.fix_depth])
+            self.target_init_pos = np.array([-26.901, -20.172, self.fix_depth])
             self.target_init_yaw = -0.785  # -45度（朝西北）
         random_pos = np.random.uniform(-1,1,3)
         random_pos[2] = -5
@@ -181,8 +311,7 @@ class WorldAuvRGBSample(WorldBase):
 
         # The targets are observed by the agent (z_t+1) and the beliefs are updated.
         observed = self.observe_and_update_belief()
-        is_col = not (self.obstacles.check_obstacle_collision(self.agent.state.vec[:2], self.margin2wall)
-                      and self.in_bound(self.agent.state.vec[:2])
+        is_col = not (self.in_bound(self.agent.state.vec[:2])
                       and np.linalg.norm(self.agent.state.vec[:2] - self.targets[0].state.vec[:2]) > self.margin)
 
         # Compute a reward from b_t+1|t+1 or b_t+1|t.
@@ -219,11 +348,12 @@ class WorldAuvRGBSample(WorldBase):
                                                             ,
                                             [METADATA['agent']['sensor_r'], np.pi, 1.0, 1.0, 1.0]))
 
-        # target distance、angle、协方差行列式值、bool;agent 自身定位;
-        # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
-        #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
+        # self.observation_space = spaces.Dict({
+        #     "images": spaces.Box(low=-3, high=3, shape=(5, 3, 224, 224), dtype=np.float32),
+        #     "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
+        # })
         self.observation_space = spaces.Dict({
-            "images": spaces.Box(low=-3, high=3, shape=(5, 3, 224, 224), dtype=np.float32),
+            "images": spaces.Box(low=-3, high=3, shape=(3, 224, 224), dtype=np.float32),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
@@ -273,7 +403,9 @@ class WorldAuvRGBSample(WorldBase):
         state_observation.extend(action_waypoint.tolist())  # dim:3
         state_observation = np.array(state_observation)
 
-        images = np.stack(self.image_buffer.get_buffer())
+        buffer = self.image_buffer.get_buffer()
+        images = buffer[-1] if buffer else None
+        # images = np.stack(self.image_buffer.get_buffer())
         # images = util.image_preprocess(images)
         self.obs = {'images': images, 'state': state_observation}
         return copy.deepcopy({'images': images, 'state': state_observation})
@@ -281,6 +413,22 @@ class WorldAuvRGBSample(WorldBase):
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
 
+    def observation(self, target):
+        """
+        返回是否观测到目标，以及测量值
+        """
+        r, alpha = util.relative_distance_polar(target.state.vec[:2],
+                                                xy_base=self.agent.state.vec[:2],
+                                                theta_base=np.radians(self.agent.state.vec[8]))
+        # 判断是否观察到目标
+        observed = (r <= METADATA['agent']['sensor_r']) \
+                   & (abs(alpha) <= METADATA['agent']['fov'] / 2 / 180 * np.pi)
+        z = None
+        if observed:
+            z = np.array([r, alpha])
+            z += np.random.multivariate_normal(np.zeros(2, ), self.observation_noise(z))  # 加入噪声
+        return observed, z
+    
     def state_func_images(self):
         return self.obs['images']
 

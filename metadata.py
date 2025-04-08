@@ -1,5 +1,8 @@
 import numpy as np
 
+choice = ["METADATA_v1", "METADATA_RGB", "METADATA_RGB_SAMPLE"]
+choice = choice[2]
+
 METADATA_v1 = {
     'version': 1,
     # init the scenario's param
@@ -160,9 +163,12 @@ METADATA_RGB_SAMPLE = {
 
     # init the scenario's param
     'scenario': {
-        'size': [500, 500, 100],
+        'size': [1000, 1000, 100],
         'bottom_corner': [-500, -500, -100],
         'fix_depth': -45,
+        # 'size': [40, 40, 20],
+        # 'bottom_corner': [-20, -20, -20],
+        # 'fix_depth': -5,
     },
 
     # init agent's param
@@ -220,7 +226,8 @@ METADATA_RGB_SAMPLE = {
     },
 }
 # Designate a metadata version to be used throughout the target tracking env.
-METADATA = METADATA_RGB
+METADATA = {"METADATA_v1": METADATA_v1, "METADATA_RGB": METADATA_RGB, "METADATA_RGB_SAMPLE": METADATA_RGB_SAMPLE}
+METADATA = METADATA[choice]
 
 TTENV_EVAL_SET = {
     'Tracking':

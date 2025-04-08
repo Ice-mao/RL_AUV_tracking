@@ -53,8 +53,15 @@ if __name__ == "__main__":
         n_envs=1,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
     )
-    expert = load_policy("sac", venv=expert_env,
-                         path="/home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/SAC/01-13_12/rl_model_1240000_steps.zip")
+    # expert = load_policy("sac", venv=expert_env,
+    #                      path="/home/dell-t3660tow/data/log/teacher/SAC/03-17_14/best_model.zip")
+    expert = load_policy("ppo", venv=expert_env,
+                         path="/home/dell-t3660tow/data/log/teacher/PPO/03-17_14/rl_model_1000000_steps.zip")
+    # expert = load_policy("ppo", venv=expert_env,
+    #                      path="/home/dell-t3660tow/data/log/teacher/PPO/03-17_14/best_model.zip")
+    print(expert.device)
+    # expert.to("cpu")
+    # print(expert.device)
     print("Sample the transitions")
     env = make_vec_env(
         "Student-v0-sample",
@@ -64,5 +71,5 @@ if __name__ == "__main__":
     )
     rollouts = sample_expert_transitions(expert, env)
     # serialize.save(path="trajs_0", trajectories=rollouts)
-    custom_save(path="../../log/sample/trajs_dam/traj_1", trajectories=rollouts)
+    custom_save(path="../../log/sample/trajs_dam/traj_9", trajectories=rollouts)
     print("debug before")

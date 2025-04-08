@@ -65,10 +65,11 @@ class Display2D(Wrapper):
             background_rect = patches.Rectangle((self.mapmin[0]-1, self.mapmin[1]-1), self.size[0]+2, self.size[1]+2,
                                                 edgecolor='none', facecolor='gray', alpha=0.5)
             ax.add_patch(background_rect)
-            for polygon in self.env_core.obstacles.polygons:
-                x, y = polygon.exterior.xy
-                polygon_patch = Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
-                ax.add_patch(polygon_patch)
+            if hasattr(self.env_core, 'obstacles'):
+                for polygon in self.env_core.obstacles.polygons:
+                    x, y = polygon.exterior.xy
+                    polygon_patch = Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
+                    ax.add_patch(polygon_patch)
 
             # show the target's coordinate
             for i in range(num_targets):
@@ -161,10 +162,11 @@ class Display2D(Wrapper):
                                                 self.size[1] + 2,
                                                 edgecolor='none', facecolor='gray', alpha=0.5)
             ax.add_patch(background_rect)
-            for polygon in self.env_core.obstacles.polygons:
-                x, y = polygon.exterior.xy
-                polygon_patch = Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
-                ax.add_patch(polygon_patch)
+            if hasattr(self.env_core, 'obstacles'):
+                for polygon in self.env_core.obstacles.polygons:
+                    x, y = polygon.exterior.xy
+                    polygon_patch = Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
+                    ax.add_patch(polygon_patch)
 
             # show the target's coordinate
             for i in range(num_targets):
@@ -267,10 +269,11 @@ if __name__ == '__main__':
     from matplotlib.patches import Polygon as Draw_Polygon
 
     fig, ax = plt.subplots()
-    for polygon in env.env.world.obstacles.polygons:
-        x, y = polygon.exterior.xy
-        polygon_patch = Draw_Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
-        ax.add_patch(polygon_patch)
+    if hasattr(env.env.world, 'obstacles'):
+        for polygon in env.env.world.obstacles.polygons:
+            x, y = polygon.exterior.xy
+            polygon_patch = Draw_Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
+            ax.add_patch(polygon_patch)
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.title('Plot of Shapely Rectangle')
