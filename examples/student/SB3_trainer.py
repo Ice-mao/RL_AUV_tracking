@@ -13,8 +13,8 @@ from numpy import linalg as LA
 import csv
 import argparse
 from policy_net import set_seed
-from sb3_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
-from sb3_launcher.networks import Encoder
+from auv_track_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
+from auv_track_launcher.networks import Encoder
 
 # tools
 import os

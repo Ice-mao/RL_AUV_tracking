@@ -1,9 +1,10 @@
 import torch
 import os
-from unet_1d_condition_dev import UNet1DConditionModel
+from auv_track_launcher.networks.unet_1d_condition import UNet1DConditionModel
 from torch import nn
 from auv_track_launcher.networks.diffusion_vision_encoder import Encoder
 from diffusers import DDPMScheduler, DDPMPipeline
+import torchvision.transforms.functional as F
 
 # 1. 创建模型架构（与训练时相同）
 def create_model():
@@ -83,55 +84,52 @@ def create_pipeline(nets, device="cuda"):
     
     return inference_fn
 
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecEnv
+import gymnasium as gym
+import auv_env
+import numpy as np
+from auv_env.envs.tools import ImageBuffer
 def main():
-    model_path = "auv_tracking_diffusion_policy"  # 模型保存路径
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    
+    # model init
+    model_path = "/home/dell-t3660tow/data/remote_server/diff_test/auv_tracking_diffusion_policy_0408_2155"  # 模型保存路径
+    device = "cuda"
     net = load_model(model_path, "unet_ema").to(device)
-    
     scheduler = DDPMScheduler.from_pretrained(model_path, subfolder="scheduler")
-    # model = DDPMPipeline(unet=net["model"], scheduler=scheduler)
     scheduler.set_timesteps(200)
-
-    import datasets
-    from auv_track_launcher.dataset.holoocean_image_dataset import HoloOceanImageDataset
-    dataset_name = "/home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/sample/trajs_dam/"
-    dataset_0 = datasets.load_from_disk(dataset_name+"traj_1")
-    dataset_1 = datasets.load_from_disk(dataset_name+"traj_2")
-    dataset_2 = datasets.load_from_disk(dataset_name+"traj_3")
-    _dataset = datasets.concatenate_datasets([dataset_0, dataset_1, dataset_2])
-    dataset = HoloOceanImageDataset(_dataset,
-                                    horizon=16,
-                                    obs_horizon=4,
-                                    pred_horizon=12)
-    train_dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=1,
-        num_workers=2,
-        shuffle=True,
-        # accelerate cpu-gpu transfer
-        pin_memory=True,
-        # don't kill worker process afte each epoch
-        persistent_workers=True
-    )
-    batch = next(iter(train_dataloader))
-    true_action = batch["action"].float().to(device)
-    true_images = batch["obs"].float().to(device)
-    image_features = net['vision_encoder'](true_images)
-
+    obs_horizon = 4
     pred_horizon=12
-    noise = torch.randn((1, pred_horizon, 3), device="cuda")
-    input = noise
+    
+    image_buffer = ImageBuffer(5, (3, 224, 224), time_gap=0.5)
 
-    for t in scheduler.timesteps:
-        with torch.no_grad():
-            noisy_residual = net['model'](noise, t, encoder_hidden_states=image_features).sample
-        previous_noisy_sample = scheduler.step(noisy_residual, t, input).prev_sample
-        input = previous_noisy_sample
-        
-    input[:, :, 0] = 0.5 * input[:, :, 0] + 0.5
+    env = gym.make('Student-v0-sample')
+    obs, _ = env.reset()
+    image_buffer.add_image(obs['images'], 0.0)
 
-    print("Diffusion action:", input)
-    print("True action:", true_action)
+    for _ in range(500):
+        image = np.stack(image_buffer.get_buffer())
+        obs_tensor = torch.from_numpy(image).float().to(device)
+        obs_tensor= F.resize(obs_tensor, (128, 128))
+        obs_tensor = F.normalize(
+            obs_tensor, 
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        )
+        true_images = obs_tensor[-obs_horizon:].unsqueeze(0)
+        image_features = net['vision_encoder'](true_images)
+
+        noise = torch.randn((1, pred_horizon, 3), device=device)
+        input = noise
+
+        for t in scheduler.timesteps:
+            with torch.no_grad():
+                noisy_residual = net['model'](noise, t, encoder_hidden_states=image_features).sample
+            previous_noisy_sample = scheduler.step(noisy_residual, t, input).prev_sample
+            input = previous_noisy_sample
+            
+        input[:, :, 0] = 0.5 * input[:, :, 0] + 0.5
+        action = input[0, 0, :].detach().cpu().numpy()
+        # print(input)
+        obs, reward, dones, _, inf = env.step(action)
+
 if __name__ == "__main__":
     main()

@@ -1,87 +1,188 @@
 import numpy as np
+import time
 
-class SE2PIDController:
+class CmdVel:
     def __init__(self):
-        self.kp_linear = 0.015
-        self.ki_linear = 0.0
-        self.kd_linear = 0.0
+        self.linear = type('', (), {'x': 0.0, 'y': 0.0, 'z': 0.0})()
+        self.angular = type('', (), {'x': 0.0, 'y': 0.0, 'z': 0.0})()
 
-        self.kp_angular = 0.8
-        self.ki_angular = 0.0
-        self.kd_angular = 0.001
+class PID:
+    def __init__(self):
+        # ----------- 水下机器人参数 -----------#
+        self.gravity = 9.81
+        self.cob = np.array([0, 0, 5.0]) / 100
+        self.m = 31.02
+        self.rho = 997
+        self.V = self.m / self.rho
+        self.J = np.eye(3) * 2
 
-        self.windup_guard = 0.001
+        # 推进器位置配置
+        self.thruster_p = np.array([[18.18, -22.14, -4],
+                                   [18.18, 22.14, -4],
+                                   [-31.43, 22.14, -4],
+                                   [-31.43, -22.14, -4],
+                                   [7.39, -18.23, -0.21],
+                                   [7.39, 18.23, -0.21],
+                                   [-20.64, 18.23, -0.21],
+                                   [-20.64, -18.23, -0.21]]) / 100
 
-        self.prev_linear_error = [0, 0]  # Previous linear error (x, y)
-        self.prev_angular_error = 0        # Previous angular error (theta)
-        self.integral_linear_error = [0, 0]  # Integral of linear error (x, y)
-        self.integral_angular_error = 0       # Integral of angular error (theta)
+        # 调整推进器位置（相对于质心）
+        self.com = (self.thruster_p[0] + self.thruster_p[2]) / 2
+        self.com[2] = self.thruster_p[-1][2]
+        self.thruster_p -= self.com
+
+        # 推进器方向
+        self.thruster_d = np.array([[0, 0, 1],
+                                  [0, 0, 1],
+                                  [0, 0, 1],
+                                  [0, 0, 1],
+                                  [np.sqrt(2), np.sqrt(2), 0],
+                                  [np.sqrt(2), -np.sqrt(2), 0],
+                                  [np.sqrt(2), np.sqrt(2), 0],
+                                  [np.sqrt(2), -np.sqrt(2), 0]])
+
+        # 推力分配矩阵
+        self.M = np.zeros((6, 8))
+        for i in range(8):
+            self.M[:3, i] = self.thruster_d[i]
+            self.M[3:, i] = -np.cross(self.thruster_d[i], self.thruster_p[i])
+
+        self.Minv = self.M.T @ np.linalg.inv(self.M @ self.M.T)
+
+        # ----------- PID控制参数 -----------#
+        # 前向速度(linear.x)的PID参数
+        self.Kp_lin_x = 500  # 比例增益
+        self.Ki_lin_x = 5  # 积分增益
+        self.Kd_lin_x = 0.1  # 微分增益
+        
+        # 角速度(angular.z)的PID参数
+        self.Kp_ang_z = 18  # 比例增益
+        self.Ki_ang_z = 0.2  # 积分增益
+        self.Kd_ang_z = 0.0  # 微分增益
+        
+        # 积分项上限，防止积分饱和
+        self.lin_x_int_limit = 10.0
+        self.ang_z_int_limit = 5.0
+        
+        # 误差累积和上一次误差
+        self.lin_x_error_sum = 0.0
+        self.ang_z_error_sum = 0.0
+        self.lin_x_last_error = 0.0
+        self.ang_z_last_error = 0.0
+        
+        # 深度控制PID参数（可选，用于保持恒定深度）
+        self.Kp_depth = 10.0
+        self.depth_target = None  # 初始深度目标为None
+        
+    def set_depth_target(self, depth):
+        """设置深度保持目标"""
+        self.depth_target = depth
+        
     def reset(self):
-        self.prev_linear_error = [0, 0]
-        self.prev_angular_error = 0
-        self.integral_linear_error = [0, 0]
-        self.integral_angular_error = 0
-
-    def u(self, current_pose, target_pose, dt):
-        # Compute linear error
-
-        linear_error = [target_pose[0] - current_pose[0],  # Error in x
-                        target_pose[1] - current_pose[1]]  # Error in y
-
-        # Compute angular error (orientation error)
-        theta = np.arctan2(linear_error[1], linear_error[0])
-        # if linear_error[0] < 0 and linear_error[1] < 0:
-        #     angular_error = np.pi - theta - current_pose[2]
-        # elif linear_error[0] < 0 and linear_error[1] > 0:
-        #     angular_error = -np.pi - theta - current_pose[2]
-        # else:
-        angular_error = - theta - current_pose[2]
-        # an easy but annoying bug, I have fix it.PID  never lies
-        if angular_error < -np.pi:
-            angular_error = angular_error + 2 * np.pi
-        elif angular_error > np.pi:
-            angular_error = angular_error - 2 * np.pi
-
-        # angular_error = wrap_around(angular_error)
-        self.integral_angular_error += angular_error * dt
-        if (self.integral_angular_error < -self.windup_guard):
-            self.integral_angular_error = -self.windup_guard
-        elif (self.integral_angular_error > self.windup_guard):
-            self.integral_angular_error = self.windup_guard
-
-        # Compute derivative of angular error
-        angular_derivative = (angular_error - self.prev_angular_error) / dt
-        self.prev_angular_error = angular_error
-
-        angular_control = self.kp_angular * angular_error + self.ki_angular * self.integral_angular_error + self.kd_angular * angular_derivative
-        angular_control = max(min(angular_control, 0.8), -0.8)
-
-        # Update integral error
-        self.integral_linear_error[0] += linear_error[0] * dt
-        self.integral_linear_error[1] += linear_error[1] * dt
-
-        # Compute derivative of linear error
-        linear_derivative = [(linear_error[0] - self.prev_linear_error[0]) / dt,
-                             (linear_error[1] - self.prev_linear_error[1]) / dt]
-
-        # Update previous errors
-        self.prev_linear_error = linear_error
-
-        # Compute control commands
-        dis = np.sqrt(linear_error[0] ** 2 + linear_error[1] ** 2)
-        if np.abs(angular_error) > 1.0:
-            v = 0.001
-        elif dis >= 3:
-            v = 0.001
-        else:
-            v = self.kp_linear * dis + 0.003 * np.random.normal(1, 0.5)
-        return v, angular_control
-
-def wrap_around(x):
-    # x \in [-pi,pi)
-    if x >= np.pi:
-        return x - 2 * np.pi
-    elif x < -np.pi:
-        return x + 2 * np.pi
-    else:
-        return x
+        """重置PID控制器状态"""
+        self.lin_x_error_sum = 0.0
+        self.ang_z_error_sum = 0.0
+        self.lin_x_last_error = 0.0
+        self.ang_z_last_error = 0.0
+        
+    def compute_control(self, current_state, cmd_vel):
+        """
+        根据cmd_vel计算PID控制输出
+        
+        参数:
+        - current_state: 当前状态 (包含位置、速度、姿态等)
+        - cmd_vel: 包含linear.x和angular.z的目标速度
+        
+        返回:
+        - 推进器控制输出 (8个推进器的力)
+        """
+        # 提取当前速度状态
+        current_lin_x = current_state.vec[3]  # 前向速度 (body frame)
+        current_ang_z = current_state.vec[11]  # 绕Z轴角速度
+        
+        # 提取目标速度
+        target_lin_x = cmd_vel.linear.x
+        target_ang_z = cmd_vel.angular.z
+        
+        # 计算时间间隔
+        dt = 0.01
+            
+        # 计算线速度误差
+        lin_x_error = target_lin_x - current_lin_x
+        
+        # 计算积分项
+        self.lin_x_error_sum += lin_x_error * dt
+        
+        # 限制积分项，防止积分饱和
+        if self.lin_x_error_sum > self.lin_x_int_limit:
+            self.lin_x_error_sum = self.lin_x_int_limit
+        elif self.lin_x_error_sum < -self.lin_x_int_limit:
+            self.lin_x_error_sum = -self.lin_x_int_limit
+        
+        # 计算微分项
+        lin_x_error_diff = (lin_x_error - self.lin_x_last_error) / dt
+        self.lin_x_last_error = lin_x_error
+        
+        # 计算前向PID输出
+        lin_x_pid_output = (self.Kp_lin_x * lin_x_error + 
+                          self.Ki_lin_x * self.lin_x_error_sum + 
+                          self.Kd_lin_x * lin_x_error_diff)
+        
+        # 计算角速度误差
+        ang_z_error = target_ang_z - current_ang_z
+        
+        # 计算积分项
+        self.ang_z_error_sum += ang_z_error * dt
+        
+        # 限制积分项，防止积分饱和
+        if self.ang_z_error_sum > self.ang_z_int_limit:
+            self.ang_z_error_sum = self.ang_z_int_limit
+        elif self.ang_z_error_sum < -self.ang_z_int_limit:
+            self.ang_z_error_sum = -self.ang_z_int_limit
+        
+        # 计算微分项
+        ang_z_error_diff = (ang_z_error - self.ang_z_last_error) / dt
+        self.ang_z_last_error = ang_z_error
+        
+        # 计算角速度PID输出
+        ang_z_pid_output = (self.Kp_ang_z * ang_z_error + 
+                          self.Ki_ang_z * self.ang_z_error_sum + 
+                          self.Kd_ang_z * ang_z_error_diff)
+        
+        # 创建六维控制向量 [Fx, Fy, Fz, Tx, Ty, Tz]
+        u_til = np.zeros(6)
+        u_til[0] = lin_x_pid_output  # X方向力 (前进/后退)
+        u_til[5] = ang_z_pid_output  # Z方向力矩 (转向)
+        
+        # 如果需要保持深度
+        if self.depth_target is not None:
+            current_depth = current_state.vec[2]
+            depth_error = self.depth_target - current_depth
+            u_til[2] = self.Kp_depth * depth_error  # 简单P控制器用于深度
+        
+        # 补偿浮力力矩（如果需要）
+        # 从状态中获取旋转矩阵
+        rotation_matrix = current_state.mat[:3, :3]
+        u_til[3:] += np.cross(rotation_matrix.T @ np.array([0, 0, 1]),
+                            self.cob) * self.V * self.rho * self.gravity
+        
+        # 将力转换到机体坐标系
+        u_til[:3] = rotation_matrix.T @ u_til[:3]
+        
+        # 将力矩转换为推进器输出
+        thruster_forces = self.Minv @ u_til
+        
+        return thruster_forces
+        
+    def u(self, x, cmd_vel):
+        """
+        与原LQR接口兼容的方法
+        
+        参数:
+        - x: 当前状态
+        - cmd_vel: 包含linear.x和angular.z的目标速度对象
+        
+        返回:
+        - 推进器控制输出
+        """
+        return self.compute_control(x, cmd_vel)

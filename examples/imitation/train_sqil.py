@@ -17,8 +17,8 @@ from imitation.data.types import AnyPath, Trajectory, TrajectoryWithRew
 from imitation.policies.serialize import load_policy
 from imitation.util.util import make_vec_env
 
-from sb3_launcher.algorithms.bc import BC
-from sb3_launcher.networks import Encoder
+from auv_track_launcher.algorithms.bc import BC
+from auv_track_launcher.networks import Encoder
 
 import auv_env
 
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     #             policy_kwargs=policy_kwargs, device="cuda"
     #             )
     # model.load("../log/auv_student_data_10_epoch_100_0216_1358.zip")
-    from sb3_launcher.algorithms import sqil
+    from auv_track_launcher.algorithms import sqil
     sqil_trainer = sqil.SQIL(
         venv=env,
         demonstrations=transitions,

@@ -12,7 +12,7 @@ from numpy import linalg as LA
 import csv
 import argparse
 from policy_net import set_seed
-from sb3_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
+from auv_track_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
 
 # tools
 import os
@@ -26,8 +26,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train; 1:keep train; 2:eval; 3:test; 4:cal',
                     default=0)
 # for env set
-parser.add_argument('--env', type=str, choices=['TargetTracking1', 'TargetTracking2', 'AUVTracking_rgb'],
-                    help='environment ID', default='TargetTracking1')
+parser.add_argument('--env', type=str, help='environment ID', default='auv-v0')
 parser.add_argument('--policy', type=str, choices=['PPO', 'SAC', 'BC'], help='algorithms select',
                     default='SAC')
 parser.add_argument('--render', help='whether to render', type=int, default=0)
@@ -37,7 +36,7 @@ parser.add_argument('--nb_envs', help='the number of env', type=int, default=6)
 parser.add_argument('--max_episode_step', type=int, default=200)
 # for reinforcement learning set
 parser.add_argument("--seed", type=int, default=1626)
-parser.add_argument("--resume-path-model", type=str, default=None)
+parser.add_argument("--resume-path", type=str, default=None)
 parser.add_argument("--log-dir", type=str, default="../log")
 parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
 # # for SAC Policy Set
@@ -169,7 +168,7 @@ def evaluate(model_name: str):
     # 0 tracking 1 discovery 2 navagation
     METADATA.update(TTENV_EVAL_SET['Tracking'])
 
-    env = SubprocVecEnv([lambda: gym.make('Teacher-v0-norender') for _ in range(1)], )
+    env = SubprocVecEnv([lambda: gym.make('Teacher-v1-render') for _ in range(1)], )
 
     if args.policy == 'SAC':
         model = SAC.load(model_name, device='cuda', env=env,
@@ -177,7 +176,7 @@ def evaluate(model_name: str):
     elif args.policy == 'PPO':
         model = PPO.load(model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-
+    
     obs = env.reset()
     for _ in range(500):
         action, _ = model.predict(obs, deterministic=True)
@@ -267,14 +266,14 @@ if __name__ == "__main__":
             args.action_space = env.action_space
             learn(env, log_dir)
         if args.choice == '1':
-            model_name = args.resume_path_model
+            model_name = args.resume_path
             log_dir = os.path.dirname(model_name)
             os.makedirs(log_dir, exist_ok=True)
             env = make_teacher_env('Teacher-v0-norender', args.nb_envs, log_dir)
             keep_learn(env, log_dir, model_name)
 
     elif args.choice == '2':
-        model_name = args.resume_path_model
+        model_name = args.resume_path
         evaluate(model_name)
 
     elif args.choice == '3':

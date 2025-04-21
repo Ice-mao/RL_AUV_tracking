@@ -259,26 +259,26 @@ class Video2D(Wrapper):
 
 
 if __name__ == '__main__':
-    from auv_env import TargetTrackingBase
-    from gymnasium import wrappers
+    # from auv_env import TargetTrackingBase
+    # from gymnasium import wrappers
 
-    env0 = TargetTrackingBase(num_targets=1)
-    env = wrappers.TimeLimit(env0, max_episode_steps=200)
+    # env0 = TargetTrackingBase(num_targets=1)
+    # env = wrappers.TimeLimit(env0, max_episode_steps=200)
 
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import Polygon as Draw_Polygon
+    # import matplotlib.pyplot as plt
+    # from matplotlib.patches import Polygon as Draw_Polygon
 
-    fig, ax = plt.subplots()
-    if hasattr(env.env.world, 'obstacles'):
-        for polygon in env.env.world.obstacles.polygons:
-            x, y = polygon.exterior.xy
-            polygon_patch = Draw_Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
-            ax.add_patch(polygon_patch)
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.title('Plot of Shapely Rectangle')
-    plt.grid(True)
-    plt.axis('equal')
-    plt.show()
+    # fig, ax = plt.subplots()
+    # if hasattr(env.env.world, 'obstacles'):
+    #     for polygon in env.env.world.obstacles.polygons:
+    #         x, y = polygon.exterior.xy
+    #         polygon_patch = Draw_Polygon(np.column_stack((x, y)), closed=True, edgecolor='black', facecolor='black')
+    #         ax.add_patch(polygon_patch)
+    # plt.xlabel('X')
+    # plt.ylabel('Y')
+    # plt.title('Plot of Shapely Rectangle')
+    # plt.grid(True)
+    # plt.axis('equal')
+    # plt.show()
 
-    env = Display2D(env, figID=0, local_view=0)
+    # env = Display2D(env, figID=0, local_view=0)

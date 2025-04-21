@@ -1,7 +1,7 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="PPO"
+policy="SAC"
 
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
@@ -9,7 +9,7 @@ if [ "$policy" == "SAC" ]; then
     python SB3_trainer.py "$@" \
     --device cuda \
     --choice 0 \
-    --env AUVTracking_rgb \
+    --env v2-Teacher \
     --policy SAC \
     --render 1 \
     --nb_envs 4 \

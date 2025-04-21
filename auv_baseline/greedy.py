@@ -88,7 +88,7 @@ class Greedy:
             z += np.random.multivariate_normal(np.zeros(2, ), self.world.observation_noise(z))  # 加入噪声
         return observed, z
 
-    def get_reward(self, is_col, is_training=True, c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
+    def get_reward(self, is_col, c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
                    c_penalty=METADATA['c_penalty'], k_3=METADATA['k_3'], k_4=METADATA['k_4'], k_5=METADATA['k_5']):
         detcov = [LA.det(self.cov)]
         r_detcov_mean = - np.mean(np.log(detcov))

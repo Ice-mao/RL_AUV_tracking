@@ -77,9 +77,9 @@ class TargetTrackingBase(gym.Env):
 
 class WorldBase:
     """
-        different from world:target is also an auv
+        different from world: target is also an auv
+        for v0、v1
     """
-
     def __init__(self, map, show, verbose, num_targets, **kwargs):
         # define the entity
         # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
@@ -523,6 +523,8 @@ class WorldBase:
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
+
+class WorldBaseV2():
 
 
 if __name__ == '__main__':

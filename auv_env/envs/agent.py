@@ -3,7 +3,7 @@ from auv_env.envs.tools import KeyBoardCmd, ImagingSonar, RangeFinder
 import auv_env.util as util
 
 from auv_control.estimation import InEKF
-from auv_control.control import LQR, SE2PIDController
+from auv_control.control import LQR, SE2PIDController, PID
 from auv_control.planning import RRT_2d
 from auv_control.state import rot_to_rpy
 from auv_control import State
@@ -32,15 +32,21 @@ class Agent(object):
 
 
 class AgentAuv(Agent):
-    def __init__(self, dim, sampling_period, sensor, scenario):
+    def __init__(self, dim, sampling_period, sensor, scenario, controller = "LQR"):
         Agent.__init__(self, dim, sampling_period)
         # init the control part of Auv
-        if METADATA['agent']['random']:
-            l_p = np.random.normal(40, 15)
-        else:
-            l_p = 50
-        if l_p is not None:
+        if controller == "LQR":
+            if METADATA['agent']['random']:
+                l_p = np.random.normal(40, 15)
+            else:
+                l_p = 50
+            self.controller_choice = "LQR"
             self.controller = LQR(l_p=l_p)
+        elif controller == "PID":
+            self.controller_choice = "PID"
+            self.controller = PID()
+        else:
+            raise ValueError("Unknown controller choice")
 
         # init the sonar and grid map part
         if METADATA['agent']['use_sonar']:
@@ -97,14 +103,17 @@ class AgentAuv(Agent):
             else:
                 self.count += 1
 
-        # Path planner
-        des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,
-                                    0.00, 0.00, 0.00,
-                                    0.00, 0.00, action_waypoint[2],
-                                    -0.00, -0.00, 0.00]))
-
-        # Autopilot Commands
-        u = self.controller.u(self.est_state, des_state)
+        # # Autopilot Commands
+        if self.controller_choice == "LQR":
+            des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,
+                                        0.00, 0.00, 0.00,
+                                        0.00, 0.00, action_waypoint[2],
+                                        -0.00, -0.00, 0.00]))
+            u = self.controller.u(self.est_state, des_state)
+        elif self.controller_choice == "PID":
+            u = self.controller.u(self.est_state, action_waypoint)
+        else:
+            raise ValueError("Unknown controller choice")
 
         return u
 

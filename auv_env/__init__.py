@@ -2,9 +2,10 @@ import gymnasium as gym
 from .envs.base import TargetTrackingBase
 from .envs.world_auv import World_AUV
 from .envs.world_auv_map import WorldAuvMap
-from .envs.world_auv_rgb import WorldAuvRGB
+from .envs.world_auv_rgb_v1 import WorldAuvRGBV1
 from .envs.world_auv_rgb_v0 import WorldAuvRGBV0
-from .envs.world_auv_rgb_sample import WorldAuvRGBSample
+from .envs.world_auv_rgb_v1_sample import WorldAuvRGBV1Sample
+from .envs.world_auv_v2 import WorldAuvV2
 
 
 class TargetTracking1(TargetTrackingBase):
@@ -15,7 +16,6 @@ class TargetTracking1(TargetTrackingBase):
     def __init__(self, map="TestMap", num_targets=1, show=True, verbose=True, is_training=False, **kwargs):
         super().__init__(World_AUV, map, num_targets, show, verbose, is_training, **kwargs)
 
-
 class TargetTracking2(TargetTrackingBase):
     """
     target is an auv with map.
@@ -24,16 +24,7 @@ class TargetTracking2(TargetTrackingBase):
     def __init__(self, map="TestMap_AUV", num_targets=1, show=True, verbose=True, is_training=False, **kwargs):
         super().__init__(WorldAuvMap, map, num_targets, show, verbose, is_training, **kwargs)
 
-
-class AUVTracking_rgb(TargetTrackingBase):
-    """
-    target is an auv with map.
-    """
-
-    def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
-        super().__init__(WorldAuvRGB, map, num_targets, show_viewport, verbose, is_training, **kwargs)
-
-class AUVTracking_rgb_v0(TargetTrackingBase):
+class AUVTracking_v0(TargetTrackingBase):
     """
     target is an auv with map.
     """
@@ -41,24 +32,45 @@ class AUVTracking_rgb_v0(TargetTrackingBase):
     def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
         super().__init__(WorldAuvRGBV0, map, num_targets, show_viewport, verbose, is_training, **kwargs)
 
-class AUVTracking_rgb_sample(TargetTrackingBase):
+class AUVTracking_v1(TargetTrackingBase):
+    """
+    target is an auv with map.
+    """
+
+    def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(WorldAuvRGBV1, map, num_targets, show_viewport, verbose, is_training, **kwargs)
+
+class AUVTracking_v1_sample(TargetTrackingBase):
     """
     target is an auv with map.
     """
 
     def __init__(self, map="AUV_RGB_Dam", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
-        super().__init__(WorldAuvRGBSample, map, num_targets, show_viewport, verbose, is_training, **kwargs)
+        super().__init__(WorldAuvRGBV1Sample, map, num_targets, show_viewport, verbose, is_training, **kwargs)
 
+class AUVTracking_v2(TargetTrackingBase):
+    """
+    target is an auv with map.
+    """
 
-def make(env_name, render=False, record=False, eval=False, ros=False, directory='../',
+    def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(WorldAuvV2, map, num_targets, show_viewport, verbose, is_training, **kwargs)
+
+# class AUVTracking_v2_sample(TargetTrackingBase):
+#     """
+#     target is an auv with map.
+#     """
+
+#     def __init__(self, map="AUV_RGB_Dam", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+#         super().__init__(WorldAuvRGBV1Sample, map, num_targets, show_viewport, verbose, is_training, **kwargs)
+
+def make(env_name, record=False, eval=False, ros=False, directory='../',
          t_steps=100, num_targets=1, **kwargs):
     """
     Parameters:
     ----------
     env_name : str
         name of an environment. (e.g. 'TargetTracking-v0')
-    render : bool
-        wether to render the ue5 .
     figID : int
         figure ID for rendering and/or recording.
     record : bool
@@ -86,12 +98,14 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
         env0 = TargetTracking1(num_targets=num_targets, **kwargs)
     elif env_name == 'TargetTracking2':
         env0 = TargetTracking2(num_targets=num_targets, **kwargs)
-    elif env_name == 'AUVTracking_rgb':
-        env0 = AUVTracking_rgb(num_targets=num_targets, **kwargs)
-    elif env_name == 'AUVTracking_rgb_v0':
-        env0 = AUVTracking_rgb_v0(num_targets=num_targets, **kwargs)
-    elif env_name == 'AUVTracking_rgb_sample':
-        env0 = AUVTracking_rgb_sample(num_targets=num_targets, **kwargs)
+    elif env_name == 'AUVTracking_v0':
+        env0 = AUVTracking_v0(num_targets=num_targets, **kwargs)
+    elif env_name == 'AUVTracking_v1':
+        env0 = AUVTracking_v1(num_targets=num_targets, **kwargs)
+    elif env_name == 'AUVTracking_v1_sample':
+        env0 = AUVTracking_v1_sample(num_targets=num_targets, **kwargs)
+    elif env_name == 'AUVTracking_v2':
+        env0 = AUVTracking_v2(num_targets=num_targets, **kwargs)
     else:
         raise ValueError('No such environment exists.')
     # 使用gym中对episode进行timestep限制的wrapper进行封装，保证环境的更新
@@ -111,19 +125,10 @@ def make(env_name, render=False, record=False, eval=False, ros=False, directory=
 
 ##
 # Register Gym environments.
+# v0 and v1
 ##
 from .wrappers import TeachObsWrapper, StudentObsWrapper
-
-fns = lambda: make(env_name='AUVTracking_rgb',
-                   render=False,
-                   record=False,
-                   num_targets=1,
-                   is_training=False,
-                   eval=False,
-                   t_steps=200,
-                   )
-teacher_fns_v0 = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb_v0',
-                                           render=False,
+v0_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_v0',
                                            record=False,
                                            show_viewport=True,
                                            num_targets=1,
@@ -131,8 +136,7 @@ teacher_fns_v0 = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb_v0',
                                            eval=False,
                                            t_steps=200,
                                            ))
-teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
-                                           render=False,
+v1_teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_v1',
                                            record=False,
                                            show_viewport=True,
                                            num_targets=1,
@@ -140,17 +144,23 @@ teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
                                            eval=False,
                                            t_steps=200,
                                            ))
-teacher_fns_norender = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb',
-                                                  render=False,
+v1_teacher_fns_norender = lambda: TeachObsWrapper(make(env_name='AUVTracking_v1',
                                                   record=False,
                                                   show_viewport=False,
                                                   num_targets=1,
-                                                  is_training=False,
+                                                  is_training=True,
                                                   eval=False,
                                                   t_steps=200,
                                                   ))
-student_fns = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
-                                             render=False,
+v1_teacher_fns_render = lambda: TeachObsWrapper(make(env_name='AUVTracking_v1',
+                                                  record=False,
+                                                  show_viewport=True,
+                                                  num_targets=1,
+                                                  is_training=True,
+                                                  eval=True,
+                                                  t_steps=200,
+                                                  ))
+v1_student_fns = lambda: StudentObsWrapper(make(env_name='AUVTracking_v1',
                                              record=False,
                                              show_viewport=True,
                                              num_targets=1,
@@ -158,8 +168,7 @@ student_fns = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
                                              eval=False,
                                              t_steps=200,
                                              ))
-student_fns_norender = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb',
-                                                    render=False,
+v1_student_fns_norender = lambda: StudentObsWrapper(make(env_name='AUVTracking_v1',
                                                     record=False,
                                                     show_viewport=False,
                                                     num_targets=1,
@@ -167,16 +176,14 @@ student_fns_norender = lambda: StudentObsWrapper(make(env_name='AUVTracking_rgb'
                                                     eval=False,
                                                     t_steps=200,
                                                     ))
-sample_fns = lambda: make(env_name='AUVTracking_rgb_sample',
-                        render=True,
+v1_sample_fns = lambda: make(env_name='AUVTracking_v1_sample',
                         record=False,
                         num_targets=1,
                         is_training=False,
                         eval=False,
                         t_steps=200,
                         )
-sample_fns_teacher = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb_sample',
-                        render=False,
+v1_sample_fns_teacher = lambda: TeachObsWrapper(make(env_name='AUVTracking_v1_sample',
                         record=False,
                         num_targets=1,
                         is_training=False,
@@ -184,43 +191,85 @@ sample_fns_teacher = lambda: TeachObsWrapper(make(env_name='AUVTracking_rgb_samp
                         t_steps=200,
                         ))
 gym.register(
-    id="auv_rgb-v0",
-    entry_point=fns,
+    id="auv-v0",
+    entry_point=v0_fns,
     disable_env_checker=True,
 )
 gym.register(
-    id="Teacher-v0",
-    entry_point=teacher_fns_v0,
+    id="v1-Teacher",
+    entry_point=v1_teacher_fns,
     disable_env_checker=True,
 )
 gym.register(
-    id="Teacher-v1",
-    entry_point=teacher_fns,
+    id="v1-Teacher-norender",
+    entry_point=v1_teacher_fns_norender,
     disable_env_checker=True,
 )
 gym.register(
-    id="Teacher-v1-norender",
-    entry_point=teacher_fns_norender,
+    id="v1-Teacher-render",
+    entry_point=v1_teacher_fns_render,
     disable_env_checker=True,
 )
 gym.register(
-    id="Student-v0",
-    entry_point=student_fns,
+    id="v1-Student",
+    entry_point=v1_student_fns,
     disable_env_checker=True,
 )
 gym.register(
-    id="Student-v0-norender",
-    entry_point=student_fns_norender,
+    id="v1-Student-norender",
+    entry_point=v1_student_fns_norender,
     disable_env_checker=True,
 )
 gym.register(
-    id="Student-v0-sample",
-    entry_point=sample_fns,
+    id="v1-Student-sample",
+    entry_point=v1_sample_fns,
     disable_env_checker=True,
 )
 gym.register(
-    id="Student-v0-sample-teacher",
-    entry_point=sample_fns_teacher,
+    id="v1-Student-sample-teacher",
+    entry_point=v1_sample_fns_teacher,
     disable_env_checker=True,
 )
+
+v2_teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_v2',
+                                           record=False,
+                                           show_viewport=True,
+                                           num_targets=1,
+                                           is_training=False,
+                                           eval=False,
+                                           t_steps=200,
+                                           ))
+v2_teacher_fns_norender = lambda: TeachObsWrapper(make(env_name='AUVTracking_v2',
+                                                  record=False,
+                                                  show_viewport=False,
+                                                  num_targets=1,
+                                                  is_training=True,
+                                                  eval=False,
+                                                  t_steps=200,
+                                                  ))
+v2_teacher_fns_render = lambda: TeachObsWrapper(make(env_name='AUVTracking_v2',
+                                                  record=False,
+                                                  show_viewport=True,
+                                                  num_targets=1,
+                                                  is_training=True,
+                                                  eval=True,
+                                                  t_steps=200,
+                                                  ))
+gym.register(
+    id="v2-Teacher",
+    entry_point=v1_teacher_fns,
+    disable_env_checker=True,
+)
+gym.register(
+    id="v2-Teacher-norender",
+    entry_point=v1_teacher_fns_norender,
+    disable_env_checker=True,
+)
+gym.register(
+    id="v2-Teacher-render",
+    entry_point=v1_teacher_fns_render,
+    disable_env_checker=True,
+)
+
+
 

@@ -335,6 +335,8 @@ class ImageBuffer:
 
     def add_image(self, image, t):
         """添加新图像到缓冲区"""
+        if t == 0.0:
+            self.buffer.append(image)
         if abs(t - self.t) >= self.time_gap:
             image = util.image_preprocess(image)
             if image.shape != self.image_shape:
