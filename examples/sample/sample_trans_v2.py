@@ -1,3 +1,11 @@
+if __name__ == "__main__":
+    import sys
+    import os
+    import pathlib
+
+    ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent)
+    sys.path.append(ROOT_DIR)
+
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -44,15 +52,31 @@ def custom_save(path: AnyPath, trajectories: Sequence[Trajectory]) -> None:
     huggingface_utils.trajectories_to_dataset(trajectories).save_to_disk(p, max_shard_size="10GB")
     logging.info(f"Dumped demonstrations to {p}.")
 
+
+from auv_env.wrappers.obs_wrapper import TeachObsWrapper
 if __name__ == "__main__":
     rng = np.random.default_rng(0)
     print("Get the expert policy")
-    expert_env = make_vec_env(
-        "v1-Student-sample-teacher",
+    # expert_env = make_vec_env(
+    #     "v2-sample-teacher-wrapper",
+    #     rng=rng,
+    #     n_envs=1,
+    #     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+    # )
+    # expert_env = make_vec_env(
+    #     "v2-Teacher",
+    #     rng=rng,
+    #     n_envs=1,
+    #     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+    # )
+    env = make_vec_env(
+        "v2-sample-render",
+        # "v2-sample-custom-render",
         rng=rng,
         n_envs=1,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
     )
+    expert_env = TeachObsWrapper(env)
     expert = load_policy("sac", venv=expert_env,
                          path="/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/SAC/04-23_12/rl_model_1500000_steps.zip")
     # expert = load_policy("ppo", venv=expert_env,
@@ -63,13 +87,15 @@ if __name__ == "__main__":
     # expert.to("cpu")
     # print(expert.device)
     print("Sample the transitions")
-    env = make_vec_env(
-        "Student-v0-sample",
-        rng=rng,
-        n_envs=1,
-        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
-    )
+    # env = make_vec_env(
+    #     "v2-sample-render",
+    #     # "v2-sample-custom-render",
+    #     rng=rng,
+    #     n_envs=1,
+    #     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+    # )
+    # expert_env = TeachObsWrapper(env)
     rollouts = sample_expert_transitions(expert, env)
     # serialize.save(path="trajs_0", trajectories=rollouts)
-    custom_save(path="../../log/sample/trajs_dam/traj_9", trajectories=rollouts)
+    custom_save(path="/data/log/sample/trajs_openwater/traj_0", trajectories=rollouts)
     print("debug before")

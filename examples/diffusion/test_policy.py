@@ -12,7 +12,7 @@ def create_model():
     model = UNet1DConditionModel(
         input_dim=3,
         local_cond_dim=None,
-        global_cond_dim=1024,
+        global_cond_dim=256*5,
         cross_attention_dim=512,
         time_embedding_type="fourier",
         flip_sin_to_cos=True,
@@ -91,17 +91,17 @@ import numpy as np
 from auv_env.envs.tools import ImageBuffer
 def main():
     # model init
-    model_path = "/home/dell-t3660tow/data/remote_server/diff_test/auv_tracking_diffusion_policy_0408_2155"  # 模型保存路径
+    model_path = "/home/dell-t3660tow/data/remote_server/diff_test/auv_tracking_diffusion_policy_0414_1136"  # 模型保存路径
     device = "cuda"
     net = load_model(model_path, "unet_ema").to(device)
     scheduler = DDPMScheduler.from_pretrained(model_path, subfolder="scheduler")
     scheduler.set_timesteps(200)
-    obs_horizon = 4
+    obs_horizon = 5
     pred_horizon=12
     
     image_buffer = ImageBuffer(5, (3, 224, 224), time_gap=0.5)
 
-    env = gym.make('Student-v0-sample')
+    env = gym.make('v1-Student-sample')
     obs, _ = env.reset()
     image_buffer.add_image(obs['images'], 0.0)
 

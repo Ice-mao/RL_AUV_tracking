@@ -61,15 +61,7 @@ class TargetTrackingBase(gym.Env):
         :param action:
         :return:
         """
-        # get the policy of (r,theta,angle) in local corrdinate
-        if self.is_training is True:
-            action_waypoint = np.array([action[0] + 0.1 * np.random.normal(),
-                                        action[1] + 0.005 * np.random.normal(),
-                                        action[2] + 0.005 * np.random.normal()])
-        else:
-            action_waypoint = action
-
-        return self.world.step(action_waypoint=action_waypoint)
+        return self.world.step(action_waypoint=action)
 
     def seed(self, seed):
         np.random.seed(seed)
@@ -219,7 +211,7 @@ class WorldBase:
                                         obs_noise_func=self.observation_noise)
                                for _ in range(self.num_targets)]
 
-    def reset(self):
+    def reset(self, action_dim=3):
         self.ocean.reset()
         if METADATA['render']:
             self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
@@ -307,7 +299,7 @@ class WorldBase:
 
         observed = [True]
         # Compute the RL state.
-        state = self.state_func(observed, action_waypoint=np.zeros(3))
+        state = self.state_func(observed, action_waypoint=np.zeros(action_dim))
         info = {'reset_info': 'yes'}
         return state, info
 
@@ -335,8 +327,9 @@ class WorldBase:
             agent_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
             # satisfy the in bound and no collision conditions ----> True(is valid)
             # give a more safe init position
-            is_agent_valid = self.in_bound(agent_init_pos) and self.obstacles.check_obstacle_collision(agent_init_pos,
-                                                                                                       self.margin2wall + 2)
+            is_agent_valid = self.in_bound(agent_init_pos) and \
+                (not hasattr(self, 'obstacles') or 
+                    self.obstacles.check_obstacle_collision(agent_init_pos, self.margin2wall + 2))
             if is_agent_valid:
                 for i in range(self.num_targets):
                     count = 0
@@ -350,8 +343,8 @@ class WorldBase:
                                 ang_dist_range_a2t[0], ang_dist_range_a2t[1]
                             )
                             if is_target_valid:  # check the blocked condition
-                                is_no_blocked = self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos,
-                                                                                    self.margin2wall + 2)
+                                is_no_blocked = not hasattr(self, "obstacles") or \
+                                    self.obstacles.check_obstacle_block(agent_init_pos, target_init_pos, self.margin2wall + 2)
                                 is_target_valid = (self.noblock == is_no_blocked)
                         elif not self.insight:
                             target_init_pos = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
@@ -365,7 +358,8 @@ class WorldBase:
                                 is_not_insight = False
                             is_target_valid = (
                                     self.in_bound(target_init_pos) and
-                                    self.obstacles.check_obstacle_collision(target_init_pos, self.margin2wall + 2) and
+                                    (not hasattr(self, 'obstacles') or
+                                        self.obstacles.check_obstacle_collision(target_init_pos, self.margin2wall + 2)) and
                                     np.linalg.norm(target_init_pos - agent_init_pos) > self.margin and
                                     is_not_insight)
                         count += 1
@@ -428,8 +422,11 @@ class WorldBase:
         rand_r = np.random.rand() * (max_lin_dist - min_lin_dist) + min_lin_dist
         rand_xy = np.array([rand_r * np.cos(rand_ang), rand_r * np.sin(rand_ang)])
         rand_xy_global = util.transform_2d_inv(rand_xy, frame_theta, np.array(frame_xy))
-        is_valid = (self.in_bound(rand_xy_global) and self.obstacles.check_obstacle_collision(rand_xy_global,
-                                                                                              self.margin2wall + 2))
+        is_valid = (self.in_bound(rand_xy_global) and 
+            (not hasattr(self, 'obstacles') or 
+             self.obstacles.check_obstacle_collision(rand_xy_global, self.margin2wall + 2)))
+        # is_valid = (self.in_bound(rand_xy_global) and self.obstacles.check_obstacle_collision(rand_xy_global,
+        #                                                                                       self.margin2wall + 2))
         return is_valid, rand_xy_global, util.wrap_around(rand_ang + frame_theta)
 
     @abstractmethod
@@ -523,8 +520,6 @@ class WorldBase:
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
-
-class WorldBaseV2():
 
 
 if __name__ == '__main__':

@@ -8,6 +8,9 @@ from torchvision import transforms
 # Convention : VARIABLE_OBJECT_FRAME. If FRAME is omitted, it means it is with
 # respect to the global frame.
 def image_preprocess(image: np.ndarray) -> np.ndarray:
+    """
+        In HoloOcean, we get the image in OpenCV format, which is BGR format.
+    """
     # for key in images:
     #     rgb_image = images[key][:, :, :3]  # 取前 3 个通道 (H, W, 3)
     #     pil_image = Image.fromarray(rgb_image)
@@ -20,7 +23,8 @@ def image_preprocess(image: np.ndarray) -> np.ndarray:
     #     tensor_image = preprocess(pil_image)
     #     image = tensor_image.numpy()
     #     images[key] = image
-    rgb_image = image[:, :, :3]  # 取前 3 个通道 (H, W, 3)
+    bgr_image = image[:, :, :3]  # 取前 3 个通道 (H, W, 3)
+    rgb_image = bgr_image[:, :, ::-1] 
     pil_image = Image.fromarray(rgb_image)
     preprocess = transforms.Compose([
         transforms.Resize(256),

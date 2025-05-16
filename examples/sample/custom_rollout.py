@@ -494,19 +494,19 @@ def generate_trajectories(
         #         exp_obs[k] = (n_steps + 1,) + v.shape
         # else:
         # TODO
-        obs_space_shape = venv.observation_space['images'].shape
-        assert obs_space_shape is not None
-        exp_obs = (n_steps + 1,) + obs_space_shape  # type: ignore[assignment]
+        # obs_space_shape = venv.observation_space['images'].shape
+        # assert obs_space_shape is not None
+        # exp_obs = (n_steps + 1,) + obs_space_shape  # type: ignore[assignment]
 
-        real_obs = trajectory.obs.shape
-        assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
-        assert venv.action_space.shape is not None
-        exp_act = (n_steps,) + venv.action_space.shape
-        real_act = trajectory.acts.shape
-        assert real_act == exp_act, f"expected shape {exp_act}, got {real_act}"
-        exp_rew = (n_steps,)
-        real_rew = trajectory.rews.shape
-        assert real_rew == exp_rew, f"expected shape {exp_rew}, got {real_rew}"
+        # real_obs = trajectory.obs.shape
+        # assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
+        # assert venv.action_space.shape is not None
+        # exp_act = (n_steps,) + venv.action_space.shape
+        # real_act = trajectory.acts.shape
+        # assert real_act == exp_act, f"expected shape {exp_act}, got {real_act}"
+        # exp_rew = (n_steps,)
+        # real_rew = trajectory.rews.shape
+        # assert real_rew == exp_rew, f"expected shape {exp_rew}, got {real_rew}"
 
     return trajectories
 

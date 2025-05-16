@@ -282,3 +282,4 @@ if __name__ == '__main__':
     # plt.show()
 
     # env = Display2D(env, figID=0, local_view=0)
+    print("hello world")

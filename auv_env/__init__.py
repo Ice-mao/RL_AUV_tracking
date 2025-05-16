@@ -6,6 +6,8 @@ from .envs.world_auv_rgb_v1 import WorldAuvRGBV1
 from .envs.world_auv_rgb_v0 import WorldAuvRGBV0
 from .envs.world_auv_rgb_v1_sample import WorldAuvRGBV1Sample
 from .envs.world_auv_v2 import WorldAuvV2
+from .envs.world_auv_v2_sample import WorldAuvV2Sample
+from .envs.world_auv_v2_sample_custom import WorldAuvV2SampleCustom
 
 
 class TargetTracking1(TargetTrackingBase):
@@ -56,13 +58,21 @@ class AUVTracking_v2(TargetTrackingBase):
     def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
         super().__init__(WorldAuvV2, map, num_targets, show_viewport, verbose, is_training, **kwargs)
 
-# class AUVTracking_v2_sample(TargetTrackingBase):
-#     """
-#     target is an auv with map.
-#     """
+class AUVTracking_v2_sample(TargetTrackingBase):
+    """
+    target is an auv with map.
+    """
 
-#     def __init__(self, map="AUV_RGB_Dam", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
-#         super().__init__(WorldAuvRGBV1Sample, map, num_targets, show_viewport, verbose, is_training, **kwargs)
+    def __init__(self, map="AUV_RGB_Dam", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(WorldAuvV2Sample, map, num_targets, show_viewport, verbose, is_training, **kwargs)
+
+class AUVTracking_v2_sample_custom(TargetTrackingBase):
+    """
+    target is an auv with map.
+    """
+
+    def __init__(self, map="AUV_RGB_sonar", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+        super().__init__(WorldAuvV2SampleCustom, map, num_targets, show_viewport, verbose, is_training, **kwargs)
 
 def make(env_name, record=False, eval=False, ros=False, directory='../',
          t_steps=100, num_targets=1, **kwargs):
@@ -106,6 +116,10 @@ def make(env_name, record=False, eval=False, ros=False, directory='../',
         env0 = AUVTracking_v1_sample(num_targets=num_targets, **kwargs)
     elif env_name == 'AUVTracking_v2':
         env0 = AUVTracking_v2(num_targets=num_targets, **kwargs)
+    elif env_name == 'AUVTracking_v2_sample':
+        env0 = AUVTracking_v2_sample(num_targets=num_targets, **kwargs)
+    elif env_name == 'AUVTracking_v2_sample_custom':
+        env0 = AUVTracking_v2_sample_custom(num_targets=num_targets, **kwargs)
     else:
         raise ValueError('No such environment exists.')
     # 使用gym中对episode进行timestep限制的wrapper进行封装，保证环境的更新
@@ -255,19 +269,60 @@ v2_teacher_fns_render = lambda: TeachObsWrapper(make(env_name='AUVTracking_v2',
                                                   eval=True,
                                                   t_steps=200,
                                                   ))
+v2_sample_fns = lambda: make(env_name='AUVTracking_v2_sample',
+                        record=False,
+                        num_targets=1,
+                        is_training=False,
+                        eval=False,
+                        t_steps=200,
+                        map="AUV_RGB_Dam_sonar",
+                        # map="AUV_RGB_OpenWater_sonar",
+                        )
+v2_sample_custom_fns = lambda: make(env_name='AUVTracking_v2_sample_custom',
+                        record=False,
+                        num_targets=1,
+                        is_training=False,
+                        eval=False,
+                        t_steps=200,
+                        map="AUV_RGB_sonar",
+                        )
+v2_sample_teacher_fns = lambda: TeachObsWrapper(make(env_name='AUVTracking_v2_sample',
+                        record=False,
+                        show_viewport=False,
+                        num_targets=1,
+                        is_training=False,
+                        eval=False,
+                        t_steps=200,
+                        map="AUV_RGB_Dam_sonar",
+                        ))
 gym.register(
     id="v2-Teacher",
-    entry_point=v1_teacher_fns,
+    entry_point=v2_teacher_fns,
     disable_env_checker=True,
 )
 gym.register(
     id="v2-Teacher-norender",
-    entry_point=v1_teacher_fns_norender,
+    entry_point=v2_teacher_fns_norender,
     disable_env_checker=True,
 )
 gym.register(
     id="v2-Teacher-render",
-    entry_point=v1_teacher_fns_render,
+    entry_point=v2_teacher_fns_render,
+    disable_env_checker=True,
+)
+gym.register(
+    id="v2-sample-render",
+    entry_point=v2_sample_fns,
+    disable_env_checker=True,
+)
+gym.register(
+    id="v2-sample-custom-render",
+    entry_point=v2_sample_custom_fns,
+    disable_env_checker=True,
+)
+gym.register(
+    id="v2-sample-teacher-wrapper",
+    entry_point=v2_sample_teacher_fns,
     disable_env_checker=True,
 )
 

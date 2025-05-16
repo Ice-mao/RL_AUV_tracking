@@ -1,7 +1,7 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="SAC"
+policy="PPO"
 
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
@@ -9,7 +9,7 @@ if [ "$policy" == "SAC" ]; then
     python SB3_trainer.py "$@" \
     --device cuda \
     --choice 0 \
-    --env v2-Teacher \
+    --env v2-Teacher-norender \
     --policy SAC \
     --render 1 \
     --nb_envs 4 \
@@ -41,7 +41,7 @@ elif [ "$policy" == "PPO" ]; then
     python SB3_trainer.py "$@" \
         --device cuda \
         --choice 0 \
-        --env AUVTracking_rgb \
+        --env v2-Teacher-norender \
         --policy PPO \
         --render 0 \
         --nb_envs 5 \
@@ -61,10 +61,10 @@ elif [ "$policy" == "PPO" ]; then
         --value-clip 0.1 \
         --norm-adv 0 \
         \
-        --timesteps 1000000 \
+        --timesteps 2000000 \
         --batch-size 256 \
         --log-dir ../../log/teacher \
-        --resume-path /data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/PPO/01-02_13/rl_model_1840000_steps.zip \
+        --resume-path /data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/PPO/04-21_21/rl_model_1000000_steps.zip \
 
 else
     echo "Unknown policy"

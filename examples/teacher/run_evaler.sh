@@ -1,18 +1,18 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="PPO"
+policy="SAC"
 
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
     python SB3_trainer.py "$@" \
     --device cuda \
-    --choice 0 \
-    --env AUVTracking_rgb \
+    --choice 2 \
+    --env v2-Teacher-render \
     --policy SAC \
     --render 1 \
-    --nb_envs 4 \
+    --nb_envs 1 \
     --max_episode_step 200 \
     \
     --seed 41 \
@@ -33,7 +33,7 @@ if [ "$policy" == "SAC" ]; then
     --batch-size 256 \
     --test_episode 10 \
     --log-dir ../../log/teacher \
-    --resume-path /home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/SAC/01-13_12/rl_model_1240000_steps.zip \
+    --resume-path /data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/SAC/04-23_12/rl_model_1500000_steps.zip \
 
 elif [ "$policy" == "PPO" ]; then
     echo "Running testing script"
@@ -41,10 +41,10 @@ elif [ "$policy" == "PPO" ]; then
     python SB3_trainer.py "$@" \
         --device cuda \
         --choice 2 \
-        --env AUVTracking_rgb \
+        --env v2-Teacher-render \
         --policy PPO \
         --render 1 \
-        --nb_envs 5 \
+        --nb_envs 1 \
         --max_episode_step 200 \
         \
         --seed 46 \
@@ -64,7 +64,8 @@ elif [ "$policy" == "PPO" ]; then
         --timesteps 1000000 \
         --batch-size 256 \
         --log-dir ../../log/teacher \
-        --resume-path /home/dell-t3660tow/data/log/teacher/PPO/03-17_14/rl_model_1000000_steps.zip
+        --resume-path /data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/PPO/04-21_21/rl_model_1000000_steps.zip \
+
 else
     echo "Unknown policy"
 fi

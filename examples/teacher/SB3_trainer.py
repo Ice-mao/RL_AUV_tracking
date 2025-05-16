@@ -99,23 +99,28 @@ def make_callback(
     callback = CallbackList([callback, checkpoint_callback])
     return callback
 
+def create_action_noise():
+    if "v1" in args.env:
+        noise = NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.08]))
+    elif "v2" in args.env:
+        noise = NormalActionNoise(np.array([0.0, 0.0]), np.array([0.05, 0.05]))
+    return noise
 
 def learn(env, log_dir):
     # callback
     callback = make_callback(log_dir)
-
     if args.policy == 'SAC':
         policy_kwargs = dict(
             # features_extractor_class=CustomCNN,
             # features_extractor_kwargs=dict(features_dim=256),
             net_arch=dict(pi=[256, 256, 256], qf=[256, 256]),  # for AC policy
         )
+        action_noise = create_action_noise()
         model = SAC("MlpPolicy", env, verbose=1, learning_rate=args.lr, buffer_size=args.buffer_size,
                     learning_starts=args.start_timesteps, batch_size=args.batch_size, tau=args.tau, gamma=args.gamma,
                     train_freq=1, gradient_steps=1,
-                    action_noise=NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.08])),
+                    action_noise=action_noise,
                     target_update_interval=10,
-
                     policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device=args.device
                     )
         model.learn(total_timesteps=args.timesteps, tb_log_name="first_run", log_interval=5, callback=callback)
@@ -168,7 +173,7 @@ def evaluate(model_name: str):
     # 0 tracking 1 discovery 2 navagation
     METADATA.update(TTENV_EVAL_SET['Tracking'])
 
-    env = SubprocVecEnv([lambda: gym.make('Teacher-v1-render') for _ in range(1)], )
+    env = SubprocVecEnv([lambda: gym.make(args.env) for _ in range(1)], )
 
     if args.policy == 'SAC':
         model = SAC.load(model_name, device='cuda', env=env,
@@ -261,7 +266,7 @@ if __name__ == "__main__":
         if args.choice == '0':
             log_dir = os.path.join(args.log_dir, args.policy, time_string)
             os.makedirs(log_dir, exist_ok=True)
-            env = make_teacher_env('Teacher-v0-norender', args.nb_envs, log_dir+'/')
+            env = make_teacher_env(args.env, args.nb_envs, log_dir+'/')
             args.state_space = env.observation_space
             args.action_space = env.action_space
             learn(env, log_dir)
@@ -269,7 +274,7 @@ if __name__ == "__main__":
             model_name = args.resume_path
             log_dir = os.path.dirname(model_name)
             os.makedirs(log_dir, exist_ok=True)
-            env = make_teacher_env('Teacher-v0-norender', args.nb_envs, log_dir)
+            env = make_teacher_env(args.env, args.nb_envs, log_dir)
             keep_learn(env, log_dir, model_name)
 
     elif args.choice == '2':

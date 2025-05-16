@@ -310,15 +310,17 @@ class RangeFinder:
 
 
 from collections import deque
-
+from PIL import Image
+from torchvision import transforms
 
 class ImageBuffer:
-    def __init__(self, buffer_size, image_shape, time_gap):
+    def __init__(self, buffer_size, image_shape, time_gap, type="camera"):
         """
         初始化图像缓冲区
         :param buffer_size: 缓冲区最大长度
         :param image_shape: 图像的形状，例如 (3, 224, 224)
         """
+        self.type = type
         self.buffer_size = buffer_size
         self.image_shape = image_shape
         self.time_gap = time_gap
@@ -330,6 +332,36 @@ class ImageBuffer:
         self.buffer = deque([self._create_empty_image()] * self.buffer_size, maxlen=self.buffer_size)
         self.t = 0
 
+    def _image_preprocess(self, image):
+        if self.type == "camera":
+            bgr_image = image[:, :, :3]  # 取前 3 个通道 (H, W, 3)
+            rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+            resized_image = cv2.resize(rgb_image, (224, 224), interpolation=cv2.INTER_AREA)
+            image = resized_image.transpose(2, 0, 1)
+            # pil_image = Image.fromarray(rgb_image)
+            # preprocess = transforms.Compose([
+            #     transforms.Resize(224),
+            #     transforms.ToTensor(),
+            #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            # ])
+            # tensor_image = preprocess(pil_image)
+            # image = tensor_image.numpy()
+        elif self.type == "sonar":
+            sonar_data = (image * 255).astype(np.uint8)
+            image = cv2.resize(sonar_data, (128, 128), interpolation=cv2.INTER_AREA)
+            if len(image.shape) == 2:
+                return image.reshape(1, 128, 128)
+            return image
+            # pil_image = Image.fromarray(image, mode='L')
+            # preprocess = transforms.Compose([
+            #     transforms.Resize(128),
+            #     transforms.ToTensor(),
+            # ])
+            # tensor_image = preprocess(pil_image)
+            # image = tensor_image.numpy()
+        else:
+            raise ValueError("Unsupported image type")
+        return image
     def _create_empty_image(self):
         return np.zeros(self.image_shape, dtype=np.float32)
 
@@ -338,13 +370,15 @@ class ImageBuffer:
         if t == 0.0:
             self.buffer.append(image)
         if abs(t - self.t) >= self.time_gap:
-            image = util.image_preprocess(image)
+            image = self._image_preprocess(image)
             if image.shape != self.image_shape:
                 raise ValueError(f"图像形状不匹配，预期形状为 {self.image_shape}，但收到 {image.shape}")
             # else:
             #     print("get new image")
             self.t = t
             self.buffer.append(image)
+        else:
+            print(f"图像时间间隔小于 {self.time_gap}，不添加新图像")
 
     def get_buffer(self):
         """获取当前缓冲区的图像列表"""

@@ -17,7 +17,7 @@ from gymnasium import spaces
 import logging
 import copy
 
-class WorldAuvRGBV2(WorldBase):
+class WorldAuvV2(WorldBase):
     """
         different from world:target is also an auv
     """
@@ -29,7 +29,7 @@ class WorldAuvRGBV2(WorldBase):
         
     def reset(self):
         self.image_buffer.reset()
-        return super().reset()
+        return super().reset(action_dim=2)
 
     def step(self, action_waypoint):
         """
@@ -40,7 +40,7 @@ class WorldAuvRGBV2(WorldBase):
         # 归一化展开
         cmd_vel.linear.x = action_waypoint[0] * self.action_range_scale[0]
         cmd_vel.angular.z = action_waypoint[1] * self.action_range_scale[1]
-        for j in range(5):
+        for j in range(10):
             for i in range(self.num_targets):
                 target = 'target'+str(i)
                 if self.has_discovered[i]:
@@ -100,10 +100,10 @@ class WorldAuvRGBV2(WorldBase):
         # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
         state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
                                                             # [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
-                                            [0.0, -np.pi, 0.0, 0.0, 0.0]))
+                                            [0.0, -np.pi, -1.0, -1.0]))
         state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
                                                             # [self.top_corner[0], self.top_corner[1], np.pi])),
-                                            [METADATA['agent']['sensor_r'], np.pi, 1.0, 1.0, 1.0]))
+                                            [METADATA['agent']['sensor_r'], np.pi, 1.0, 1.0]))
 
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
@@ -155,17 +155,18 @@ class WorldAuvRGBV2(WorldBase):
 
         reward = reward_param["c_mean"] * r_detcov_mean + reward_param["c_std"] * r_detcov_std
         # reward_w = np.exp(-k_3 * np.abs(np.radians(self.agent.state.vec[8]))) - 1
-        reward_w = np.exp(-reward_param["k_3"] * np.abs(self.agent_w)) - 1
-        if self.agent_last_u is not None:
-            reward_a = np.exp(-reward_param["k_4"] * np.sum(np.abs(self.agent_u - self.agent_last_u))) - 1
-        else:
-            reward_a = -1
-        reward_e = np.exp(-reward_param["k_5"] * np.sum([f_i ** 2 for f_i in self.agent_u])) - 1
-        reward = reward + reward_w + reward_a + reward_e
+        # reward_w = np.exp(-reward_param["k_3"] * np.abs(self.agent_w)) - 1
+        # if self.agent_last_u is not None:
+        #     reward_a = np.exp(-reward_param["k_4"] * np.sum(np.abs(self.agent_u - self.agent_last_u))) - 1
+        # else:
+        #     reward_a = -1
+        # reward_e = np.exp(-reward_param["k_5"] * np.sum([f_i ** 2 for f_i in self.agent_u])) - 1
+        # reward = reward + reward_w + reward_a + reward_e
         if is_col:
             reward = np.min([0.0, reward]) - reward_param["c_penalty"] * 1.0
         if METADATA['render']:
-            print('reward:', reward, 'reward_w:', reward_w, 'reward_a:', reward_a, 'reward_e:', reward_e)
+            print('reward:', reward)
+            # print('reward:', reward, 'reward_w:', reward_w, 'reward_a:', reward_a, 'reward_e:', reward_e)
         return reward, False, r_detcov_mean, r_detcov_std
 
     def state_func(self, observed, action_waypoint):
@@ -191,9 +192,8 @@ class WorldAuvRGBV2(WorldBase):
         # state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
         #                           np.radians(self.agent.state.vec[8])])  # dim:3
         state_observation.extend(obstacles_pt)
-        state_observation.extend(action_waypoint.tolist())  # dim:3
+        state_observation.extend(action_waypoint.tolist())  # dim:2
         state_observation = np.array(state_observation)
-
         images = np.stack(self.image_buffer.get_buffer())
         # images = util.image_preprocess(images)
         self.obs = {'images': images, 'state': state_observation}

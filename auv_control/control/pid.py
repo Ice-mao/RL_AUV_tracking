@@ -56,9 +56,9 @@ class PID:
         self.Kd_lin_x = 0.1  # 微分增益
         
         # 角速度(angular.z)的PID参数
-        self.Kp_ang_z = 18  # 比例增益
-        self.Ki_ang_z = 0.2  # 积分增益
-        self.Kd_ang_z = 0.0  # 微分增益
+        self.Kp_ang_z = 100  # 比例增益
+        self.Ki_ang_z = 5.0  # 积分增益
+        self.Kd_ang_z = 0.5  # 微分增益
         
         # 积分项上限，防止积分饱和
         self.lin_x_int_limit = 10.0
