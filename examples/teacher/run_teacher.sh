@@ -1,13 +1,13 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="PPO"
+policy="SAC"
 
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
-    python SB3_trainer.py "$@" \
-    --device cuda \
+    python examples/teacher/SB3_trainer.py "$@" \
+    --device cuda:0 \
     --choice 0 \
     --env v2-Teacher-norender \
     --policy SAC \
@@ -38,7 +38,7 @@ if [ "$policy" == "SAC" ]; then
 elif [ "$policy" == "PPO" ]; then
     echo "Running testing script"
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
-    python SB3_trainer.py "$@" \
+    python examples/teacher/SB3_trainer.py "$@" \
         --device cuda \
         --choice 0 \
         --env v2-Teacher-norender \

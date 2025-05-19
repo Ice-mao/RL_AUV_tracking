@@ -1,3 +1,11 @@
+if __name__ == "__main__":
+    import sys
+    import os
+    import pathlib
+
+    ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent)
+    sys.path.append(ROOT_DIR)
+    
 import gymnasium as gym
 
 from stable_baselines3 import PPO, SAC

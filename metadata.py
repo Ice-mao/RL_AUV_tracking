@@ -2,7 +2,7 @@ import numpy as np
 
 # choice_list = ["METADATA_v0", "METADATA_v1", "METADATA_v1_SAMPLE",
 #    "METADATA_v2", "METADATA_v2_sample", "METADATA_v2_sample_custom"]
-choice = "METADATA_v2_sample"
+choice = "METADATA_v2"
 
 METADATA_v0 = {
     'version': 1,
@@ -229,7 +229,7 @@ METADATA_v1_SAMPLE = {
 
 METADATA_v2 = {
     'version': 1,
-    'render': True,
+    'render': False,
     'eval_fixed': False,
     # env set
     'env': {
