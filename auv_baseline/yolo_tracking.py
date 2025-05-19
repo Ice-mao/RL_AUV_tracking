@@ -1,3 +1,11 @@
+if __name__ == "__main__":
+    import sys
+    import os
+    import pathlib
+
+    ROOT_DIR = str(pathlib.Path(__file__).parent.parent)
+    sys.path.append(ROOT_DIR)
+
 import holoocean
 import numpy as np
 from numpy import linalg as LA

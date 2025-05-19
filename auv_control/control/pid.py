@@ -52,16 +52,16 @@ class PID:
         # ----------- PID控制参数 -----------#
         # 前向速度(linear.x)的PID参数
         self.Kp_lin_x = 500  # 比例增益
-        self.Ki_lin_x = 5  # 积分增益
-        self.Kd_lin_x = 0.1  # 微分增益
+        self.Ki_lin_x = 1.0  # 积分增益
+        self.Kd_lin_x = 0.5  # 微分增益
         
         # 角速度(angular.z)的PID参数
         self.Kp_ang_z = 100  # 比例增益
-        self.Ki_ang_z = 5.0  # 积分增益
+        self.Ki_ang_z = 1.0  # 积分增益
         self.Kd_ang_z = 0.5  # 微分增益
         
         # 积分项上限，防止积分饱和
-        self.lin_x_int_limit = 10.0
+        self.lin_x_int_limit = 2.0
         self.ang_z_int_limit = 5.0
         
         # 误差累积和上一次误差
@@ -97,7 +97,10 @@ class PID:
         - 推进器控制输出 (8个推进器的力)
         """
         # 提取当前速度状态
-        current_lin_x = current_state.vec[3]  # 前向速度 (body frame)
+        rotation_matrix = current_state.mat[:3, :3]
+        world_vel = current_state.vec[3:6]  # 全局坐标系速度[vx, vy, vz]
+        body_vel = rotation_matrix.T @ world_vel
+        current_lin_x = body_vel[0]  # 前向速度 vx
         current_ang_z = current_state.vec[11]  # 绕Z轴角速度
         
         # 提取目标速度
@@ -109,20 +112,16 @@ class PID:
             
         # 计算线速度误差
         lin_x_error = target_lin_x - current_lin_x
-        
+        # if abs(lin_x_error) < 0.01:
+        #     lin_x_error = 0
+            # self.lin_x_error_sum = 0
         # 计算积分项
         self.lin_x_error_sum += lin_x_error * dt
-        
         # 限制积分项，防止积分饱和
-        if self.lin_x_error_sum > self.lin_x_int_limit:
-            self.lin_x_error_sum = self.lin_x_int_limit
-        elif self.lin_x_error_sum < -self.lin_x_int_limit:
-            self.lin_x_error_sum = -self.lin_x_int_limit
-        
+        self.lin_x_error_sum = np.clip(self.lin_x_error_sum, -self.lin_x_int_limit, self.lin_x_int_limit)
         # 计算微分项
         lin_x_error_diff = (lin_x_error - self.lin_x_last_error) / dt
         self.lin_x_last_error = lin_x_error
-        
         # 计算前向PID输出
         lin_x_pid_output = (self.Kp_lin_x * lin_x_error + 
                           self.Ki_lin_x * self.lin_x_error_sum + 
@@ -130,20 +129,16 @@ class PID:
         
         # 计算角速度误差
         ang_z_error = target_ang_z - current_ang_z
-        
+        if abs(ang_z_error) < 0.005:
+            ang_z_error = 0
+            self.ang_z_error_sum = 0
         # 计算积分项
         self.ang_z_error_sum += ang_z_error * dt
-        
         # 限制积分项，防止积分饱和
-        if self.ang_z_error_sum > self.ang_z_int_limit:
-            self.ang_z_error_sum = self.ang_z_int_limit
-        elif self.ang_z_error_sum < -self.ang_z_int_limit:
-            self.ang_z_error_sum = -self.ang_z_int_limit
-        
+        self.ang_z_error_sum = np.clip(self.ang_z_error_sum, -self.ang_z_int_limit, self.ang_z_int_limit)
         # 计算微分项
         ang_z_error_diff = (ang_z_error - self.ang_z_last_error) / dt
         self.ang_z_last_error = ang_z_error
-        
         # 计算角速度PID输出
         ang_z_pid_output = (self.Kp_ang_z * ang_z_error + 
                           self.Ki_ang_z * self.ang_z_error_sum + 
@@ -167,7 +162,7 @@ class PID:
                             self.cob) * self.V * self.rho * self.gravity
         
         # 将力转换到机体坐标系
-        u_til[:3] = rotation_matrix.T @ u_til[:3]
+        # u_til[:3] = rotation_matrix.T @ u_til[:3]
         
         # 将力矩转换为推进器输出
         thruster_forces = self.Minv @ u_til

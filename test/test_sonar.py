@@ -14,8 +14,8 @@ import numpy as np
 def draw_sonar():
     #### GET SONAR CONFIG
     # scenario = "AUV_RGB_PH_sonar"
-    # scenario = "AUV_RGB_OpenWater_sonar"
-    scenario = "AUV_RGB_Dam_sonar"
+    scenario = "AUV_RGB_OpenWater_sonar"
+    # scenario = "AUV_RGB_Dam_sonar"
     # scenario = "OpenWater-HoveringImagingSonar"
     config = holoocean.packagemanager.get_scenario(scenario)
     config = config['agents'][0]['sensors'][-1]["configuration"]
@@ -45,8 +45,8 @@ def draw_sonar():
 
     #### RUN SIMULATION
     kb_cmd = KeyBoardCmd(force=30)
-    holoocean.make(scenario)
     with holoocean.make(scenario) as env:
+        env.reset()
         for i in range(100000):
             if 'q' in kb_cmd.pressed_keys:
                 break
@@ -54,6 +54,8 @@ def draw_sonar():
 
             # send to holoocean
             env.act("auv0", command)
+            env.act("target0", command)
+
             state = env.tick()
             print(state['auv0']['LocationSensor'])
 

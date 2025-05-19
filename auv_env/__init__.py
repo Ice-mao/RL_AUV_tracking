@@ -271,6 +271,7 @@ v2_teacher_fns_render = lambda: TeachObsWrapper(make(env_name='AUVTracking_v2',
                                                   ))
 v2_sample_fns = lambda: make(env_name='AUVTracking_v2_sample',
                         record=False,
+                        show_viewport=True,
                         num_targets=1,
                         is_training=False,
                         eval=False,

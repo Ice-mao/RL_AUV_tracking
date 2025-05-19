@@ -25,9 +25,9 @@ class WorldAuvV2Sample(WorldBase):
 
     def __init__(self, map, show, verbose, num_targets, **kwargs):
         self.obs = {}
-        self.left_camera_buffer = ImageBuffer(2, (3, 224, 224), time_gap=0.1, type="camera")
-        self.right_camera_buffer = ImageBuffer(2, (3, 224, 224), time_gap=0.1, type="camera")
-        self.sonar_buffer = ImageBuffer(2, (1, 128, 128), time_gap=0.1, type="sonar")
+        self.left_camera_buffer = ImageBuffer(2, (3, 224, 224), time_gap=0.05, type="camera")
+        self.right_camera_buffer = ImageBuffer(2, (3, 224, 224), time_gap=0.05, type="camera")
+        self.sonar_buffer = ImageBuffer(2, (1, 128, 128), time_gap=0.05, type="sonar")
         # define the entity
         # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
         self.map = map
@@ -105,7 +105,7 @@ class WorldAuvV2Sample(WorldBase):
         # if METADATA['eval_fixed']:
         self.agent_init_pos = np.array([30, 90, self.fix_depth])
         self.agent_init_yaw = 3.14/4
-        self.target_init_pos = np.array([32.5, 92.5, self.fix_depth-0.5])
+        self.target_init_pos = np.array([32.5, 92.5, self.fix_depth])
         self.target_init_yaw = 0.0
 
         random_pos = np.random.uniform(-1,1,3)
@@ -116,15 +116,15 @@ class WorldAuvV2Sample(WorldBase):
         print(self.target_init_pos, self.target_init_yaw)
 
         # Set the pos and tick the scenario
-        self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
-                                           rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
+        # self.ocean.agents['auv0'].teleport(location=self.agent_init_pos,
+        #                                    rotation=[0.0, 0.0, np.rad2deg(self.agent_init_yaw)])
         self.u = np.zeros(8)
         self.ocean.act("auv0", self.u)
 
         for i in range(self.num_targets):
             target = 'target' + str(i)
-            self.ocean.agents[target].teleport(location=self.target_init_pos,
-                                               rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
+            # self.ocean.agents[target].teleport(location=self.target_init_pos,
+            #                                    rotation=[0.0, 0.0, np.rad2deg(self.target_init_yaw)])
             self.target_u = np.zeros(8)
             self.ocean.act(target, self.target_u)
 
@@ -215,7 +215,7 @@ class WorldAuvV2Sample(WorldBase):
             if 'LeftCamera' in sensors['auv0']:
                 self.left_camera_buffer.add_image(sensors['auv0']['LeftCamera'], sensors['t'])
             if 'RightCamera' in sensors['auv0']:
-                self.left_camera_buffer.add_image(sensors['auv0']['RightCamera'], sensors['t'])
+                self.right_camera_buffer.add_image(sensors['auv0']['RightCamera'], sensors['t'])
             if 'ImagingSonar' in sensors['auv0']:
                 self.sonar_buffer.add_image(sensors['auv0']['ImagingSonar'], sensors['t'])
                 # self.sonar_buffer.add_image(sensors['auv0']['ImagingSonar'], 0.0)

@@ -367,12 +367,14 @@ class ImageBuffer:
 
     def add_image(self, image, t):
         """添加新图像到缓冲区"""
-        if t == 0.0:
-            self.buffer.append(image)
+        # if t == 0.0:
+        #     self.buffer.append(image)
         if abs(t - self.t) >= self.time_gap:
             image = self._image_preprocess(image)
             if image.shape != self.image_shape:
                 raise ValueError(f"图像形状不匹配，预期形状为 {self.image_shape}，但收到 {image.shape}")
+            elif self.type == "sonar":
+                print("get new sonar image")
             # else:
             #     print("get new image")
             self.t = t

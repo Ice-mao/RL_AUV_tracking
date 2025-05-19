@@ -7,3 +7,4 @@ test/
 global*
 *.pyc
 **/__pycache__/**
+*data/
