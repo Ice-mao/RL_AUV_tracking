@@ -24,7 +24,7 @@ class WorldAuvV2(WorldBase):
 
     def __init__(self, map, show, verbose, num_targets, **kwargs):
         self.obs = {}
-        self.image_buffer = ImageBuffer(5, (3, 224, 224), time_gap=0.5)
+        self.image_buffer = ImageBuffer(5, (3, 224, 224), time_gap=0.1)
         super().__init__(map, show, verbose, num_targets, **kwargs)
         
     def reset(self):
@@ -54,10 +54,10 @@ class WorldAuvV2(WorldBase):
             sensors = self.ocean.tick()
             # update
             if 'LeftCamera' in sensors['auv0']:
-                if METADATA['render']:
-                    import cv2
-                    cv2.imshow("Camera Output", sensors['auv0']['LeftCamera'][:, :, 0:3])
-                    cv2.waitKey(1)
+                # if METADATA['render']:
+                #     import cv2
+                #     cv2.imshow("Camera Output", sensors['auv0']['LeftCamera'][:, :, 0:3])
+                #     cv2.waitKey(1)
                 self.image_buffer.add_image(sensors['auv0']['LeftCamera'], sensors['t'])
             self.sensors['auv0'].update(sensors['auv0'])
             for i in range(self.num_targets):
@@ -122,8 +122,8 @@ class WorldAuvV2(WorldBase):
         :return:
         """
         # Build a robot
-        self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state,
-                              scenario=self.map, controller="PID")
+        self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state, robo_type="BlueROV",
+                              scenario=self.map, controller="PID",)
         self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
                                        , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
                                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,

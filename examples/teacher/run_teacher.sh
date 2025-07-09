@@ -1,12 +1,12 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="SAC"
+policy="PPO"
 
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
-    python examples/teacher/SB3_trainer.py "$@" \
+    python SB3_trainer.py "$@" \
     --device cuda:0 \
     --choice 0 \
     --env v2-Teacher-norender \
@@ -38,13 +38,13 @@ if [ "$policy" == "SAC" ]; then
 elif [ "$policy" == "PPO" ]; then
     echo "Running testing script"
     # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
-    python examples/teacher/SB3_trainer.py "$@" \
+    python SB3_trainer.py "$@" \
         --device cuda \
         --choice 0 \
-        --env v2-Teacher-norender \
+        --env v2-Teacher-render \
         --policy PPO \
         --render 0 \
-        --nb_envs 5 \
+        --nb_envs 2 \
         --max_episode_step 200 \
         \
         --seed 46 \
@@ -62,7 +62,7 @@ elif [ "$policy" == "PPO" ]; then
         --norm-adv 0 \
         \
         --timesteps 2000000 \
-        --batch-size 256 \
+        --batch-size 64 \
         --log-dir ../../log/teacher \
         --resume-path /data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/PPO/04-21_21/rl_model_1000000_steps.zip \
 

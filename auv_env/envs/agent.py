@@ -3,7 +3,7 @@ from auv_env.envs.tools import KeyBoardCmd, ImagingSonar, RangeFinder
 import auv_env.util as util
 
 from auv_control.estimation import InEKF
-from auv_control.control import LQR, SE2PIDController, PID
+from auv_control.control import LQR, SE2PIDController, PID, BlueROV2_PID
 from auv_control.planning import RRT_2d
 from auv_control.state import rot_to_rpy
 from auv_control import State
@@ -32,7 +32,7 @@ class Agent(object):
 
 
 class AgentAuv(Agent):
-    def __init__(self, dim, sampling_period, sensor, scenario, controller = "LQR"):
+    def __init__(self, dim, sampling_period, sensor, scenario, robo_type = "Hovering", controller = "LQR"):
         Agent.__init__(self, dim, sampling_period)
         # init the control part of Auv
         if controller == "LQR":
@@ -44,7 +44,10 @@ class AgentAuv(Agent):
             self.controller = LQR(l_p=l_p)
         elif controller == "PID":
             self.controller_choice = "PID"
-            self.controller = PID()
+            if robo_type == "Hovering":
+                self.controller = PID()
+            elif robo_type == "BlueROV":
+                self.controller = BlueROV2_PID()
         else:
             raise ValueError("Unknown controller choice")
 
@@ -303,7 +306,6 @@ class AgentAuvTarget(Agent):
     """
         use for target of HoveringAUV
     """
-
     def __init__(self, rank, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time, scene, l_p):
         Agent.__init__(self, dim, sampling_period)
         self.rank = rank

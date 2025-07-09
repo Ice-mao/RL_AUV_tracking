@@ -12,6 +12,7 @@ class KeyBoardCmd:
     """
         # 实现键盘控制的类
         for example:
+        from auv_env.envs.tools import KeyBoardCmd
         kb_cmd = KeyBoardCmd(force=10)
         if 'q' in kb_cmd.pressed_keys:
             break
@@ -379,8 +380,8 @@ class ImageBuffer:
             #     print("get new image")
             self.t = t
             self.buffer.append(image)
-        else:
-            print(f"图像时间间隔小于 {self.time_gap}，不添加新图像")
+        # else:
+        #     print(f"图像时间间隔小于 {self.time_gap}，不添加新图像")
 
     def get_buffer(self):
         """获取当前缓冲区的图像列表"""

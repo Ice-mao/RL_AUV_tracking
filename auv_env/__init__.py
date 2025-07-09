@@ -54,8 +54,9 @@ class AUVTracking_v2(TargetTrackingBase):
     """
     target is an auv with map.
     """
-
-    def __init__(self, map="AUV_RGB", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+    # TODO
+    map = "SimpleUnderwater-Bluerov2" # AUV_RGB_bluerov
+    def __init__(self, map=map, num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
         super().__init__(WorldAuvV2, map, num_targets, show_viewport, verbose, is_training, **kwargs)
 
 class AUVTracking_v2_sample(TargetTrackingBase):

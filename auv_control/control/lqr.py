@@ -7,7 +7,7 @@ class LQR:
         # ----------- PARAMETERS OF AUV -----------#
         self.gravity = 9.81
         self.cob = np.array([0, 0, 5.0]) / 100
-        self.m = 31.02
+        self.m = 11.5 # 31.02
         self.rho = 997
         self.V = self.m / self.rho
         self.J = np.eye(3) * 2
