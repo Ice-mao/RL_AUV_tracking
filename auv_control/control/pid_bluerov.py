@@ -6,43 +6,45 @@ class CmdVel:
         self.linear = type('', (), {'x': 0.0, 'y': 0.0, 'z': 0.0})()
         self.angular = type('', (), {'x': 0.0, 'y': 0.0, 'z': 0.0})()
 
-class PID:
-    # basically for HoveringROV
+class BlueROV2_PID:
     def __init__(self):
-        # ----------- 水下机器人参数 -----------#
+        # ----------- BlueROV2真实参数 -----------#
         self.gravity = 9.81
-        self.cob = np.array([0, 0, 5.0]) / 100
-        self.m = 31.02
+        self.cob = np.array([0, 0, 5.0]) / 100  # 浮心偏移
+        self.m = 11.5  # BlueROV2重量 11.5kg (来自规格表)
         self.rho = 997
         self.V = self.m / self.rho
-        self.J = np.eye(3) * 2
+        self.J = np.eye(3) * 1.0  # 较小的惯性矩阵
 
-        # 推进器位置配置
-        self.thruster_p = np.array([[18.18, -22.14, -4],
-                                   [18.18, 22.14, -4],
-                                   [-31.43, 22.14, -4],
-                                   [-31.43, -22.14, -4],
-                                   [7.39, -18.23, -0.21],
-                                   [7.39, 18.23, -0.21],
-                                   [-20.64, 18.23, -0.21],
-                                   [-20.64, -18.23, -0.21]]) / 100
+        self.thruster_p = np.array([
+            [18.18, -22.14, -4],   # 前左垂直
+            [18.18, 22.14, -4],    # 前右垂直  
+            [-31.43, 22.14, -4],   # 后右垂直
+            [-31.43, -22.14, -4],  # 后左垂直
+            [7.39, -18.23, -0.21], # 前左水平
+            [7.39, 18.23, -0.21],  # 前右水平
+            [-20.64, 18.23, -0.21],# 后右水平
+            [-20.64, -18.23, -0.21]# 后左水平
+        ]) / 100
 
         # 调整推进器位置（相对于质心）
         self.com = (self.thruster_p[0] + self.thruster_p[2]) / 2
         self.com[2] = self.thruster_p[-1][2]
         self.thruster_p -= self.com
 
-        # 推进器方向
-        self.thruster_d = np.array([[0, 0, 1],
-                                  [0, 0, 1],
-                                  [0, 0, 1],
-                                  [0, 0, 1],
-                                  [np.sqrt(2), np.sqrt(2), 0],
-                                  [np.sqrt(2), -np.sqrt(2), 0],
-                                  [np.sqrt(2), np.sqrt(2), 0],
-                                  [np.sqrt(2), -np.sqrt(2), 0]])
+        # BlueROV2推进器方向 (基于原始pid.py的配置但针对BlueROV2调整)
+        self.thruster_d = np.array([
+            [0, 0, 1],                    # 前左垂直
+            [0, 0, 1],                    # 前右垂直
+            [0, 0, 1],                    # 后右垂直
+            [0, 0, 1],                    # 后左垂直
+            [np.sqrt(2), np.sqrt(2), 0],  # 前左水平 (45度)
+            [np.sqrt(2), -np.sqrt(2), 0], # 前右水平 (45度)
+            [np.sqrt(2), np.sqrt(2), 0],  # 后右水平 (45度)
+            [np.sqrt(2), -np.sqrt(2), 0]  # 后左水平 (45度)
+        ])
 
-        # 推力分配矩阵
+        # 推力分配矩阵 (与原始pid.py相同的计算方法)
         self.M = np.zeros((6, 8))
         for i in range(8):
             self.M[:3, i] = self.thruster_d[i]
@@ -50,16 +52,16 @@ class PID:
 
         self.Minv = self.M.T @ np.linalg.inv(self.M @ self.M.T)
 
-        # ----------- PID控制参数 -----------#
-        # 前向速度(linear.x)的PID参数
-        self.Kp_lin_x = 500  # 比例增益
-        self.Ki_lin_x = 1.0  # 积分增益
-        self.Kd_lin_x = 0.5  # 微分增益
+        # ----------- PID控制参数 (大幅降低以适应BlueROV2) -----------#
+        # 前向速度(linear.x)的PID参数 - 针对BlueROV2更轻的重量调整
+        self.Kp_lin_x = 150  # 降低比例增益 (原来500)
+        self.Ki_lin_x = 0.3  # 降低积分增益 (原来1.0)
+        self.Kd_lin_x = 0.1  # 降低微分增益 (原来0.5)
         
-        # 角速度(angular.z)的PID参数
-        self.Kp_ang_z = 30  # 比例增益
-        self.Ki_ang_z = 0.2  # 积分增益
-        self.Kd_ang_z = 0.8  # 微分增益
+        # 角速度(angular.z)的PID参数 - 大幅降低避免振荡
+        self.Kp_ang_z = 10   # 大幅降低比例增益 (原来30)
+        self.Ki_ang_z = 0.05 # 大幅降低积分增益 (原来0.2)
+        self.Kd_ang_z = 0.2  # 降低微分增益 (原来0.8)
         
         # 积分项上限，防止积分饱和
         self.lin_x_int_limit = 2.0
@@ -71,8 +73,8 @@ class PID:
         self.lin_x_last_error = 0.0
         self.ang_z_last_error = 0.0
         
-        # 深度控制PID参数（可选，用于保持恒定深度）
-        self.Kp_depth = 10.0
+        # 深度控制PID参数 (适应BlueROV2的垂直推进器)
+        self.Kp_depth = 15.0  # 降低深度控制增益
         self.depth_target = None  # 初始深度目标为None
         
     def set_depth_target(self, depth):
@@ -88,16 +90,9 @@ class PID:
         
     def compute_control(self, current_state, cmd_vel):
         """
-        根据cmd_vel计算PID控制输出
-        
-        参数:
-        - current_state: 当前状态 (包含位置、速度、姿态等)
-        - cmd_vel: 包含linear.x和angular.z的目标速度
-        
-        返回:
-        - 推进器控制输出 (8个推进器的力)
+        根据cmd_vel计算PID控制输出 - 与原始pid.py相同的逻辑
         """
-        # 提取当前速度状态
+        # 提取当前速度状态 (与原始pid.py完全相同)
         rotation_matrix = current_state.mat[:3, :3]
         world_vel = current_state.vec[3:6]  # 全局坐标系速度[vx, vy, vz]
         body_vel = rotation_matrix.T @ world_vel
@@ -113,9 +108,7 @@ class PID:
             
         # 计算线速度误差
         lin_x_error = target_lin_x - current_lin_x
-        # if abs(lin_x_error) < 0.01:
-        #     lin_x_error = 0
-            # self.lin_x_error_sum = 0
+        
         # 计算积分项
         self.lin_x_error_sum += lin_x_error * dt
         # 限制积分项，防止积分饱和
@@ -145,7 +138,7 @@ class PID:
                           self.Ki_ang_z * self.ang_z_error_sum + 
                           self.Kd_ang_z * ang_z_error_diff)
         
-        # 创建六维控制向量 [Fx, Fy, Fz, Tx, Ty, Tz]
+        # 创建六维控制向量 [Fx, Fy, Fz, Tx, Ty, Tz] (与原始pid.py相同)
         u_til = np.zeros(6)
         u_til[0] = lin_x_pid_output  # X方向力 (前进/后退)
         u_til[5] = ang_z_pid_output  # Z方向力矩 (转向)
@@ -156,29 +149,18 @@ class PID:
             depth_error = self.depth_target - current_depth
             u_til[2] = self.Kp_depth * depth_error  # 简单P控制器用于深度
         
-        # 补偿浮力力矩（如果需要）
-        # 从状态中获取旋转矩阵
+        # 补偿浮力力矩 (与原始pid.py相同的逻辑)
         rotation_matrix = current_state.mat[:3, :3]
         u_til[3:] += np.cross(rotation_matrix.T @ np.array([0, 0, 1]),
                             self.cob) * self.V * self.rho * self.gravity
         
-        # 将力转换到机体坐标系
-        # u_til[:3] = rotation_matrix.T @ u_til[:3]
-        
-        # 将力矩转换为推进器输出
+        # 将力矩转换为推进器输出 (与原始pid.py相同)
         thruster_forces = self.Minv @ u_til
         
         return thruster_forces
         
     def u(self, x, cmd_vel):
         """
-        与原LQR接口兼容的方法
-        
-        参数:
-        - x: 当前状态
-        - cmd_vel: 包含linear.x和angular.z的目标速度对象
-        
-        返回:
-        - 推进器控制输出
+        与原LQR接口兼容的方法 (与原始pid.py完全相同)
         """
         return self.compute_control(x, cmd_vel)

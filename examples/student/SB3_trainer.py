@@ -14,7 +14,7 @@ import csv
 import argparse
 from policy_net import set_seed
 from auv_track_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
-from auv_track_launcher.networks import Encoder
+from tianshou_launcher.networks.student_network import Encoder
 
 # tools
 import os
@@ -261,14 +261,14 @@ if __name__ == "__main__":
         if args.choice == '0':
             log_dir = os.path.join(args.log_dir, args.policy, time_string)
             os.makedirs(log_dir, exist_ok=True)
-            env = make_student_env('Student-v0-norender', args.nb_envs, log_dir+'/')
+            env = make_student_env('v1-Student-norender', args.nb_envs, log_dir+'/')
             args.state_space = env.observation_space
             args.action_space = env.action_space
             learn(env, log_dir)
         if args.choice == '1':
             model_name = args.resume_path_model
             log_dir = os.path.dirname(model_name)
-            env = make_student_env('Student-v0-norender', args.nb_envs, log_dir)
+            env = make_student_env('v1-Student-norender', args.nb_envs, log_dir)
             keep_learn(env, log_dir, model_name)
 
     elif args.choice == '2':

@@ -1,7 +1,7 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="SAC"
+policy="PPO"
 
 if [ "$policy" == "SAC" ]; then
     echo "Running training script"
@@ -64,7 +64,7 @@ elif [ "$policy" == "PPO" ]; then
         --timesteps 1000000 \
         --batch-size 256 \
         --log-dir ../../log/teacher \
-        --resume-path /data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/PPO/04-21_21/rl_model_1000000_steps.zip \
+        --resume-path /home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/PPO/07-08_16/rl_model_670000_steps.zip \
 
 else
     echo "Unknown policy"

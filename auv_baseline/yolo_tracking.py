@@ -167,10 +167,17 @@ if __name__ == "__main__":
     env.agents['auv0'].teleport(location=[0, 0, -5], rotation=[0.0, 0.0, 0])
     env.spawn_prop('sphere', [5, 0, -5], [0, 0, 0])
     cmd_vel = CmdVel()
+    from auv_env.envs.tools import KeyBoardCmd
+    kb_cmd = KeyBoardCmd(force=10)
 
     for i in range(20000):
         # Tick environment
+        if 'q' in kb_cmd.pressed_keys:
+            break
+        command = kb_cmd.parse_keys()
+
         env.act("auv0", u)
+        env.act("target0", command)
         # env.act("target0", np.array([0, 0, 0, 500]))
         sensors = env.tick()
         if 'LeftCamera' in sensors['auv0']:

@@ -14,7 +14,8 @@ import numpy as np
 def draw_sonar():
     #### GET SONAR CONFIG
     # scenario = "AUV_RGB_PH_sonar"
-    scenario = "AUV_RGB_OpenWater_sonar"
+    # scenario = "AUV_RGB_OpenWater_sonar"
+    scenario = "SimpleUnderwater-Bluerov2"
     # scenario = "AUV_RGB_Dam_sonar"
     # scenario = "OpenWater-HoveringImagingSonar"
     config = holoocean.packagemanager.get_scenario(scenario)
@@ -54,7 +55,7 @@ def draw_sonar():
 
             # send to holoocean
             env.act("auv0", command)
-            env.act("target0", command)
+            # env.act("target0", command)
 
             state = env.tick()
             print(state['auv0']['LocationSensor'])

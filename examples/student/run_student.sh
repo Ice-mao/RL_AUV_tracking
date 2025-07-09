@@ -12,11 +12,11 @@ if [ "$policy" == "SAC" ]; then
     --env AUVTracking_rgb \
     --policy SAC \
     --render 0 \
-    --nb_envs 4 \
+    --nb_envs 2 \
     --max_episode_step 200 \
     \
     --seed 42 \
-    --buffer-size 20000 \
+    --buffer-size 5000 \
     --lr 3e-4 \
     --alpha-lr 3e-4 \
     --noise_std 0.12 \
@@ -32,7 +32,7 @@ if [ "$policy" == "SAC" ]; then
     --n-step 2 \
     --batch-size 64 \
     --test_episode 10 \
-    --log-dir /home/mengao/rl/RL_AUV_tracking/log/student \
+    --log-dir ../../log/student \
 #    --resume-path-model \
 
 elif [ "$policy" == "PPO" ]; then
