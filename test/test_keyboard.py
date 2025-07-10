@@ -55,7 +55,8 @@ class KeyBoardCmd:
 from PIL import Image
 from torchvision import transforms
 
-with holoocean.make("AUV_RGB") as env:
+scenario = "SimpleUnderwater-Bluerov2" # "AUV_RGB"
+with holoocean.make(scenario) as env:
     kb = KeyBoardCmd(force=25)
     for _ in range(20000):
         if 'q' in kb.pressed_keys:

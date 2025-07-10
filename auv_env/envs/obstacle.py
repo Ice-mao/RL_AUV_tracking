@@ -1,3 +1,10 @@
+import sys
+import os
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append(ROOT_DIR)
+os.chdir(ROOT_DIR)
+
 import math
 
 import numpy as np
@@ -93,12 +100,11 @@ class Obstacle:
         self.num_obstacles = 4
         self.res = 0.2  # m remeber to * with scale
         self.sub_center = [25 * self.res, 25 * self.res]  # m sub obstacle rotate center
-        self.sub_coordinates = [np.array([20, -65]) * self.res, np.array([20, 25]) * self.res,
-                                np.array([-70, -65]) * self.res, np.array([-70, 25]) * self.res]  # m
+        self.sub_coordinates = [np.array([20, 25]) * self.res, np.array([-70, 25]) * self.res,
+                                np.array([-70, -65]) * self.res, np.array([20, -65]) * self.res]  # m
         np.random.seed()
         self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=True)
         print(self.chosen_idx)
-        # self.chosen_idx = np.array([1,1,1,1])
         self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         self.polygons = []  # ready for collision detection
         print('finish obstacles')
@@ -111,7 +117,11 @@ class Obstacle:
         else:
             self.chosen_idx = np.array([4, 5, 0, 7])
             self.rot_angs = np.array([36.0, -72.0, -144.0, 125.99999999999999])
+        # DEBUG
+        # self.chosen_idx = np.array([1,2,3,4])
+        # self.rot_angs = [45 for _ in range(self.num_obstacles)]
         print(self.chosen_idx)
+
         self.polygons = []  # ready for collision detection
 
     def draw_obstacle(self):
@@ -139,9 +149,9 @@ class Obstacle:
                 self.polygons.append(Polygon(points))
 
                 # 使用边框点的中心作为3D障碍物的位置
-                center_x = (points[0][0] + points[1][0] + points[2][0] + points[3][0]) / 4
-                center_y = (points[0][1] + points[1][1] + points[2][1] + points[3][1]) / 4
-                loc = np.array([center_x, center_y, self.fix_depth])
+                loc_center = rotate_point(obstacle['center'][j], self.sub_center, self.rot_angs[i])
+                loc = loc_center + np.array(self.sub_coordinates[i])
+                loc = np.append(loc, self.fix_depth)
                 
                 # 使用与边框相同的坐标，不进行任何翻转
                 # loc[0] *= -1  # 注释掉x坐标翻转
@@ -149,7 +159,7 @@ class Obstacle:
                 _scale = [obstacle['scale'][j][0] * self.res, obstacle['scale'][j][1] * self.res,
                           obstacle['scale'][j][2] * 3]
                 self.env.spawn_prop(prop_type="box", scale=_scale, location=loc.tolist(),
-                                    rotation=[np.tan(np.radians(-self.rot_angs[i])), 1, 0],  # it's annoy to be pitch?
+                                    rotation=[np.tan(np.radians(self.rot_angs[i])), 1, 0],  # it's annoy to be pitch?
                                     # rotation=[0, 1, 0],
                                     material='gold')
 
@@ -190,3 +200,36 @@ class Obstacle:
                 if line.intersects(polygon):
                     return False  # blocked
         return True
+    
+if __name__ == "__main__":
+    import holoocean
+    import numpy as np
+    import time
+
+    with holoocean.make("SimpleUnderwater-Bluerov2") as env:
+        obstacle = Obstacle(env, fix_depth=-5)
+        obstacle.reset()
+        obstacle.draw_obstacle()
+        # # Define the properties of the box to be spawned
+        # scale = [3, 1, 2]
+        # location = [10, 0, -5]
+        
+        # # angle from 0 to 360 degrees, changing over time
+        # rot_angs = 30/180 * 3.1415
+        
+        # # HoloOcean uses Roll, Pitch, Yaw in degrees for rotation
+        # # rotation = [np.tan(np.radians(rot_angs)), 1, 0]
+        # rotation = [0,0, rot_angs]  # Use this if you want to keep the original yaw angle
+
+        # env.draw_line([0,0,-5], [10, 10, -5], thickness=5.0, lifetime=0.0)
+        # env.spawn_prop(prop_type="box", 
+        #                 scale=scale, 
+        #                 location=location,
+        #                 rotation=rotation,
+        #                 material='gold')
+        
+        # print(f"Spawned box at location={location}, rotation (roll, pitch, yaw)={rotation}")
+        
+        # Tick the environment to update
+        while True:
+            env.tick()
