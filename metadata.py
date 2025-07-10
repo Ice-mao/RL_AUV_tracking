@@ -463,7 +463,7 @@ METADATA = {"METADATA_v0": METADATA_v0, "METADATA_v1": METADATA_v1, "METADATA_v1
             "METADATA_v2": METADATA_v2, "METADATA_v2_sample": METADATA_v2_sample, "METADATA_v2_sample_custom": METADATA_v2_sample_custom}
 METADATA = METADATA[choice]
 
-TTENV_EVAL_SET = {
+EVAL_SET = {
     'Tracking':
         {
             'is_training': False,
@@ -502,17 +502,6 @@ TTENV_EVAL_SET = {
             'target_move': 0.0,
         }
 }
-
-TTENV_EVAL_MULTI_SET = [
-    {
-        'lin_dist_range_a2b': (3.0, 10.0),
-        'ang_dist_range_a2b': (-np.pi, np.pi),
-        'lin_dist_range_b2t': (0.0, 3.0),
-        'ang_dist_range_b2t': (-np.pi / 2, np.pi / 2),
-        'blocked': None,
-        'const_q': 0.02,
-    }
-]
 
 # METADATA.update(TTENV_EVAL_SET[2])
 print('test')

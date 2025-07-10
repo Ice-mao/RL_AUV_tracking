@@ -17,7 +17,7 @@ from gymnasium import spaces
 import logging
 import copy
 
-class WorldAuvRGBV1(WorldBase):
+class WorldAuvV1(WorldBase):
     """
         different from world:target is also an auv
     """

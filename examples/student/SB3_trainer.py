@@ -14,7 +14,7 @@ import csv
 import argparse
 from policy_net import set_seed
 from auv_track_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
-from tianshou_launcher.networks.student_network import Encoder
+from auv_track_launcher.networks.student_network import Encoder
 
 # tools
 import os

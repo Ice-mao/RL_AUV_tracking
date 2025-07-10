@@ -177,9 +177,9 @@ def evaluate(model_name: str):
     :param model_name:
     :return:
     """
-    from metadata import TTENV_EVAL_SET
+    from metadata import EVAL_SET
     # 0 tracking 1 discovery 2 navagation
-    METADATA.update(TTENV_EVAL_SET['Tracking'])
+    METADATA.update(EVAL_SET['Tracking'])
 
     env = SubprocVecEnv([lambda: gym.make(args.env) for _ in range(1)], )
 
@@ -203,9 +203,9 @@ def eval_greedy(model_dir):
     :param model_dir:
     :return:
     """
-    from metadata import TTENV_EVAL_SET
+    from metadata import EVAL_SET
     # 0 tracking 1 discovery 2 navagation
-    METADATA.update(TTENV_EVAL_SET[0])
+    METADATA.update(EVAL_SET[0])
     env = auv_env.make(args.env,
                        render=args.render,
                        record=args.record,
@@ -248,22 +248,10 @@ def eval_greedy(model_dir):
 
 def env_test():
     "3"
-    model_dir = '../models/test'
-    env = auv_env.make(args.env,
-                       render=args.render,
-                       record=args.record,
-                       ros=args.ros,
-                       directory=model_dir,
-                       num_targets=args.nb_targets,
-                       map=args.map,
-                       eval=True,
-                       is_training=False,
-                       t_steps=args.max_episode_step
-                       )
+    env = gym.make(args.env)
     obs, _ = env.reset()
     while True:
         action = env.action_space.sample()
-        action = np.array([1.0, 0.0, 0.5])
         print(action)
         obs, reward, done, _, inf = env.step(action)
 

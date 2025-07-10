@@ -43,7 +43,7 @@ elif [ "$policy" == "PPO" ]; then
         --choice 0 \
         --env v2-Teacher-render \
         --policy PPO \
-        --render 0 \
+        --render 1 \
         --nb_envs 2 \
         --max_episode_step 200 \
         \

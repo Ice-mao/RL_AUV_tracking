@@ -7,9 +7,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
-from tianshou_launcher.networks.tcn import TemporalConvNet
+from auv_track_launcher.networks.tcn import TemporalConvNet
 
-from tianshou_launcher import utils
+from auv_track_launcher import utils
 
 
 class RandomShiftsAug(nn.Module):
@@ -50,7 +50,7 @@ class EncoderResNet(nn.Module):
     def __init__(self, encoder_dim=64):
         super(EncoderResNet, self).__init__()
         # 加载预训练的 ResNet-50 模型
-        resnet = models.resnet18('IMAGENET1K_V1')
+        resnet = models.resnet50('IMAGENET1K_V1')
         # 去掉最后的全连接层，保留到倒数第二层
         self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1]) # 去掉 fc 层
         self.fc = nn.Linear(in_features=512, out_features=encoder_dim, bias=True)
