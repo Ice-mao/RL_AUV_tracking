@@ -34,7 +34,8 @@ def rotate_point(point, center, angle):
                                 [np.cos(angle_rad), -np.sin(angle_rad)]])
     # rotation_matrix = np.array([[np.cos(angle_rad), np.sin(angle_rad)],
     #                             [-np.sin(angle_rad), -np.cos(angle_rad)]])
-
+    # rotation_matrix = np.array([[np.cos(angle_rad), -np.sin(angle_rad)],
+    #                             [np.sin(angle_rad), -np.cos(angle_rad)]])
     # 计算旋转后的偏移量
     new_offset = np.dot(rotation_matrix, offset)
 
@@ -137,14 +138,19 @@ class Obstacle:
                                        thickness=5.0, lifetime=0.0)
                 self.polygons.append(Polygon(points))
 
-                loc_center = rotate_point(obstacle['center'][j], self.sub_center, self.rot_angs[i])
-                loc = loc_center + np.array(self.sub_coordinates[i])
-                loc = np.append(loc, self.fix_depth)
-                loc[1] *= -1
+                # 使用边框点的中心作为3D障碍物的位置
+                center_x = (points[0][0] + points[1][0] + points[2][0] + points[3][0]) / 4
+                center_y = (points[0][1] + points[1][1] + points[2][1] + points[3][1]) / 4
+                loc = np.array([center_x, center_y, self.fix_depth])
+                
+                # 使用与边框相同的坐标，不进行任何翻转
+                # loc[0] *= -1  # 注释掉x坐标翻转
+                # loc[1] *= -1  # 注释掉y坐标翻转
                 _scale = [obstacle['scale'][j][0] * self.res, obstacle['scale'][j][1] * self.res,
                           obstacle['scale'][j][2] * 3]
                 self.env.spawn_prop(prop_type="box", scale=_scale, location=loc.tolist(),
                                     rotation=[np.tan(np.radians(-self.rot_angs[i])), 1, 0],  # it's annoy to be pitch?
+                                    # rotation=[0, 1, 0],
                                     material='gold')
 
     def check_obstacle_collision(self, point, margin):

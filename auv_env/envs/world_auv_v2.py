@@ -127,7 +127,7 @@ class WorldAuvV2(WorldBase):
         self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
                                        , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
                                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
-                                       l_p=METADATA['target']['lqr_l_p'])
+                                       l_p=METADATA['target']['lqr_l_p'], robo_type="BlueROV")
                         for i in range(self.num_targets)]
         # Build target beliefs.
         if METADATA['target']['random']:

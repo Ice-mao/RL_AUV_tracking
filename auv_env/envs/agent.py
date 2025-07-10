@@ -306,7 +306,8 @@ class AgentAuvTarget(Agent):
     """
         use for target of HoveringAUV
     """
-    def __init__(self, rank, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time, scene, l_p):
+    def __init__(self, rank, dim, sampling_period, sensor, obstacles, fixed_depth, size, bottom_corner, start_time, scene, l_p,
+                 robo_type="Hovering"):
         Agent.__init__(self, dim, sampling_period)
         self.rank = rank
         self.size = size
@@ -317,9 +318,15 @@ class AgentAuvTarget(Agent):
         # init the part of Auv
         if METADATA['target']['random']:
             data = [20, 30, 40, 50, 60, 80, 100, 120, 150, 180, 200, 250]
-            self.controller = LQR(l_p=np.random.choice(data), l_v=0.001)
+            if robo_type == "Hovering":
+                self.controller = LQR(l_p=np.random.choice(data), l_v=0.001, robo_type="Hovering")
+            elif robo_type == "BlueROV":
+                self.controller = LQR(l_p=np.random.choice(data), l_v=0.001, robo_type="BlueROV")
         else:
-            self.controller = LQR(l_p=l_p, l_v=0.001)
+            if robo_type == "Hovering":
+                self.controller = LQR(l_p=l_p, l_v=0.001, robo_type="Hovering")
+            elif robo_type == "BlueROV":
+                self.controller = LQR(l_p=l_p, l_v=0.001, robo_type="BlueROV")
         self.state = State(sensor)
         # init planner rrt
         self.init_pos = self.state.vec[:3]

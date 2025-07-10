@@ -3,11 +3,16 @@ from scipy.linalg import solve_continuous_are
 
 
 class LQR:
-    def __init__(self, l_p=50, l_v=0.01):
+    def __init__(self, l_p=50, l_v=0.01, robo_type="Hovering"):
         # ----------- PARAMETERS OF AUV -----------#
         self.gravity = 9.81
         self.cob = np.array([0, 0, 5.0]) / 100
-        self.m = 11.5 # 31.02
+        if robo_type == "Hovering":
+            self.m = 31.02  # 31.02 kg
+        elif robo_type == "BlueROV":
+            self.m = 11.5
+        else:
+            raise ValueError("Unknown robot type. Use 'Hovering' or 'BlueROV'.")
         self.rho = 997
         self.V = self.m / self.rho
         self.J = np.eye(3) * 2

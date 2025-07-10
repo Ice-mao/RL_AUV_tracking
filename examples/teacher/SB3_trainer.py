@@ -191,7 +191,7 @@ def evaluate(model_name: str):
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     
     obs = env.reset()
-    for _ in range(500):
+    for _ in range(50000):
         action, _ = model.predict(obs, deterministic=True)
         print(action)
         obs, reward, dones, inf = env.step(action)
