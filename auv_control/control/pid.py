@@ -8,25 +8,58 @@ class CmdVel:
 
 class PID:
     # basically for HoveringROV
-    def __init__(self):
+    def __init__(self, robo_type="HoveringAUV"):
         # ----------- 水下机器人参数 -----------#
         self.gravity = 9.81
         self.cob = np.array([0, 0, 5.0]) / 100
-        self.m = 31.02
         self.rho = 997
-        self.V = self.m / self.rho
-        self.J = np.eye(3) * 2
 
-        # 推进器位置配置
-        self.thruster_p = np.array([[18.18, -22.14, -4],
-                                   [18.18, 22.14, -4],
-                                   [-31.43, 22.14, -4],
-                                   [-31.43, -22.14, -4],
-                                   [7.39, -18.23, -0.21],
-                                   [7.39, 18.23, -0.21],
-                                   [-20.64, 18.23, -0.21],
-                                   [-20.64, -18.23, -0.21]]) / 100
+        # 不同的机器人参数
+        if robo_type == "HoveringAUV":
+            self.m = 31.02
+            self.thruster_p = np.array([[18.18, -22.14, -4],
+                                    [18.18, 22.14, -4],
+                                    [-31.43, 22.14, -4],
+                                    [-31.43, -22.14, -4],
+                                    [7.39, -18.23, -0.21],
+                                    [7.39, 18.23, -0.21],
+                                    [-20.64, 18.23, -0.21],
+                                    [-20.64, -18.23, -0.21]]) / 100
+            self.J = np.eye(3) * 2
+            # PID gains for HoveringAUV
+            self.Kp_lin_x = 500
+            self.Ki_lin_x = 1.0
+            self.Kd_lin_x = 0.5
+            self.Kp_ang_z = 30
+            self.Ki_ang_z = 0.2
+            self.Kd_ang_z = 0.8
+            self.Kp_depth = 10.0
 
+        elif robo_type == "BlueROV2":
+            self.m = 11.5
+            self.thruster_p = np.array([
+                [18.18, -22.14, -4],
+                [18.18, 22.14, -4], 
+                [-31.43, 22.14, -4],
+                [-31.43, -22.14, -4],
+                [7.39, -18.23, -0.21],
+                [7.39, 18.23, -0.21],
+                [-20.64, 18.23, -0.21],
+                [-20.64, -18.23, -0.21]
+            ]) / 100
+            self.J = np.eye(3) * 1.0
+            # PID gains for BlueROV2
+            self.Kp_lin_x = 150
+            self.Ki_lin_x = 0.3
+            self.Kd_lin_x = 0.1
+            self.Kp_ang_z = 10
+            self.Ki_ang_z = 0.05
+            self.Kd_ang_z = 0.2
+            self.Kp_depth = 15.0
+        else:
+            raise ValueError(f"Unknown robo_type: {robo_type}")
+        
+        self.V = self.m / self.rho # volume
         # 调整推进器位置（相对于质心）
         self.com = (self.thruster_p[0] + self.thruster_p[2]) / 2
         self.com[2] = self.thruster_p[-1][2]
@@ -51,16 +84,6 @@ class PID:
         self.Minv = self.M.T @ np.linalg.inv(self.M @ self.M.T)
 
         # ----------- PID控制参数 -----------#
-        # 前向速度(linear.x)的PID参数
-        self.Kp_lin_x = 500  # 比例增益
-        self.Ki_lin_x = 1.0  # 积分增益
-        self.Kd_lin_x = 0.5  # 微分增益
-        
-        # 角速度(angular.z)的PID参数
-        self.Kp_ang_z = 30  # 比例增益
-        self.Ki_ang_z = 0.2  # 积分增益
-        self.Kd_ang_z = 0.8  # 微分增益
-        
         # 积分项上限，防止积分饱和
         self.lin_x_int_limit = 2.0
         self.ang_z_int_limit = 2.0
@@ -72,7 +95,6 @@ class PID:
         self.ang_z_last_error = 0.0
         
         # 深度控制PID参数（可选，用于保持恒定深度）
-        self.Kp_depth = 10.0
         self.depth_target = None  # 初始深度目标为None
         
     def set_depth_target(self, depth):

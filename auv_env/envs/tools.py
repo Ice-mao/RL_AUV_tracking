@@ -4,7 +4,6 @@ from pynput import keyboard
 # import keyboard
 import matplotlib.pyplot as plt
 import cv2
-from metadata import METADATA
 from auv_env import util
 
 
@@ -51,11 +50,11 @@ class KeyBoardCmd:
         if 'k' in self.pressed_keys:
             command[0:4] -= self.force
         if 'j' in self.pressed_keys:
-            command[[4, 7]] += self.force / 2
-            command[[5, 6]] -= self.force / 2
+            command[[4, 7]] += self.force / 4
+            command[[5, 6]] -= self.force / 4
         if 'l' in self.pressed_keys:
-            command[[4, 7]] -= self.force / 2
-            command[[5, 6]] += self.force / 2
+            command[[4, 7]] -= self.force / 4
+            command[[5, 6]] += self.force / 4
 
         if 'w' in self.pressed_keys:
             command[4:8] += self.force
@@ -220,19 +219,20 @@ class RangeFinder:
         Returns distances to nearest collisions in the directions specified by the parameters.
     """
 
-    def __init__(self, scenario):
+    def __init__(self, scenario, config):
         # init config
-        config = holoocean.packagemanager.get_scenario(scenario)
+        self.config = config
+        config_ho = holoocean.packagemanager.get_scenario(scenario)
         self.LaserMaxDistance = 1
         self.LaserCount = 1
         self.LaserDebug = 1
-        for sensor in config['agents'][0]['sensors']:
+        for sensor in config_ho['agents'][0]['sensors']:
             if 'sensor_type' in sensor:
                 if sensor['sensor_type'] == 'RangeFinderSensor':
-                    config = sensor["configuration"]
-                    self.LaserMaxDistance = config['LaserMaxDistance']
-                    self.LaserCount = config['LaserCount']
-                    self.LaserDebug = config['LaserDebug']
+                    config_ho = sensor["configuration"]
+                    self.LaserMaxDistance = config_ho['LaserMaxDistance']
+                    self.LaserCount = config_ho['LaserCount']
+                    self.LaserDebug = config_ho['LaserDebug']
         self.min_distance = self.LaserMaxDistance
         self.min_angle = 0
         self.azi = int(self.LaserCount / 3)
@@ -241,7 +241,7 @@ class RangeFinder:
         self.get_scan = False
 
     def update(self, state):
-        if not METADATA['agent']['use_sonar']:
+        if not self.config['agent']['use_sonar']:
             self.get_scan = False
             if 'RangeFinderSensor' in state:
                 self.get_scan = True
@@ -314,92 +314,107 @@ from collections import deque
 from PIL import Image
 from torchvision import transforms
 
-class ImageBuffer:
-    def __init__(self, buffer_size, image_shape, time_gap, type="camera"):
+class BaseImageBuffer:
+    """
+    Base class for an image buffer that handles common buffer logic.
+    """
+    def __init__(self, buffer_size, image_shape, time_gap):
         """
-        初始化图像缓冲区
-        :param buffer_size: 缓冲区最大长度
-        :param image_shape: 图像的形状，例如 (3, 224, 224)
+        Initializes the image buffer.
+        :param buffer_size: The maximum length of the buffer.
+        :param image_shape: The shape of the images, e.g., (3, 224, 224).
+        :param time_gap: The minimum time interval to accept a new image.
         """
-        self.type = type
+        if not isinstance(image_shape, tuple) or len(image_shape) != 3:
+            raise ValueError("image_shape must be a tuple containing (channels, height, width)")
+            
         self.buffer_size = buffer_size
         self.image_shape = image_shape
         self.time_gap = time_gap
-        # 创建固定长度的队列，初始化为指定形状的空图像
         self.buffer = deque([self._create_empty_image()] * self.buffer_size, maxlen=self.buffer_size)
         self.t = 0
+
+    def _create_empty_image(self):
+        return np.zeros(self.image_shape, dtype=np.uint8)
 
     def reset(self):
         self.buffer = deque([self._create_empty_image()] * self.buffer_size, maxlen=self.buffer_size)
         self.t = 0
 
-    def _image_preprocess(self, image):
-        if self.type == "camera":
-            bgr_image = image[:, :, :3]  # 取前 3 个通道 (H, W, 3)
-            rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
-            resized_image = cv2.resize(rgb_image, (224, 224), interpolation=cv2.INTER_AREA)
-            image = resized_image.transpose(2, 0, 1)
-            # pil_image = Image.fromarray(rgb_image)
-            # preprocess = transforms.Compose([
-            #     transforms.Resize(224),
-            #     transforms.ToTensor(),
-            #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            # ])
-            # tensor_image = preprocess(pil_image)
-            # image = tensor_image.numpy()
-        elif self.type == "sonar":
-            sonar_data = (image * 255).astype(np.uint8)
-            image = cv2.resize(sonar_data, (128, 128), interpolation=cv2.INTER_AREA)
-            if len(image.shape) == 2:
-                return image.reshape(1, 128, 128)
-            return image
-            # pil_image = Image.fromarray(image, mode='L')
-            # preprocess = transforms.Compose([
-            #     transforms.Resize(128),
-            #     transforms.ToTensor(),
-            # ])
-            # tensor_image = preprocess(pil_image)
-            # image = tensor_image.numpy()
-        else:
-            raise ValueError("Unsupported image type")
-        return image
-    def _create_empty_image(self):
-        return np.zeros(self.image_shape, dtype=np.float32)
+    def _preprocess(self, image):
+        """
+        Abstract method for preprocessing an image. Subclasses must implement this.
+        Should return a numpy array of shape self.image_shape and dtype uint8.
+        """
+        raise NotImplementedError("Subclasses must implement the _preprocess method")
 
     def add_image(self, image, t):
-        """添加新图像到缓冲区"""
-        # if t == 0.0:
-        #     self.buffer.append(image)
+        """
+        Preprocesses and adds an image to the buffer if the time gap condition is met.
+        :param image: The raw image data.
+        :param t: The timestamp of the image.
+        """
         if abs(t - self.t) >= self.time_gap:
-            image = self._image_preprocess(image)
-            if image.shape != self.image_shape:
-                raise ValueError(f"图像形状不匹配，预期形状为 {self.image_shape}，但收到 {image.shape}")
-            elif self.type == "sonar":
-                print("get new sonar image")
-            # else:
-            #     print("get new image")
+            processed_image = self._preprocess(image)
             self.t = t
-            self.buffer.append(image)
-        # else:
-        #     print(f"图像时间间隔小于 {self.time_gap}，不添加新图像")
+            self.buffer.append(processed_image)
 
     def get_buffer(self):
-        """获取当前缓冲区的图像列表"""
         return list(self.buffer)
 
-    def __repr__(self):
-        """打印缓冲区状态"""
-        return f"ImageBuffer(buffer_size={self.buffer_size}, filled={len(self.buffer)})"
+class CameraBuffer(BaseImageBuffer):
+    """A buffer for storing and processing camera images."""
+    def __init__(self, buffer_size=5, image_shape=(3, 224, 224), time_gap=0.1):
+        super().__init__(buffer_size, image_shape, time_gap)
+
+    def _preprocess(self, image):
+        """
+        Preprocesses a camera image:
+        1. Extracts BGR channels.
+        2. Converts BGR to RGB.
+        3. Resizes the image.
+        4. Converts to uint8.
+        5. Transposes dimensions to (C, H, W).
+        """
+        bgr_image = image[:, :, :3]
+        rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+        resized_image = cv2.resize(rgb_image, (self.image_shape[2], self.image_shape[1]), interpolation=cv2.INTER_AREA)
+        # Ensure the type is uint8
+        uint8_image = resized_image.astype(np.uint8)
+        # Transpose from HWC to CHW
+        return uint8_image.transpose(2, 0, 1)
+
+class SonarBuffer(BaseImageBuffer):
+    """A buffer for storing and processing sonar images."""
+    def __init__(self, buffer_size=5, image_shape=(1, 128, 128), time_gap=0.1):
+        super().__init__(buffer_size, image_shape, time_gap)
+
+    def _preprocess(self, image):
+        """
+        Preprocesses a sonar image:
+        1. Converts float data to the 0-255 range.
+        2. Resizes the image.
+        3. Ensures it is a single-channel grayscale image.
+        4. Converts to uint8.
+        5. Ensures the shape is (1, H, W).
+        """
+        # Assuming the input is a float from 0-1
+        sonar_data = (image * 255).astype(np.uint8)
+        resized_image = cv2.resize(sonar_data, (self.image_shape[2], self.image_shape[1]), interpolation=cv2.INTER_AREA)
+        
+        if len(resized_image.shape) == 2:
+            # Add the channel dimension
+            return np.expand_dims(resized_image, axis=0).astype(np.uint8)
+        elif len(resized_image.shape) == 3 and resized_image.shape[2] == 1:
+             # Transpose from H, W, C -> C, H, W
+            return resized_image.transpose(2, 0, 1).astype(np.uint8)
+        else:
+            raise ValueError(f"Sonar image should be single-channel, but received shape {resized_image.shape}")
 
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
-"""
-    绘图类的使用
-"""
-
-
 class Plotter:
     def __init__(self, names):
         # Where all the data is stored
@@ -461,17 +476,53 @@ class Plotter:
         self.fig.canvas.flush_events()
 
 if __name__=='__main__':
-    # 初始化图像缓冲区
-    buffer_size = 5
-    image_shape = (3, 224, 224)  # 假设每张图像为 (3, 224, 224)
-    buffer = ImageBuffer(buffer_size, image_shape)
+    # --- CameraBuffer 示例 ---
+    print("--- 测试 CameraBuffer ---")
+    cam_buffer_size = 5
+    cam_image_shape = (3, 224, 224)
+    cam_buffer = CameraBuffer(cam_buffer_size, cam_image_shape, time_gap=0.1)
 
-    # 查看初始状态（缓冲区为空）
-    print(buffer.get_buffer())  # 输出 5 个空图像（全 0）
+    # 查看初始状态
+    print(f"初始状态: {cam_buffer}")
+    initial_cam_images = cam_buffer.get_buffer()
+    print(f"初始缓冲区中有 {len(initial_cam_images)} 张图像")
+    print(f"第一张空图像的形状: {initial_cam_images[0].shape}, 类型: {initial_cam_images[0].dtype}")
 
-    # 添加一些随机图像
-    for i in range(7):  # 插入 7 张图像，超出缓冲区大小
-        new_image = np.random.uniform(-1, 1, image_shape).astype(np.float32)
-        buffer.add_image(new_image)
-        print(f"添加第 {i + 1} 张图像")
-        print(buffer.get_buffer())  # 每次查看缓冲区状态
+    # 添加一些随机相机图像 (模拟 HoloOcean RGBA 输出)
+    for i in range(7):
+        # 模拟一个 480x640 的 4 通道图像
+        new_cam_image = np.random.randint(0, 256, (480, 640, 4), dtype=np.uint8)
+        cam_buffer.add_image(new_cam_image, t=i * 0.1)
+        print(f"添加第 {i + 1} 张相机图像后: {cam_buffer}")
+
+    final_cam_images = cam_buffer.get_buffer()
+    print(f"\n最终相机缓冲区中有 {len(final_cam_images)} 张图像")
+    print(f"最后一幅图像的形状: {final_cam_images[-1].shape}, 类型: {final_cam_images[-1].dtype}")
+    assert final_cam_images[-1].shape == cam_image_shape
+    assert final_cam_images[-1].dtype == np.uint8
+    print("-" * 25)
+
+    # --- SonarBuffer 示例 ---
+    print("\n--- 测试 SonarBuffer ---")
+    sonar_buffer_size = 4
+    sonar_image_shape = (1, 128, 128)
+    sonar_buffer = SonarBuffer(sonar_buffer_size, sonar_image_shape, time_gap=0.2)
+
+    # 查看初始状态
+    print(f"初始状态: {sonar_buffer}")
+    initial_sonar_images = sonar_buffer.get_buffer()
+    print(f"初始缓冲区中有 {len(initial_sonar_images)} 张图像")
+    print(f"第一张空图像的形状: {initial_sonar_images[0].shape}, 类型: {initial_sonar_images[0].dtype}")
+
+    # 添加一些随机声呐图像 (模拟 0-1 浮点数输出)
+    for i in range(6):
+        new_sonar_image = np.random.rand(256, 256) # 模拟原始声呐数据
+        sonar_buffer.add_image(new_sonar_image, t=i * 0.2)
+        print(f"添加第 {i + 1} 张声呐图像后: {sonar_buffer}")
+
+    final_sonar_images = sonar_buffer.get_buffer()
+    print(f"\n最终声呐缓冲区中有 {len(final_sonar_images)} 张图像")
+    print(f"最后一幅图像的形状: {final_sonar_images[-1].shape}, 类型: {final_sonar_images[-1].dtype}")
+    assert final_sonar_images[-1].shape == sonar_image_shape
+    assert final_sonar_images[-1].dtype == np.uint8
+    print("-" * 25)

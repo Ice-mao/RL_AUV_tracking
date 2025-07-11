@@ -2,7 +2,6 @@ import holoocean
 import numpy as np
 from numpy import linalg as LA
 from auv_env import util
-from metadata import METADATA
 import copy
 
 
@@ -12,9 +11,9 @@ class Greedy:
         a one-step next-best-view planner
     """
 
-    def __init__(self, env):
-        self.action_space = env.action_space
-        self.world = env.world
+    def __init__(self, world):
+        self.world = world
+        self.action_space = world.action_space
         self.N_nbv = 50  # select the num of sample points.
 
     def predict(self, obs):
@@ -54,6 +53,12 @@ class Greedy:
                 best_viewpoint = random_action_waypoint
         return best_viewpoint
 
+    def get_action(self, obs):
+        """
+        Alias for predict to be consistent with SB3 model API.
+        """
+        return self.predict(obs)
+
     def observe_and_update_belief(self, global_waypoint):
         observed = []
         cov = self.world.belief_targets[0].cov
@@ -88,8 +93,12 @@ class Greedy:
             z += np.random.multivariate_normal(np.zeros(2, ), self.world.observation_noise(z))  # 加入噪声
         return observed, z
 
-    def get_reward(self, is_col, c_mean=METADATA['c_mean'], c_std=METADATA['c_std'],
-                   c_penalty=METADATA['c_penalty'], k_3=METADATA['k_3'], k_4=METADATA['k_4'], k_5=METADATA['k_5']):
+    def get_reward(self, is_col):
+        reward_param = self.world.config['reward_param']
+        c_mean = reward_param['c_mean']
+        c_std = reward_param['c_std']
+        c_penalty = reward_param['c_penalty']
+
         detcov = [LA.det(self.cov)]
         r_detcov_mean = - np.mean(np.log(detcov))
         r_detcov_std = - np.std(np.log(detcov))

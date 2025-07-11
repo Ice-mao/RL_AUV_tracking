@@ -5,10 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import auv_env
 import numpy as np
 import gym
-from gym import spaces
 from tianshou.utils.net.common import SpaceInfo
-
-from auv_track_launcher.wrapper import TeachObsWrapper
 
 
 if __name__ == '__main__':

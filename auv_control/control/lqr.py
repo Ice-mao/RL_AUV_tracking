@@ -3,29 +3,38 @@ from scipy.linalg import solve_continuous_are
 
 
 class LQR:
-    def __init__(self, l_p=50, l_v=0.01, robo_type="Hovering"):
+    def __init__(self, l_p=50, l_v=0.01, robo_type="HoveringAUV"):
         # ----------- PARAMETERS OF AUV -----------#
         self.gravity = 9.81
         self.cob = np.array([0, 0, 5.0]) / 100
-        if robo_type == "Hovering":
+        if robo_type == "HoveringAUV":
             self.m = 31.02  # 31.02 kg
-        elif robo_type == "BlueROV":
+            self.thruster_p = np.array([[18.18, -22.14, -4],
+                            [18.18, 22.14, -4],
+                            [-31.43, 22.14, -4],  # First element should be -31.43
+                            [-31.43, -22.14, -4],  # First element should be -31.43
+                            [7.39, -18.23, -0.21],  # First element should be 7.39
+                            [7.39, 18.23, -0.21],  # First element should be 7.39
+                            [-20.64, 18.23, -0.21],
+                            [-20.64, -18.23, -0.21]]) / 100
+            self.J = np.eye(3) * 2
+        elif robo_type == "BlueROV2":
             self.m = 11.5
+            self.thruster_p = np.array([
+                [18.18, -22.14, -4],
+                [18.18, 22.14, -4], 
+                [-31.43, 22.14, -4],
+                [-31.43, -22.14, -4],
+                [7.39, -18.23, -0.21],
+                [7.39, 18.23, -0.21],
+                [-20.64, 18.23, -0.21],
+                [-20.64, -18.23, -0.21]
+            ]) / 100
+            self.J = np.eye(3) * 1.0
         else:
-            raise ValueError("Unknown robot type. Use 'Hovering' or 'BlueROV'.")
+            raise ValueError("Unknown robot type. Use 'HoveringAUV' or 'BlueROV2'.")
         self.rho = 997
         self.V = self.m / self.rho
-        self.J = np.eye(3) * 2
-
-        # True thruster locations
-        self.thruster_p = np.array([[18.18, -22.14, -4],
-                                    [18.18, 22.14, -4],
-                                    [-31.43, 22.14, -4],  # First element should be -31.43
-                                    [-31.43, -22.14, -4],  # First element should be -31.43
-                                    [7.39, -18.23, -0.21],  # First element should be 7.39
-                                    [7.39, 18.23, -0.21],  # First element should be 7.39
-                                    [-20.64, 18.23, -0.21],
-                                    [-20.64, -18.23, -0.21]]) / 100
 
         # We offset them by our tweaked COM
         self.com = (self.thruster_p[0] + self.thruster_p[2]) / 2

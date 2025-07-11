@@ -11,14 +11,13 @@ from matplotlib import patches
 from matplotlib import animation
 from matplotlib.patches import Polygon
 
-from metadata import METADATA
-
 
 class Display2D(Wrapper):
     def __init__(self, env, figID=0, skip=1, confidence=0.95):
         super(Display2D, self).__init__(env)
         self.figID = figID  # figID = 0 : train, figID = 1 : test
         self.env_core = env.env.world
+        self.config = self.env_core.config
         self.mapmin = self.env_core.bottom_corner[:2]
         self.mapmax = self.env_core.top_corner[:2]
         self.size = self.env_core.size
@@ -33,10 +32,12 @@ class Display2D(Wrapper):
 
     def step(self, action):
         # get the position of agent and targets
-        if type(self.env_core.targets) == list:
+        if hasattr(self.env_core, 'targets') and isinstance(self.env_core.targets, list):
             target_true_pos = [self.env_core.targets[i].state.vec[:2] for i in range(len(self.env_core.targets))]
         else:
-            raise ValueError('targets not a list')
+            # raise ValueError('targets not a list')
+            target_true_pos = []
+
 
         self.traj[0].append(self.env_core.agent.state.vec[0])
         self.traj[1].append(self.env_core.agent.state.vec[1])
@@ -51,7 +52,7 @@ class Display2D(Wrapper):
     def render(self, record=False, batch_outputs=None):
         state = self.env_core.agent.state.vec
         est_state = self.env_core.agent.est_state.vec
-        num_targets = len(self.env_core.targets)
+        num_targets = len(self.env_core.targets) if hasattr(self.env_core, 'targets') else 0
         target_true_pos = [self.env_core.targets[i].state.vec[:2] for i in range(num_targets)]
         target_b_state = [self.env_core.belief_targets[i].state for i in range(num_targets)]
         target_cov = [self.env_core.belief_targets[i].cov for i in range(num_targets)]
@@ -72,39 +73,40 @@ class Display2D(Wrapper):
                     ax.add_patch(polygon_patch)
 
             # show the target's coordinate
-            for i in range(num_targets):
-                ax.plot(self.traj_y[i][0], self.traj_y[i][1], 'r.', markersize=2)
-                # Belief on target - Assuming that the first and the second dimension
-                # of the target state vector correspond to xy-coordinate.
-                eig_val, eig_vec = LA.eig(target_cov[i][:2, :2])
-                belief_target = patches.Ellipse(
-                    (target_b_state[i][0], target_b_state[i][1]),
-                    2 * np.sqrt(eig_val[0]) * self.c_cf,
-                    2 * np.sqrt(eig_val[1]) * self.c_cf,
-                    angle=180 / np.pi * np.arctan2(np.real(eig_vec[0][1]),
-                                                   np.real(eig_vec[0][0])), fill=True, zorder=2,
-                    facecolor='g', alpha=0.5)
-                ax.add_patch(belief_target)
+            if hasattr(self.env_core, 'targets'):
+                for i in range(num_targets):
+                    ax.plot(self.traj_y[i][0], self.traj_y[i][1], 'r.', markersize=2)
+                    # Belief on target - Assuming that the first and the second dimension
+                    # of the target state vector correspond to xy-coordinate.
+                    eig_val, eig_vec = LA.eig(target_cov[i][:2, :2])
+                    belief_target = patches.Ellipse(
+                        (target_b_state[i][0], target_b_state[i][1]),
+                        2 * np.sqrt(eig_val[0]) * self.c_cf,
+                        2 * np.sqrt(eig_val[1]) * self.c_cf,
+                        angle=180 / np.pi * np.arctan2(np.real(eig_vec[0][1]),
+                                                       np.real(eig_vec[0][0])), fill=True, zorder=2,
+                        facecolor='g', alpha=0.5)
+                    ax.add_patch(belief_target)
 
-                # if target_cov[i].shape[0] == 4:  # For Velocity
-                #     eig_val, eig_vec = LA.eig(target_cov[i][2:, 2:])
-                #     belief_target_vel = patches.Ellipse(
-                #         (target_b_state[i][0], target_b_state[i][1]),
-                #         2 * np.sqrt(eig_val[0]) * self.c_cf,
-                #         2 * np.sqrt(eig_val[1]) * self.c_cf,
-                #         angle=180 / np.pi * np.arctan2(np.real(eig_vec[0][1]),
-                #                                        np.real(eig_vec[0][0])), fill=True, zorder=2,
-                #         facecolor='m', alpha=0.5)
-                #     ax.add_patch(belief_target_vel)
+                    # if target_cov[i].shape[0] == 4:  # For Velocity
+                    #     eig_val, eig_vec = LA.eig(target_cov[i][2:, 2:])
+                    #     belief_target_vel = patches.Ellipse(
+                    #         (target_b_state[i][0], target_b_state[i][1]),
+                    #         2 * np.sqrt(eig_val[0]) * self.c_cf,
+                    #         2 * np.sqrt(eig_val[1]) * self.c_cf,
+                    #         angle=180 / np.pi * np.arctan2(np.real(eig_vec[0][1]),
+                    #                                        np.real(eig_vec[0][0])), fill=True, zorder=2,
+                    #         facecolor='m', alpha=0.5)
+                    #     ax.add_patch(belief_target_vel)
 
-                ax.plot(target_b_state[i][0], target_b_state[i][1], marker='o',
-                        markersize=10, linewidth=5, markerfacecolor='none',
-                        markeredgecolor='g')
+                    ax.plot(target_b_state[i][0], target_b_state[i][1], marker='o',
+                            markersize=10, linewidth=5, markerfacecolor='none',
+                            markeredgecolor='g')
 
-                # The real targets
-                ax.plot(target_true_pos[i][0], target_true_pos[i][1], marker='o',
-                        markersize=5, linestyle='None', markerfacecolor='r',
-                        markeredgecolor='r')
+                    # The real targets
+                    ax.plot(target_true_pos[i][0], target_true_pos[i][1], marker='o',
+                            markersize=5, linestyle='None', markerfacecolor='r',
+                            markeredgecolor='r')
 
             # show the agent's coordinate
             ax.plot(state[0], state[1], marker=(4, 0, state[8]),
@@ -116,19 +118,20 @@ class Display2D(Wrapper):
             # ax.plot(self.traj[0], self.traj[1], 'b.', markersize=2)
 
             # show the agent's orientation
-            sensor_arc = patches.Arc((state[0], state[1]), METADATA['agent']['sensor_r'] * 2, METADATA['agent']['sensor_r'] * 2,
-                                     angle=state[8], theta1=-METADATA['agent']['fov'] / 2,
-                                     theta2=METADATA['agent']['fov'] / 2, edgecolor='black', facecolor='green'
-                                     , alpha=0.7)
-            ax.add_patch(sensor_arc)
-            ax.plot(
-                [state[0], state[0] + METADATA['agent']['sensor_r'] * np.cos(np.radians(state[8] + 0.5 * METADATA['agent']['fov']))],
-                [state[1], state[1] + METADATA['agent']['sensor_r'] * np.sin(np.radians(state[8] + 0.5 * METADATA['agent']['fov']))],
-                'k', linewidth=0.5)
-            ax.plot(
-                [state[0], state[0] + METADATA['agent']['sensor_r'] * np.cos(np.radians(state[8] - 0.5 * METADATA['agent']['fov']))],
-                [state[1], state[1] + METADATA['agent']['sensor_r'] * np.sin(np.radians(state[8] - 0.5 * METADATA['agent']['fov']))],
-                'k', linewidth=0.5)
+            if 'agent' in self.config and 'sensor_r' in self.config['agent']:
+                sensor_arc = patches.Arc((state[0], state[1]), self.config['agent']['sensor_r'] * 2, self.config['agent']['sensor_r'] * 2,
+                                         angle=state[8], theta1=-self.config['agent']['fov'] / 2,
+                                         theta2=self.config['agent']['fov'] / 2, edgecolor='black', facecolor='green'
+                                         , alpha=0.7)
+                ax.add_patch(sensor_arc)
+                ax.plot(
+                    [state[0], state[0] + self.config['agent']['sensor_r'] * np.cos(np.radians(state[8] + 0.5 * self.config['agent']['fov']))],
+                    [state[1], state[1] + self.config['agent']['sensor_r'] * np.sin(np.radians(state[8] + 0.5 * self.config['agent']['fov']))],
+                    'k', linewidth=0.5)
+                ax.plot(
+                    [state[0], state[0] + self.config['agent']['sensor_r'] * np.cos(np.radians(state[8] - 0.5 * self.config['agent']['fov']))],
+                    [state[1], state[1] + self.config['agent']['sensor_r'] * np.sin(np.radians(state[8] - 0.5 * self.config['agent']['fov']))],
+                    'k', linewidth=0.5)
 
             # ax.text(self.mapmax[0]+1., self.mapmax[1]-5., 'v_target:%.2f'%np.sqrt(np.sum(self.env_core.targets[0].state[2:]**2)))
             # ax.text(self.mapmax[0]+1., self.mapmax[1]-10., 'v_agent:%.2f'%self.env_core.agent.vw[0])
@@ -147,7 +150,7 @@ class Display2D(Wrapper):
     def render_test(self, record=False, batch_outputs=None):
         state = self.env_core.agent.state.vec
         est_state = self.env_core.agent.est_state.vec
-        num_targets = len(self.env_core.targets)
+        num_targets = len(self.env_core.targets) if hasattr(self.env_core, 'targets') else 0
         target_true_pos = [self.env_core.targets[i].state.vec[:2] for i in range(num_targets)]
         target_b_state = [self.env_core.belief_targets[i].state for i in range(num_targets)]
         target_cov = [self.env_core.belief_targets[i].cov for i in range(num_targets)]
@@ -169,39 +172,40 @@ class Display2D(Wrapper):
                     ax.add_patch(polygon_patch)
 
             # show the target's coordinate
-            for i in range(num_targets):
-                ax.plot(self.traj_y[i][0], self.traj_y[i][1], 'r.', markersize=2)
-                # Belief on target - Assuming that the first and the second dimension
-                # of the target state vector correspond to xy-coordinate.
-                # eig_val, eig_vec = LA.eig(target_cov[i][:2, :2])
-                # belief_target = patches.Ellipse(
-                #     (target_b_state[i][0], target_b_state[i][1]),
-                #     2 * np.sqrt(eig_val[0]) * self.c_cf,
-                #     2 * np.sqrt(eig_val[1]) * self.c_cf,
-                #     angle=180 / np.pi * np.arctan2(np.real(eig_vec[0][1]),
-                #                                    np.real(eig_vec[0][0])), fill=True, zorder=2,
-                #     facecolor='g', alpha=0.5)
-                # ax.add_patch(belief_target)
+            if hasattr(self.env_core, 'targets'):
+                for i in range(num_targets):
+                    ax.plot(self.traj_y[i][0], self.traj_y[i][1], 'r.', markersize=2)
+                    # Belief on target - Assuming that the first and the second dimension
+                    # of the target state vector correspond to xy-coordinate.
+                    # eig_val, eig_vec = LA.eig(target_cov[i][:2, :2])
+                    # belief_target = patches.Ellipse(
+                    #     (target_b_state[i][0], target_b_state[i][1]),
+                    #     2 * np.sqrt(eig_val[0]) * self.c_cf,
+                    #     2 * np.sqrt(eig_val[1]) * self.c_cf,
+                    #     angle=180 / np.pi * np.arctan2(np.real(eig_vec[0][1]),
+                    #                                    np.real(eig_vec[0][0])), fill=True, zorder=2,
+                    #     facecolor='g', alpha=0.5)
+                    # ax.add_patch(belief_target)
 
-                # if target_cov[i].shape[0] == 4:  # For Velocity
-                #     eig_val, eig_vec = LA.eig(target_cov[i][2:, 2:])
-                #     belief_target_vel = patches.Ellipse(
-                #         (target_b_state[i][0], target_b_state[i][1]),
-                #         2 * np.sqrt(eig_val[0]) * self.c_cf,
-                #         2 * np.sqrt(eig_val[1]) * self.c_cf,
-                #         angle=180 / np.pi * np.arctan2(np.real(eig_vec[0][1]),
-                #                                        np.real(eig_vec[0][0])), fill=True, zorder=2,
-                #         facecolor='m', alpha=0.5)
-                #     ax.add_patch(belief_target_vel)
+                    # if target_cov[i].shape[0] == 4:  # For Velocity
+                    #     eig_val, eig_vec = LA.eig(target_cov[i][2:, 2:])
+                    #     belief_target_vel = patches.Ellipse(
+                    #         (target_b_state[i][0], target_b_state[i][1]),
+                    #         2 * np.sqrt(eig_val[0]) * self.c_cf,
+                    #         2 * np.sqrt(eig_val[1]) * self.c_cf,
+                    #         angle=180 / np.pi * np.arctan2(np.real(eig_vec[0][1]),
+                    #                                        np.real(eig_vec[0][0])), fill=True, zorder=2,
+                    #         facecolor='m', alpha=0.5)
+                    #     ax.add_patch(belief_target_vel)
 
-                # ax.plot(target_b_state[i][0], target_b_state[i][1], marker='o',
-                #         markersize=10, linewidth=5, markerfacecolor='none',
-                #         markeredgecolor='g')
+                    # ax.plot(target_b_state[i][0], target_b_state[i][1], marker='o',
+                    #         markersize=10, linewidth=5, markerfacecolor='none',
+                    #         markeredgecolor='g')
 
-                # The real targets
-                ax.plot(target_true_pos[i][0], target_true_pos[i][1], marker='o',
-                        markersize=5, linestyle='None', markerfacecolor='r',
-                        markeredgecolor='r')
+                    # The real targets
+                    ax.plot(target_true_pos[i][0], target_true_pos[i][1], marker='o',
+                            markersize=5, linestyle='None', markerfacecolor='r',
+                            markeredgecolor='r')
 
             # ax.text(self.mapmax[0]+1., self.mapmax[1]-5., 'v_target:%.2f'%np.sqrt(np.sum(self.env_core.targets[0].state[2:]**2)))
             # ax.text(self.mapmax[0]+1., self.mapmax[1]-10., 'v_agent:%.2f'%self.env_core.agent.vw[0])
@@ -220,7 +224,10 @@ class Display2D(Wrapper):
     def reset(self, **kwargs):
         self.traj_num += 1
         self.traj = [[], []]
-        self.traj_y = [[[], []]] * self.env_core.num_targets
+        if hasattr(self.env_core, 'num_targets'):
+            self.traj_y = [[[], []]] * self.env_core.num_targets
+        else:
+            self.traj_y = []
         return self.env.reset(**kwargs)
 
 

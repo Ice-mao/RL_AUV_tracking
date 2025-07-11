@@ -8,10 +8,9 @@ from auv_control import State
 
 from auv_env import util
 from auv_env.envs.base import WorldBase
-from auv_env.envs.agent import AgentAuv, AgentSphere, AgentAuvTarget
+from auv_env.envs.agent import AgentAuv, AgentAuvTarget
 from auv_env.envs.obstacle import Obstacle
-from auv_env.envs.tools import ImageBuffer
-from metadata import METADATA
+from auv_env.envs.tools import CameraBuffer, SonarBuffer
 
 from gymnasium import spaces
 import logging
@@ -22,10 +21,11 @@ class WorldAuvV2(WorldBase):
         different from world:target is also an auv
     """
 
-    def __init__(self, map, show, verbose, num_targets, **kwargs):
+    def __init__(self, map, show, num_targets, config, **kwargs):
         self.obs = {}
-        self.image_buffer = ImageBuffer(5, (3, 224, 224), time_gap=0.1)
-        super().__init__(map, show, verbose, num_targets, **kwargs)
+        self.image_buffer = CameraBuffer(5, (3, 224, 224), time_gap=0.1)
+        self.config = config
+        super().__init__(map, show, num_targets, self.config, **kwargs)
         
     def reset(self):
         self.image_buffer.reset()
@@ -54,10 +54,6 @@ class WorldAuvV2(WorldBase):
             sensors = self.ocean.tick()
             # update
             if 'LeftCamera' in sensors['auv0']:
-                # if METADATA['render']:
-                #     import cv2
-                #     cv2.imshow("Camera Output", sensors['auv0']['LeftCamera'][:, :, 0:3])
-                #     cv2.waitKey(1)
                 self.image_buffer.add_image(sensors['auv0']['LeftCamera'], sensors['t'])
             self.sensors['auv0'].update(sensors['auv0'])
             for i in range(self.num_targets):
@@ -80,7 +76,7 @@ class WorldAuvV2(WorldBase):
         # Compute the RL state.
         state = self.state_func(observed, action_waypoint)
         self.record_observed = observed
-        if METADATA['render']:
+        if self.config['render']:
             print(is_col, observed[0], reward)
         self.is_col = is_col
         return state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
@@ -93,8 +89,8 @@ class WorldAuvV2(WorldBase):
         self.limit['target'] = [np.concatenate((self.bottom_corner[:2], np.array([-3, -3]))),
                                 np.concatenate((self.top_corner[:2], np.array([3, 3])))]
         # ACTION:
-        self.action_space = spaces.Box(low=np.float32(METADATA['action_range_low']),
-                                       high=np.float32(METADATA['action_range_high']),
+        self.action_space = spaces.Box(low=np.float32(self.config['action_range_low']),
+                                       high=np.float32(self.config['action_range_high']),
                                        dtype=np.float32)
         # STATE:
         # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
@@ -103,7 +99,7 @@ class WorldAuvV2(WorldBase):
                                             [0.0, -np.pi, -1.0, -1.0]))
         state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
                                                             # [self.top_corner[0], self.top_corner[1], np.pi])),
-                                            [METADATA['agent']['sensor_r'], np.pi, 1.0, 1.0]))
+                                            [self.config['agent']['sensor_r'], np.pi, 1.0, 1.0]))
 
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
@@ -127,13 +123,13 @@ class WorldAuvV2(WorldBase):
         self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
                                        , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
                                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
-                                       l_p=METADATA['target']['lqr_l_p'], robo_type="BlueROV")
+                                       l_p=self.config['target']['controller_config']['LQR']['l_p'], robo_type="BlueROV")
                         for i in range(self.num_targets)]
         # Build target beliefs.
-        if METADATA['target']['random']:
-            self.const_q = np.random.choice(METADATA['target']['const_q'][1])
+        if self.config['target']['random']:
+            self.const_q = np.random.choice(self.config['target']['const_q'][1])
         else:
-            self.const_q = METADATA['target']['const_q'][0]
+            self.const_q = self.config['target']['const_q'][0]
         self.targetA = np.concatenate((np.concatenate((np.eye(2),
                                                        self.control_period * np.eye(2)), axis=1),
                                        [[0, 0, 1, 0], [0, 0, 0, 1]]))
@@ -142,13 +138,15 @@ class WorldAuvV2(WorldBase):
                             self.control_period ** 2 / 2 * np.eye(2)), axis=1),
             np.concatenate((self.control_period ** 2 / 2 * np.eye(2),
                             self.control_period * np.eye(2)), axis=1)))
-        self.belief_targets = [KFbelief(dim=METADATA['target']['target_dim'],
+        self.belief_targets = [KFbelief(dim=self.config['target']['target_dim'],
                                         limit=self.limit['target'], A=self.targetA,
                                         W=self.target_noise_cov,
                                         obs_noise_func=self.observation_noise)
                                for _ in range(self.num_targets)]
         
-    def get_reward(self, is_col, reward_param=METADATA['reward_param']):
+    def get_reward(self, is_col, reward_param=None):
+        if reward_param is None:
+            reward_param = self.config['reward_param']
         detcov = [LA.det(b_target.cov) for b_target in self.belief_targets]
         r_detcov_mean = - np.mean(np.log(detcov))
         r_detcov_std = - np.std(np.log(detcov))
@@ -164,7 +162,7 @@ class WorldAuvV2(WorldBase):
         # reward = reward + reward_w + reward_a + reward_e
         if is_col:
             reward = np.min([0.0, reward]) - reward_param["c_penalty"] * 1.0
-        if METADATA['render']:
+        if self.config['render']:
             print('reward:', reward)
             # print('reward:', reward, 'reward_w:', reward_w, 'reward_a:', reward_a, 'reward_e:', reward_e)
         return reward, False, r_detcov_mean, r_detcov_std
@@ -175,10 +173,10 @@ class WorldAuvV2(WorldBase):
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         # Find the closest obstacle coordinate.
-        if self.agent.rangefinder.min_distance < METADATA['agent']['sensor_r']:
+        if self.agent.rangefinder.min_distance < self.config['agent']['sensor_r']:
             obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.min_angle))
         else:
-            obstacles_pt = (METADATA['agent']['sensor_r'], 0)
+            obstacles_pt = (self.config['agent']['sensor_r'], 0)
 
         state_observation = []
         for i in range(self.num_targets):
@@ -208,33 +206,3 @@ class WorldAuvV2(WorldBase):
     def state_func_state(self):
         return self.obs['state']
 
-if __name__ == '__main__':
-    from auv_control import scenario
-    #
-    # print("Test World")
-    # world = WorldAuvMap(scenario, map='TestMap', show=True, verbose=True, num_targets=1)
-    # world.reset()
-    # print(world.size)
-    # world.targets[0].planner.draw_traj(world.ocean, 30)
-    # action_range_high = METADATA['action_range_high']
-    # action_range_low = METADATA['action_range_low']
-    # action_space = spaces.Box(low=np.float32(action_range_low), high=np.float32(action_range_high)
-    #                           , shape=(3,))  # 6维控制 分别是x y theta 的均值和标准差
-    # while True:
-    #     for _ in range(100000):
-    #         # if 'q' in world.agent.keyboard.pressed_keys:
-    #         #     break
-    #         # command = world.agent.keyboard.parse_keys()
-    #         action = action_space.sample()
-    #         world.step(action)
-    #         # print(world.agent_init_pos, world.sensors['auv0']['PoseSensor'][:3, 3])
-    #     world.reset()
-    #     world.targets[0].planner.draw_traj(world.ocean, 30)
-    # test for camera
-    # import cv2
-    # if "LeftCamera" in world.sensors['auv0']:
-    #     pixels = world.sensors['auv0']["LeftCamera"]
-    #     cv2.namedWindow("Camera Output")
-    #     cv2.imshow("Camera Output", pixels[:, :, 0:3])
-    #     cv2.waitKey(0)
-    #     cv2.destroyAllWindows()

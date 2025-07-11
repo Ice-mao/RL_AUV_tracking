@@ -18,8 +18,8 @@ ts = 1 / scenario["ticks_per_sec"]
 # num_ticks = int(num_seconds / ts)
 
 # Set everything up
-controller = PID()
-controller.set_depth_target(-5.0)
+controller = PID(robo_type="BlueROV2")
+controller.set_depth_target(-10.0)
 # Run simulation!
 u = np.zeros(8)
 # env = holoocean.make(scenario_cfg=scenario)

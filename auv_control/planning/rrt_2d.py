@@ -3,11 +3,10 @@ from auv_control import State
 from .base import BasePlanner
 import matplotlib.pyplot as plt
 import bezier
-from metadata import METADATA
 
 class RRT_2d(BasePlanner):
     def __init__(self, num_seconds=10, start=None, end=None, speed=None, obstacles=None, margin=None,
-                 fixed_depth=None, bottom_corner=None, size=None, start_time=None):
+                 fixed_depth=None, bottom_corner=None, size=None, start_time=None, render=True):
         # setup goal
         self.start = np.array([0, 0, -5]) if start is None else start
         self.end = np.array([20, 20, -5]) if end is None else end
@@ -20,6 +19,7 @@ class RRT_2d(BasePlanner):
         self.fixed_depth = fixed_depth
         self.bottom_corner = bottom_corner
         self.size = size
+        self.render = render
 
         # setup RRT
         self.start_time = start_time
@@ -35,7 +35,7 @@ class RRT_2d(BasePlanner):
 
         # setup plotter.
         self.figID = 2  # for rrt render
-        if METADATA['render']:
+        if self.render:
             plt.ion()
             self.fig = plt.figure(self.figID)
         # from reset to build path
@@ -203,7 +203,7 @@ class RRT_2d(BasePlanner):
             # 到达
             self.count = 0
             self.desire_path_num += 1
-            if METADATA['render']:
+            if self.render:
                 print(self.desire_path_num)
             # tmp = self.path[self.desire_path_num] - self.path[self.desire_path_num-1]
             # theta = np.arctan2(tmp[1], tmp[0])
@@ -216,7 +216,7 @@ class RRT_2d(BasePlanner):
         if self.desire_path_num == len(self.path.T):
             self.finish_flag = 1
             self.desire_path_num -= 1
-            if METADATA['render']:
+            if self.render:
                 print('finish')
             return self.path[:, self.desire_path_num]
         return self.path[:, self.desire_path_num]

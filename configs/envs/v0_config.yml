@@ -1,0 +1,80 @@
+version: v0
+name: AUVTracking_v0
+render: true
+draw_traj: true
+eval_fixed: false
+map: 'SimpleUnderwater-Bluerov2'
+debug: false
+
+env:
+  task_random: false
+  insight: [true, [true, false]]
+  noblock: true
+  control_period: 0.5
+  margin: 1.0
+  margin2wall: 1.0
+  num_targets: 1
+
+scenario:
+  size: [40, 40, 20]
+  bottom_corner: [-20, -20, -20]
+  fix_depth: -5
+
+agent:
+  controller: 'PID'
+  controller_config:
+    LQR:
+      action_dim: 3
+      control_frequency: 2
+      random_lp: false
+      l_p: [50, [10, 20, 30, 50, 75, 100, 200]]
+    PID:
+      action_dim: 2
+      control_frequency: 10
+  random: false
+  use_sonar: false
+  grid:
+    use_grid: false
+    p_prior: 0.5
+    p_occ: 0.8
+    p_free: 0.25
+    resolution: 0.1
+  sensor_r: 10.0
+  fov: 100
+  sensor_r_sd: 0.2
+  sensor_b_sd: 0.01
+
+target:
+  target_dim: 4
+  random: false
+  const_q: [0.5, [0.01, 0.02, 0.05, 0.1, 0.4, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0]]
+  controller: 'LQR'
+  controller_config:
+    LQR:
+      random_lp: false
+      l_p: [50, [10, 20, 30, 50, 75, 100, 200]]
+    Manual:
+      force: 10
+  measurement_disfactor: 0.9
+  target_init_cov: 50.0
+  lin_dist_range_a2t: [3.0, 8.0]
+  ang_dist_range_a2t: [-3.14159/5, 3.14159/5]
+  lin_dist_range_t2b: [0.0, 2.0]
+  ang_dist_range_t2b: [-3.14159/2, 3.14159/2]
+
+is_training: true
+algorithms: 'PPO'
+policy: 'CNN'
+
+# action is defined by the controller
+action_range_high: [[1, 1, 1], [1, 1]]
+action_range_low: [[0, -1, -1], [-1, -1]]
+action_range_scale: [[1.5, 3.14159/2, 3.14159/4], [1.5, 0.5]]
+
+reward_param:
+  c_mean: 0.2
+  c_std: 0.0
+  c_penalty: 5.0
+  k_3: 0.0
+  k_4: 0.0
+  k_5: 0.0

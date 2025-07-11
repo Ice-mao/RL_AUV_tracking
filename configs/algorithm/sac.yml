@@ -1,0 +1,31 @@
+# Algorithm specific parameters for SAC
+# Can be merged with a main environment config
+
+training:
+  device: "cuda:0"
+  seed: 41
+  nb_envs: 4
+  timesteps: 1000000
+  log_dir: "log/teacher"
+  resume_path: "log/teacher/SAC/01-13_12/rl_model_1240000_steps.zip"
+  test_episode: 10
+
+policy_hparams:
+  policy: "SAC"
+  lr: 0.0001
+  buffer_size: 100000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  noise_std: 0.12
+  start_timesteps: 1000
+  
+  # SAC specific
+  auto_alpha: true
+  alpha: 0.2
+  alpha_lr: 0.0003
+
+  # Collect settings (might be part of trainer)
+  step_per_collect: 5
+  update_per_step: 0.2
+  n_step: 2

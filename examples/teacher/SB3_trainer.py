@@ -1,16 +1,17 @@
-if __name__ == "__main__":
-    import sys
-    import os
-    import pathlib
-
-    ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent)
-    sys.path.append(ROOT_DIR)
-    
-import gymnasium as gym
+import argparse
+import datetime
+import os
+import pathlib
+import sys
+import gym
+import torch
+import numpy as np
+import auv_env
+import csv
 
 from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
-from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecEnv, DummyVecEnv
 from stable_baselines3.common.noise import NormalActionNoise
 #
 import auv_env
@@ -19,86 +20,51 @@ import numpy as np
 from numpy import linalg as LA
 import csv
 import argparse
-from policy_net import set_seed
 from auv_track_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
+from config_loader import load_config
 
 # tools
 import os
 import datetime
-from metadata import METADATA
 
 current_time = datetime.datetime.now()
 time_string = current_time.strftime('%m-%d_%H')
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train; 1:keep train; 2:eval; 3:test; 4:cal',
-                    default=0)
-# for env set
-parser.add_argument('--env', type=str, help='environment ID', default='auv-v0')
-parser.add_argument('--policy', type=str, choices=['PPO', 'SAC', 'BC'], help='algorithms select',
-                    default='SAC')
-parser.add_argument('--render', help='whether to render', type=int, default=0)
-parser.add_argument('--record', help='whether to record', type=int, default=0)
-parser.add_argument('--nb_targets', help='the number of targets', type=int, default=1)
-parser.add_argument('--nb_envs', help='the number of env', type=int, default=6)
-parser.add_argument('--max_episode_step', type=int, default=200)
-# for reinforcement learning set
-parser.add_argument("--seed", type=int, default=1626)
-parser.add_argument("--resume-path", type=str, default=None)
-parser.add_argument("--log-dir", type=str, default="../log")
-parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-# # for SAC Policy Set
-parser.add_argument("--lr", type=float, default=3e-4)
-parser.add_argument("--alpha-lr", type=float, default=3e-4)
-parser.add_argument("--noise_std", type=float, default=1.2)
-parser.add_argument("--gamma", type=float, default=0.99)
-parser.add_argument("--tau", type=float, default=0.005)
-parser.add_argument("--auto_alpha", type=int, default=1)
-parser.add_argument("--alpha", type=float, default=0.2)
-# # for PPO Policy Set
-parser.add_argument("--n-steps", type=int, default=128)
-parser.add_argument("--vf-coef", type=float, default=0.25)
-parser.add_argument("--ent-coef", type=float, default=0.0)
-parser.add_argument("--gae-lambda", type=float, default=0.95)
-parser.add_argument("--max-grad-norm", type=float, default=0.5)
-parser.add_argument("--eps-clip", type=float, default=0.2)
-parser.add_argument("--value-clip", type=float, default=0)
-parser.add_argument("--norm-adv", type=int, default=0)
-# # Collect Set
-parser.add_argument("--buffer-size", type=int, default=50000)
-parser.add_argument("--start-timesteps", type=int, default=10000)
-# # Trainer Set
-parser.add_argument("--timesteps", type=int, default=100000)
-parser.add_argument("--step-per-collect", type=int, default=5)
-parser.add_argument("--update-per-step", type=float, default=0.2)
-parser.add_argument("--batch-size", type=int, default=128)
-parser.add_argument("--test_episode", type=int, default=10)
+                    default='0')
+parser.add_argument('--env_config', type=str, required=True, help='Path to the environment configuration file.')
+parser.add_argument('--alg_config', type=str, required=True, help='Path to the algorithm configuration file.')
 args = parser.parse_args()
 
-if args.render:
-    METADATA['render'] = True
-else:
-    METADATA['render'] = False
 
-
-def make_teacher_env(
-        task: str,
+def make_env(
+        env_config: str,
         num_train_envs: int,
-        monitor_dir: str
+        monitor_dir: str,
 ) -> VecEnv:
-    if 'Teacher' not in task:
-        raise ValueError("you should use teacher env.")
-    train_envs = SubprocVecEnv([lambda: gym.make(task) for _ in range(num_train_envs)], )
+    # train_envs = SubprocVecEnv([lambda: gym.make(task, config=config) for _ in range(num_train_envs)], )
+    train_envs = SubprocVecEnv([lambda: auv_env.make("AUVTracking_v0",
+                                config=env_config,
+                                eval=False, t_steps=200,
+                                show_viewport=True) for _ in range(num_train_envs)], )
     env = VecMonitor(train_envs, monitor_dir)
+    # env = auv_env.make("AUVTracking_v0",
+    #                             config=env_config,
+    #                             eval=False, t_steps=200,
+    #                             show_viewport=True) 
     return env
 
 
 def make_callback(
         log_dir: str,
+        alg_config: dict,
 ) -> CallbackList:
+    # Use get to provide a default value if the key doesn't exist
+    nb_envs = alg_config['training']['nb_envs']
     callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=log_dir, save_path=log_dir)
     checkpoint_callback = CheckpointCallback(
-        save_freq=max(10000 // args.nb_envs, 1),
+        save_freq=max(10000 // nb_envs, 1),
         save_path=log_dir,
         name_prefix="rl_model",
         save_replay_buffer=True,
@@ -107,89 +73,108 @@ def make_callback(
     callback = CallbackList([callback, checkpoint_callback])
     return callback
 
-def create_action_noise():
-    if "v1" in args.env:
-        noise = NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.08]))
-    elif "v2" in args.env:
+def create_action_noise(config):
+    if config['agent']['controller']=='PID':
         noise = NormalActionNoise(np.array([0.0, 0.0]), np.array([0.05, 0.05]))
+    elif config['agent']['controller']=='LQR':
+        noise = NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.08]))
+    else:
+        noise = None
     return noise
 
-def learn(env, log_dir):
+def learn(env, log_dir, env_config, alg_config):
     # callback
-    callback = make_callback(log_dir)
-    if args.policy == 'SAC':
+    callback = make_callback(log_dir, alg_config)
+    policy_params = alg_config['policy_hparams']
+    training_params = alg_config['training']
+
+    if policy_params['policy'] == 'SAC':
         policy_kwargs = dict(
-            # features_extractor_class=CustomCNN,
-            # features_extractor_kwargs=dict(features_dim=256),
-            net_arch=dict(pi=[256, 256, 256], qf=[256, 256]),  # for AC policy
+            net_arch=alg_config['policy']['net_arch']
         )
-        action_noise = create_action_noise()
-        model = SAC("MlpPolicy", env, verbose=1, learning_rate=args.lr, buffer_size=args.buffer_size,
-                    learning_starts=args.start_timesteps, batch_size=args.batch_size, tau=args.tau, gamma=args.gamma,
-                    train_freq=1, gradient_steps=1,
+        action_noise = create_action_noise(env_config)
+        model = SAC("MlpPolicy", env, verbose=1,
+                    learning_rate=policy_params['lr'],
+                    buffer_size=policy_params['buffer_size'],
+                    learning_starts=policy_params['start_timesteps'],
+                    batch_size=training_params['batch_size'],
+                    tau=policy_params['tau'],
+                    gamma=policy_params['gamma'],
+                    train_freq=1,
+                    gradient_steps=1,
                     action_noise=action_noise,
                     target_update_interval=10,
-                    policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device=args.device
+                    policy_kwargs=policy_kwargs,
+                    tensorboard_log=log_dir,
+                    device=training_params['device']
                     )
-        model.learn(total_timesteps=args.timesteps, tb_log_name="first_run", log_interval=5, callback=callback)
-        model.save(args.log_dir + 'final_model')
-    elif args.policy == 'PPO':
-        # policy_kwargs = dict(net_arch=dict(pi=[256, 256, 256], qf=[256, 256]))  # set for off-policy network
+        model.learn(total_timesteps=training_params['timesteps'], tb_log_name="first_run", log_interval=5, callback=callback)
+        model.save(os.path.join(log_dir, 'final_model'))
+        
+    elif policy_params['policy'] == 'PPO':
         policy_kwargs = dict(
-            # features_extractor_class=CustomCNN,
-            # features_extractor_kwargs=dict(features_dim=256),
-            # net_arch=[512, 512],
-            net_arch=dict(pi=[512, 512, 512], vf=[512, 512]),
+            net_arch=alg_config['policy']['net_arch'],
         )
-        model = PPO("MlpPolicy", env, verbose=1, learning_rate=args.lr, batch_size=args.batch_size,
-                    n_epochs=10, n_steps=args.n_steps,
-                    gae_lambda=args.gae_lambda, clip_range=args.eps_clip, clip_range_vf=args.value_clip,
-                    ent_coef=args.ent_coef, vf_coef=args.vf_coef,
-                    max_grad_norm=args.max_grad_norm, normalize_advantage=bool(args.norm_adv),
-                    policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device=args.device
+        model = PPO("MlpPolicy", env, verbose=1,
+                    learning_rate=policy_params['lr'],
+                    batch_size=training_params['batch_size'],
+                    n_epochs=10,
+                    n_steps=policy_params['n_steps'],
+                    gae_lambda=policy_params['gae_lambda'],
+                    clip_range=policy_params['eps_clip'],
+                    clip_range_vf=policy_params['value_clip'],
+                    ent_coef=policy_params['ent_coef'],
+                    vf_coef=policy_params['vf_coef'],
+                    max_grad_norm=policy_params['max_grad_norm'],
+                    normalize_advantage=policy_params['norm_adv'],
+                    policy_kwargs=policy_kwargs,
+                    tensorboard_log=log_dir,
+                    device=training_params['device']
                     )
-        # model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
-        #             clip_range_vf=0.1,
-        #             batch_size=64, tensorboard_log=("./log/PPO_" + time_string), device="cuda")
-        model.learn(total_timesteps=args.timesteps, tb_log_name="first_run", log_interval=1, callback=callback)
-        model.save(args.log_dir + 'final_model')
+        model.learn(total_timesteps=training_params['timesteps'], tb_log_name="first_run", log_interval=1, callback=callback)
+        model.save(os.path.join(log_dir, 'final_model'))
 
 
-def keep_learn(env, log_dir, model_name):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    callback = make_callback(log_dir)
+def keep_learn(env, log_dir, model_name, config):
+    training_params = config['training']
+    policy_params = config['policy_hparams']
+    device = torch.device(training_params['device'])
+    callback = make_callback(log_dir, config)
 
-    if args.policy == 'SAC':
-        model = SAC.load(model_name, device='cuda', env=env,
+    if policy_params['policy'] == 'SAC':
+        model = SAC.load(model_name, device=device, env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    elif args.policy == 'PPO':
-        model = PPO.load(model_name, device='cuda', env=env,
+    elif policy_params['policy'] == 'PPO':
+        model = PPO.load(model_name, device=device, env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+    else:
+        raise ValueError(f"Unknown policy {policy_params['policy']}")
 
-    model.learn(total_timesteps=args.timesteps, tb_log_name="second_run", reset_num_timesteps=False,
+    model.learn(total_timesteps=training_params['timesteps'], tb_log_name="second_run", reset_num_timesteps=False,
                 log_interval=5, callback=callback)
-    model.save(log_dir + 'final_model')
+    model.save(os.path.join(log_dir, 'final_model'))
 
 
-def evaluate(model_name: str):
+def evaluate(model_name: str, config: dict):
     """
     2
     :param model_name:
     :return:
     """
-    from metadata import EVAL_SET
-    # 0 tracking 1 discovery 2 navagation
-    METADATA.update(EVAL_SET['Tracking'])
+    eval_config = load_config(os.path.join(ROOT_DIR, 'configs/eval_tracking_config.yml'))
+    env_name = config['env']['name']
+    env = SubprocVecEnv([lambda: gym.make(env_name, config=config) for _ in range(1)], )
+    policy_name = config['policy_hparams']['policy']
 
-    env = SubprocVecEnv([lambda: gym.make(args.env) for _ in range(1)], )
-
-    if args.policy == 'SAC':
+    if policy_name == 'SAC':
         model = SAC.load(model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    elif args.policy == 'PPO':
+    elif policy_name == 'PPO':
         model = PPO.load(model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    
+    else:
+        raise ValueError(f"Unknown policy {policy_name}")
+
     obs = env.reset()
     for _ in range(50000):
         action, _ = model.predict(obs, deterministic=True)
@@ -197,28 +182,28 @@ def evaluate(model_name: str):
         obs, reward, dones, inf = env.step(action)
 
 
-def eval_greedy(model_dir):
+def eval_greedy(model_dir, config: dict):
     """
     4
     :param model_dir:
     :return:
     """
-    from metadata import EVAL_SET
-    # 0 tracking 1 discovery 2 navagation
-    METADATA.update(EVAL_SET[0])
-    env = auv_env.make(args.env,
-                       render=args.render,
+    eval_config = load_config(os.path.join(ROOT_DIR, 'configs/eval_tracking_config.yml'))
+    env_name = config['env']['name']
+
+    env = auv_env.make(env_name,
+                       config=config,
+                       render=config['render'],
                        record=args.record,
-                       ros=args.ros,
                        directory=model_dir,
-                       num_targets=args.nb_targets,
-                       map=args.map,
+                       num_targets=config['env']['target_num'],
                        eval=True,
                        is_training=False,
-                       t_steps=args.max_episode_step
+                       t_steps=config['agent']['max_episode_step']
                        )
     from auv_baseline.greedy import Greedy
-    greedy = Greedy(env.env.env)
+    # Assuming the environment may be wrapped, we access the underlying environment's world.
+    greedy = Greedy(env.unwrapped.world)
 
     for i in range(10):
         # init the eval data
@@ -228,58 +213,58 @@ def eval_greedy(model_dir):
         is_col = []
 
         obs, _ = env.reset()
-        for _ in range(200):
-            action = greedy.predict(obs)
-            obs, reward, done, _, inf = env.step(action)
+        for _ in range(args.max_episode_step):
+            action = greedy.get_action(obs)
+            obs, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
+            prior_data.append(greedy.world.belief_targets[0].cov.flatten())
+            posterior_data.append(greedy.world.belief_targets[0].cov.flatten())
+            is_col.append(info['is_col'])
+            observed.append(info['observed'])
+            if done:
+                break
 
-            prior_data.append(-np.log(LA.det(env.env.env.world.belief_targets[0].cov)))
-            posterior_data.append(-np.log(LA.det(env.env.env.world.record_cov_posterior[0])))
-            observed.append(env.env.env.world.record_observed[0])
-            is_col.append(env.env.env.world.is_col)
-
-        # 对于列表
-        with open('../data_record/greedy_comparion_l/greedy_500_l_' + str(METADATA['lqr_l_p']) + '_' + str(
-                i + 1) + '.csv', 'w', newline='') as file:
-            writer = csv.writer(file)
-            # 遍历列表并写入数据
-            for j in range(len(prior_data)):
-                writer.writerow([prior_data[j], posterior_data[j], observed[j]])
-
-
-def env_test():
-    "3"
-    env = gym.make(args.env)
-    obs, _ = env.reset()
-    while True:
-        action = env.action_space.sample()
-        print(action)
-        obs, reward, done, _, inf = env.step(action)
+    with open(model_dir + '/greedy_l.csv', 'w') as f:
+        write = csv.writer(f)
+        write.writerows(prior_data)
+    with open(model_dir + '/greedy_q.csv', 'w') as f:
+        write = csv.writer(f)
+        write.writerows(posterior_data)
+    with open(model_dir + '/greedy_observed.csv', 'w') as f:
+        write = csv.writer(f)
+        write.writerows(observed)
+    with open(model_dir + '/greedy_is_col.csv', 'w') as f:
+        write = csv.writer(f)
+        write.writerows(is_col)
 
 
-if __name__ == "__main__":
-    if args.choice == '0' or args.choice == '1':
-        set_seed(args.seed)
-        if args.choice == '0':
-            log_dir = os.path.join(args.log_dir, args.policy, time_string)
-            os.makedirs(log_dir, exist_ok=True)
-            env = make_teacher_env(args.env, args.nb_envs, log_dir+'/')
-            args.state_space = env.observation_space
-            args.action_space = env.action_space
-            learn(env, log_dir)
-        if args.choice == '1':
-            model_name = args.resume_path
-            log_dir = os.path.dirname(model_name)
-            os.makedirs(log_dir, exist_ok=True)
-            env = make_teacher_env(args.env, args.nb_envs, log_dir)
-            keep_learn(env, log_dir, model_name)
+if __name__ == '__main__':
+    args = parser.parse_args()
 
-    elif args.choice == '2':
-        model_name = args.resume_path
-        evaluate(model_name)
+    # Load base configuration from env config
+    env_config = load_config(args.env_config)
+    alg_config = load_config(args.alg_config)
+    
+    choice = int(args.choice)
+    # Create a unique log directory
+    policy_name = alg_config['policy_hparams']['policy']
+    log_dir = os.path.join(alg_config['training']['log_dir'], env_config['version'], policy_name, time_string)
+    os.makedirs(log_dir, exist_ok=True)
 
-    elif args.choice == '3':
-        env_test()
-
-    elif args.choice == '4':
-        model_dir = ''
-        eval_greedy(model_dir)
+    if choice == 0:  # Train
+        env = make_env(env_config, alg_config['training']['nb_envs'], log_dir)
+        learn(env, log_dir, env_config, alg_config)
+    elif choice == 1:  # Keep training
+        model_path = alg_config['training']['resume_path']
+        if not model_path:
+            raise ValueError("Resume path must be provided for 'keep training' choice.")
+        env = make_env(env_config['name'], alg_config['training']['nb_envs'], log_dir)
+        keep_learn(env, log_dir, model_path)
+    elif choice == 2:  # Evaluate
+        model_path = alg_config['training']['resume_path']
+        if not model_path:
+            raise ValueError("Resume path must be provided for 'evaluate' choice.")
+        evaluate(model_path, alg_config)
+    elif choice == 3:  # Calibrate/Eval Greedy
+        model_dir = os.path.dirname(alg_config['training']['resume_path'])
+        eval_greedy(model_dir, alg_config)

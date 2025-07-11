@@ -24,7 +24,7 @@ from policy_net import SEED1, set_seed, CustomCNN, PPO_withgridmap
 # tools
 import os
 import datetime
-from metadata import METADATA
+from config_loader import load_config
 
 current_time = datetime.datetime.now()
 time_string = current_time.strftime('%m-%d_%H')
@@ -40,6 +40,7 @@ parser.add_argument('--ros', help='whether to use ROS', type=int, default=0)
 parser.add_argument('--nb_targets', help='the number of targets', type=int, default=1)
 parser.add_argument('--nb_envs', help='the number of env', type=int, default=6)
 parser.add_argument('--max_episode_step', type=int, default=200)
+parser.add_argument('--config', type=str, default='configs/v1_config.yml', help='Path to the configuration file.')
 
 parser.add_argument('--log_dir', help='a path to a directory to log your data', type=str,
                     default='./models/dqn_cnn-' + time_string + '/')
@@ -47,10 +48,12 @@ parser.add_argument('--log_dir', help='a path to a directory to log your data', 
 parser.add_argument('--seed', type=int, default=42)
 args = parser.parse_args()
 
+config = load_config(args.config)
+
 if args.render:
-    METADATA['render'] = True
+    config['render'] = True
 else:
-    METADATA['render'] = False
+    config['render'] = False
 
 
 class SaveOnBestTrainingRewardCallback(BaseCallback):
@@ -112,10 +115,10 @@ def main():
     if args.choice == '0' or args.choice == '1':
         # new training
         if args.choice == '0':
-            if METADATA['algorithms'] == "PPO":
+            if config['algorithms'] == "PPO":
                 log_dir = '../log/ppo_' + time_string + '/'
                 model_dir = '../models/ppo_' + time_string + '/'
-            elif METADATA['algorithms'] == "SAC":
+            elif config['algorithms'] == "SAC":
                 log_dir = '../log/sac_' + time_string + '/'
                 model_dir = '../models/sac_' + time_string + '/'
 
@@ -129,12 +132,13 @@ def main():
         os.makedirs(monitor_dir, exist_ok=True)
         # env = Monitor(env, monitor_dir)
         env = SubprocVecEnv([lambda: auv_env.make(args.env,
+                                                  config=config,
                                                   render=args.render,
                                                   record=args.record,
                                                   ros=args.ros,
                                                   directory=model_dir,
                                                   num_targets=args.nb_targets,
-                                                  map=args.map,
+                                                  # map=args.map,
                                                   is_training=True,
                                                   t_steps=args.max_episode_step,
                                                   ) for _ in range(args.nb_envs)])
@@ -184,7 +188,7 @@ def learn(env, model_dir, log_dir):
     )  # 设置网络结构为自定义的网络架构（支持自定义输入）
 
     # 算法选择
-    if METADATA['algorithms'] == "DQN":
+    if config['algorithms'] == "DQN":
         model = DQN("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.0001, buffer_size=10000,
                     batch_size=64, target_update_interval=50, tensorboard_log=("./log/DQN_" + time_string), device="cuda",
                     exploration_fraction=0.8, exploration_initial_eps=1.0, exploration_final_eps=0.4, seed=41)
@@ -194,34 +198,29 @@ def learn(env, model_dir, log_dir):
         # model = DQN.load("./models/dqn_cnn-2023-12-02_18/final_model.zip", device='cuda', env=env)
 
     # PPO
-    if METADATA['algorithms'] == "PPO":
-        if METADATA['policy'] == 'MLP':
+    if config['algorithms'] == "PPO":
+        if config['policy'] == 'MLP':
             policy_kwargs = dict(net_arch=[256, 256, 256])  # 设置网络结构为3层256节点的感知机
             model = PPO("MlpPolicy", env, verbose=1, learning_rate=0.00005, batch_size=128, n_epochs=4,
-                        gae_lambda=0.9, clip_range=0.2, ent_coef=0.15, vf_coef=0.5, target_kl=0.01,
-                        policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda")
-        if METADATA['policy'] == 'CNN':
+                        tensorboard_log=log_dir, device="cuda", seed=41, policy_kwargs=policy_kwargs)
+        elif config['policy'] == 'CNN':
             policy_kwargs = dict(
-                features_extractor_class=PPO_withgridmap,
-                features_extractor_kwargs=dict(features_dim=128),
-                net_arch=dict(pi=[256, 128, 64], vf=[128, 64]),  # for AC policy
+                features_extractor_class=CustomCNN,
+                features_extractor_kwargs=dict(features_dim=512),
+                net_arch=[512, 512]
             )
-            model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate=0.001, clip_range=0.1,
-                        clip_range_vf=0.1,
-                        batch_size=64, tensorboard_log=log_dir, device="cuda")
+            model = PPO("CnnPolicy", env, verbose=1, learning_rate=0.00005, batch_size=128, n_epochs=4,
+                        tensorboard_log=log_dir, device="cuda", seed=41, policy_kwargs=policy_kwargs)
+        elif config['policy'] == 'GNN':
+            pass
 
-    if METADATA['algorithms'] == "SAC":
-        model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.0001, buffer_size=200000,
-                    learning_starts=100, batch_size=128, tau=0.005, gamma=0.99, train_freq=1,
-                    gradient_steps=1, action_noise=None,
-                    policy_kwargs=policy_kwargs, tensorboard_log=log_dir, device="cuda"
-                )
+    # SAC
+    if config['algorithms'] == "SAC":
+        policy_kwargs = dict(net_arch=dict(pi=[256, 256, 256], qf=[256, 256]))  # set for off-policy network
+        model = SAC("MlpPolicy", env, verbose=1, learning_rate=0.00005, batch_size=128,
+                    tensorboard_log=log_dir, device="cuda", seed=41, policy_kwargs=policy_kwargs)
 
-    # model = RecurrentPPO("CnnLstmPolicy", env, policy_kwargs=policy_kwargs, verbose=1,
-    #                      learning_rate=0.001, clip_range=0.2, batch_size=64,
-    #                      tensorboard_log=("./log/PPO_LSTM_" + time_string), device="cuda")
-
-    model.learn(total_timesteps=10000000, tb_log_name="first_run", log_interval=5, callback=callback)
+    model.learn(total_timesteps=10000000, callback=callback)
     model.save(os.path.join(args.log_dir, 'final_model'))
 
 
@@ -239,10 +238,10 @@ def keep_learn(env, model_dir, log_dir, model_name):
     )
     callback = CallbackList([callback, checkpoint_callback])
 
-    if METADATA['algorithms'] == "PPO":
+    if config['algorithms'] == "PPO":
         model = PPO.load(model_dir + model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    if METADATA['algorithms'] == "SAC":
+    if config['algorithms'] == "SAC":
         model = SAC.load(model_dir + model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 
@@ -257,26 +256,23 @@ def evaluate(model_dir):
     :param model_dir:
     :return:
     """
-    from metadata import TTENV_EVAL_SET
-    # 0 tracking 1 discovery 2 navagation
-    # METADATA.update(TTENV_EVAL_SET[0])
-
     env = auv_env.make(args.env,
+                       config=config,
                        render=args.render,
                        record=args.record,
                        ros=args.ros,
                        directory=model_dir,
                        num_targets=args.nb_targets,
-                       map=args.map,
+                       # map=args.map,
                        eval=True,
                        is_training=False,
                        t_steps=args.max_episode_step
                        )
     # get render parmater true
-    if METADATA['algorithms'] == "PPO":
+    if config['algorithms'] == "PPO":
         model = PPO.load(model_dir, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-    if METADATA['algorithms'] == "SAC":
+    if config['algorithms'] == "SAC":
         model = SAC.load(model_dir, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # model = DQN.load("./models/dqn_cnn-2023-12-01_14/final_model.zip", device='cuda')
@@ -305,8 +301,11 @@ def evaluate(model_dir):
     #         is_col.append(env.env.env.world.is_col)
     #
     #     # 对于列表
-    #     with open('../data_record/greedy_comparion_l/model_l_'+str(METADATA['lqr_l_p'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
+    #     with open('../data_record/greedy_comparion_l/model_l_'+str(config['target']['controller_config']['LQR']['l_p'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
     #         writer = csv.writer(file)
+    #         writer.writerow(
+    #             ['mean_reward', 'std_reward', 'mean_length', 'std_length', 'mean_success', 'std_success',
+    #              'timesteps'])
     #         # 遍历列表并写入数据
     #         for j in range(len(prior_data)):
     #             writer.writerow([prior_data[j], posterior_data[j], observed[j], is_col[j]])
@@ -317,16 +316,14 @@ def eval_greedy(model_dir):
     :param model_dir:
     :return:
     """
-    from metadata import TTENV_EVAL_SET
-    # 0 tracking 1 discovery 2 navagation
-    METADATA.update(TTENV_EVAL_SET[0])
     env = auv_env.make(args.env,
+                       config=config,
                        render=args.render,
                        record=args.record,
                        ros=args.ros,
                        directory=model_dir,
                        num_targets=args.nb_targets,
-                       map=args.map,
+                       # map=args.map,
                        eval=True,
                        is_training=False,
                        t_steps=args.max_episode_step
@@ -352,8 +349,11 @@ def eval_greedy(model_dir):
             is_col.append(env.env.env.world.is_col)
 
         # 对于列表
-        with open('../data_record/greedy_comparion_l/greedy_500_l_'+str(METADATA['lqr_l_p'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
+        with open('../data_record/greedy_comparion_l/greedy_500_l_'+str(config['target']['controller_config']['LQR']['l_p'])+'_'+str(i+1)+'.csv', 'w', newline='') as file:
             writer = csv.writer(file)
+            writer.writerow(
+                ['mean_reward', 'std_reward', 'mean_length', 'std_length', 'mean_success', 'std_success',
+                 'timesteps'])
             # 遍历列表并写入数据
             for j in range(len(prior_data)):
                 writer.writerow([prior_data[j], posterior_data[j], observed[j]])
@@ -362,12 +362,13 @@ def env_test():
     "3"
     model_dir = '../models/test'
     env = auv_env.make(args.env,
+                       config=config,
                        render=args.render,
                        record=args.record,
                        ros=args.ros,
                        directory=model_dir,
                        num_targets=args.nb_targets,
-                       map=args.map,
+                       # map=args.map,
                        eval=True,
                        is_training=False,
                        t_steps=args.max_episode_step

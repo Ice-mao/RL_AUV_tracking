@@ -1,3 +1,12 @@
+import sys
+import os
+import pathlib
+
+# Add the project root to the Python path
+ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent)
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
 import gymnasium as gym
 
 from stable_baselines3 import PPO, SAC
@@ -15,11 +24,11 @@ import argparse
 from policy_net import set_seed
 from auv_track_launcher.common.callbacks import SaveOnBestTrainingRewardCallback
 from auv_track_launcher.networks.student_network import Encoder
+from config_loader import load_config, update_config
 
 # tools
 import os
 import datetime
-from metadata import METADATA
 
 current_time = datetime.datetime.now()
 time_string = current_time.strftime('%m-%d_%H')
@@ -70,20 +79,16 @@ parser.add_argument("--batch-size", type=int, default=128)
 parser.add_argument("--test_episode", type=int, default=10)
 args = parser.parse_args()
 
-if args.render:
-    METADATA['render'] = True
-else:
-    METADATA['render'] = False
-
 
 def make_student_env(
         task: str,
         num_train_envs: int,
-        monitor_dir: str
+        monitor_dir: str,
+        config: dict,
 ) -> VecEnv:
     if 'Student' not in task:
         raise ValueError("you should use student env.")
-    train_envs = SubprocVecEnv([lambda: gym.make(task) for _ in range(num_train_envs)], )
+    train_envs = SubprocVecEnv([lambda: gym.make(task, config=config) for _ in range(num_train_envs)], )
     env = VecMonitor(train_envs, monitor_dir)
     return env
 
@@ -103,7 +108,7 @@ def make_callback(
     return callback
 
 
-def learn(env, log_dir):
+def learn(env, log_dir, config):
     os.makedirs(log_dir, exist_ok=True)
     # callback
     callback = make_callback(log_dir)
@@ -141,7 +146,7 @@ def learn(env, log_dir):
         model.save(args.log_dir + 'final_model')
 
 
-def keep_learn(env, log_dir, model_name):
+def keep_learn(env, log_dir, model_name, config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     os.makedirs(log_dir, exist_ok=True)
     callback = make_callback(log_dir)
@@ -158,17 +163,20 @@ def keep_learn(env, log_dir, model_name):
     model.save(log_dir + 'final_model')
 
 
-def evaluate(model_name: str):
+def evaluate(model_name: str, config: dict):
     """
     2
     :param model_name:
     :return:
     """
-    from metadata import TTENV_EVAL_SET
-    # 0 tracking 1 discovery 2 navagation
-    METADATA.update(TTENV_EVAL_SET[0])
+    # Assuming there's a student-specific eval config, or we can use the general one.
+    # For now, using the general tracking eval config.
+    eval_config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'eval_tracking_config.yml')
+    eval_config = load_config(eval_config_path)
+    config = update_config(config, eval_config)
 
-    env = SubprocVecEnv([lambda: gym.make('Student-v0-norender') for _ in range(1)], )
+    # The environment name might need to be adjusted based on the new registration logic.
+    env = SubprocVecEnv([lambda: gym.make('Student-v0-norender', config=config) for _ in range(1)], )
 
     if args.policy == 'SAC':
         model = SAC.load(model_name, device='cuda', env=env,
@@ -184,28 +192,28 @@ def evaluate(model_name: str):
         obs, reward, dones, inf = env.step(action)
 
 
-def eval_greedy(model_dir):
+def eval_greedy(model_dir, config: dict):
     """
     4
     :param model_dir:
     :return:
     """
-    from metadata import TTENV_EVAL_SET
-    # 0 tracking 1 discovery 2 navagation
-    METADATA.update(TTENV_EVAL_SET[0])
+    eval_config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'configs', 'eval_tracking_config.yml')
+    eval_config = load_config(eval_config_path)
+    config = update_config(config, eval_config)
+
     env = auv_env.make(args.env,
-                       render=args.render,
+                       config=config,
+                       render=config['render'],
                        record=args.record,
-                       ros=args.ros,
                        directory=model_dir,
-                       num_targets=args.nb_targets,
-                       map=args.map,
+                       num_targets=config['env']['target_num'],
                        eval=True,
                        is_training=False,
                        t_steps=args.max_episode_step
                        )
     from auv_baseline.greedy import Greedy
-    greedy = Greedy(env.env.env)
+    greedy = Greedy(env.unwrapped.world)
 
     for i in range(10):
         # init the eval data
@@ -217,32 +225,37 @@ def eval_greedy(model_dir):
         obs, _ = env.reset()
         for _ in range(200):
             action = greedy.predict(obs)
-            obs, reward, done, _, inf = env.step(action)
+            obs, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
 
-            prior_data.append(-np.log(LA.det(env.env.env.world.belief_targets[0].cov)))
-            posterior_data.append(-np.log(LA.det(env.env.env.world.record_cov_posterior[0])))
-            observed.append(env.env.env.world.record_observed[0])
-            is_col.append(env.env.env.world.is_col)
+            prior_data.append(-np.log(LA.det(env.unwrapped.world.belief_targets[0].cov)))
+            posterior_data.append(-np.log(LA.det(env.unwrapped.world.record_cov_posterior[0])))
+            observed.append(env.unwrapped.world.record_observed[0])
+            is_col.append(env.unwrapped.world.is_col)
+            if done:
+                break
 
-        # 对于列表
-        with open('../data_record/greedy_comparion_l/greedy_500_l_' + str(METADATA['lqr_l_p']) + '_' + str(
-                i + 1) + '.csv', 'w', newline='') as file:
+        # For list
+        l_p_value = config.get('target', {}).get('controller_config', {}).get('LQR', {}).get('l_p', 'unknown')
+        with open(f'../data_record/greedy_comparion_l/greedy_500_l_{l_p_value}_{i + 1}.csv', 'w', newline='') as file:
             writer = csv.writer(file)
-            # 遍历列表并写入数据
+            writer.writerow(
+                ['mean_reward', 'std_reward', 'mean_length', 'std_length', 'mean_success', 'std_success',
+                 'mean_collision', 'std_collision', 'mean_time', 'std_time'])
+            # Write data
             for j in range(len(prior_data)):
                 writer.writerow([prior_data[j], posterior_data[j], observed[j]])
 
 
-def env_test():
+def env_test(config: dict):
     "3"
     model_dir = '../models/test'
     env = auv_env.make(args.env,
-                       render=args.render,
+                       config=config,
+                       render=config['render'],
                        record=args.record,
-                       ros=args.ros,
                        directory=model_dir,
-                       num_targets=args.nb_targets,
-                       map=args.map,
+                       num_targets=config['env']['target_num'],
                        eval=True,
                        is_training=False,
                        t_steps=args.max_episode_step
@@ -256,28 +269,49 @@ def env_test():
 
 
 if __name__ == "__main__":
-    if args.choice == '0' or args.choice == '1':
-        set_seed(args.seed)
-        if args.choice == '0':
-            log_dir = os.path.join(args.log_dir, args.policy, time_string)
-            os.makedirs(log_dir, exist_ok=True)
-            env = make_student_env('v1-Student-norender', args.nb_envs, log_dir+'/')
-            args.state_space = env.observation_space
-            args.action_space = env.action_space
-            learn(env, log_dir)
-        if args.choice == '1':
-            model_name = args.resume_path_model
-            log_dir = os.path.dirname(model_name)
-            env = make_student_env('v1-Student-norender', args.nb_envs, log_dir)
-            keep_learn(env, log_dir, model_name)
+    # The ROOT_DIR logic is now at the top of the file
+    
+    # Load base configuration
+    if "v1" in args.env or "rgb" in args.env.lower():
+        config_path = os.path.join(ROOT_DIR, 'configs/v1_config.yml')
+    elif "v2" in args.env:
+        config_path = os.path.join(ROOT_DIR, 'configs/v2_config.yml')
+    else:
+        # Default config
+        config_path = os.path.join(ROOT_DIR, 'configs/v1_config.yml')
+    
+    config = load_config(config_path)
 
-    elif args.choice == '2':
+    # Update config with command-line arguments
+    config['render'] = bool(args.render)
+    config['env']['target_num'] = args.nb_targets
+    if 'agent' not in config:
+        config['agent'] = {}
+    config['agent']['max_episode_step'] = args.max_episode_step
+
+    set_seed(args.seed)
+
+    choice = args.choice
+    log_dir = os.path.join(args.log_dir, 'student', time_string)
+    os.makedirs(log_dir, exist_ok=True)
+
+    if choice == '0':  # train
+        env = make_student_env('v1-Student-norender', args.nb_envs, log_dir + '/', config)
+        learn(env, log_dir, config)
+    elif choice == '1':  # keep train
+        if args.resume_path_model is None:
+            raise ValueError("resume_path_model cannot be None for keep_learn")
         model_name = args.resume_path_model
-        evaluate(model_name)
-
-    elif args.choice == '3':
-        env_test()
-
-    elif args.choice == '4':
-        model_dir = ''
-        eval_greedy(model_dir)
+        log_dir = os.path.dirname(model_name)
+        env = make_student_env('v1-Student-norender', args.nb_envs, log_dir, config)
+        keep_learn(env, log_dir, model_name, config)
+    elif choice == '2':  # eval
+        if args.resume_path_model is None:
+            raise ValueError("resume_path_model cannot be None for evaluate")
+        model_name = args.resume_path_model
+        evaluate(model_name, config)
+    elif choice == '3':  # test
+        env_test(config)
+    elif choice == '4':  # cal
+        model_dir = log_dir
+        eval_greedy(model_dir, config)

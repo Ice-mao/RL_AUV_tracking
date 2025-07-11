@@ -10,7 +10,6 @@ import holoocean
 import numpy as np
 from numpy import linalg as LA
 from auv_env import util
-from metadata import METADATA
 import copy
 from ultralytics import YOLO  # 引入YOLO库
 from auv_control.control import CmdVel
@@ -21,7 +20,8 @@ class YOLOTracker:
         YOLOwithLQR
     """
 
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         # 加载YOLO模型
         # self.model = YOLO("yolov8n.pt")  # 使用YOLOv8 nano模型，根据需要替换为合适的模型
         self.model = YOLO("/home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/auv_baseline/best.pt")

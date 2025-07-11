@@ -1,12 +1,10 @@
 import gymnasium as gym
 from .envs.base import TargetTrackingBase
+from .envs.world_auv_v0 import WorldAuvV0
 from .envs.world_auv_v1 import WorldAuvV1
-from .envs.world_auv_v1_sample import WorldAuvV1Sample
 from .envs.world_auv_v2 import WorldAuvV2
-from .envs.world_auv_v2_sample import WorldAuvV2Sample
 
-def make(env_name, record=False, eval=False, directory='../',
-         t_steps=100, num_targets=1, **kwargs):
+def make(env_name, config, eval=False, t_steps=100, num_targets=1, show_viewport=True, **kwargs):
     """
     Parameters:
     ----------
@@ -24,39 +22,31 @@ def make(env_name, record=False, eval=False, directory='../',
         a path to store a video file if record is True.
     T_steps : int
         the number of steps per episode.
-    num_targets : int
-        the number of targets
     """
-    # if T_steps is None:
-    #     if num_targets > 1:
-    #         T_steps = 150
-    #     else:
-    #         T_steps = 100
-    # T_steps = 200
-
     world_map = {
-        'AUVTracking_v1': (WorldAuvV1, "AUV_RGB"),
-        'AUVTracking_v1_sample': (WorldAuvV1Sample, "AUV_RGB_Dam"),
-        'AUVTracking_v2': (WorldAuvV2, "SimpleUnderwater-Bluerov2"),
-        'AUVTracking_v2_sample': (WorldAuvV2Sample, "AUV_RGB_Dam"),
+        'AUVTracking_v0': (WorldAuvV0, "SimpleUnderwater-Bluerov2"),
+        'AUVTracking_v1': (WorldAuvV1, "SimpleUnderwater-Bluerov2_RGB"),
+        'AUVTracking_v2': (WorldAuvV2, "SimpleUnderwater-Bluerov2_sonar"),
     }
 
     if env_name not in world_map:
         raise ValueError('No such environment exists.')
 
     world_class, default_map = world_map[env_name]
-    map_name = kwargs.pop('map', default_map)
-
-    env0 = TargetTrackingBase(world_class, map_name, num_targets, **kwargs)
+    if 'map' not in config:
+        map_name = default_map
+    else:
+        map_name = config['map']
+    env0 = TargetTrackingBase(world_class, map_name, show_viewport, config, **kwargs)
 
     # some wrappers
     env = gym.wrappers.TimeLimit(env0, max_episode_steps=t_steps)
     if eval:
         from auv_env.wrappers.display_wrapper import Display2D
         env = Display2D(env)
-    if record:
-        from auv_env.wrappers.display_wrapper import Video2D
-        env = Video2D(env, dirname=directory)
+    # if record:
+    #     from auv_env.wrappers.display_wrapper import Video2D
+    #     env = Video2D(env, dirname=directory)
     return env
 
 

@@ -1,71 +1,31 @@
 #!/bin/bash
 export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 
-policy="PPO"
+# --- Configuration ---
+# Change these variables to easily switch between experiments
 
-if [ "$policy" == "SAC" ]; then
-    echo "Running training script"
-    # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
-    python SB3_trainer.py "$@" \
-    --device cuda:0 \
-    --choice 0 \
-    --env v2-Teacher-norender \
-    --policy SAC \
-    --render 1 \
-    --nb_envs 4 \
-    --max_episode_step 200 \
-    \
-    --seed 41 \
-    --buffer-size 100000 \
-    --lr 1e-4 \
-    --alpha-lr 3e-4 \
-    --noise_std 0.12 \
-    --gamma 0.99 \
-    --tau 0.005 \
-    --auto_alpha 1 \
-    --alpha 0.2 \
-    \
-    --start-timesteps 1000 \
-    --timesteps 1000000 \
-    --step-per-collect 5 \
-    --update-per-step 0.2 \
-    --n-step 2 \
-    --batch-size 256 \
-    --test_episode 10 \
-    --log-dir ../../log/teacher \
-    --resume-path /home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/SAC/01-13_12/rl_model_1240000_steps.zip \
+# 1. Choose the policy: "PPO" or "SAC"
+ALG_CONFIG="configs/algorithm/ppo.yml"
 
-elif [ "$policy" == "PPO" ]; then
-    echo "Running testing script"
-    # --choice 0:train 1:keep training 2:eval (1、2 need resume-path of policy)
-    python SB3_trainer.py "$@" \
-        --device cuda \
-        --choice 0 \
-        --env v2-Teacher-render \
-        --policy PPO \
-        --render 1 \
-        --nb_envs 2 \
-        --max_episode_step 200 \
-        \
-        --seed 46 \
-        --buffer-size 100000 \
-        --lr 3e-4 \
-        --gamma 0.99 \
-        \
-        --n-steps 1024 \
-        --vf-coef 0.25 \
-        --ent-coef 0.0 \
-        --gae-lambda 0.95 \
-        --max-grad-norm 0.5 \
-        --eps-clip 0.2 \
-        --value-clip 0.1 \
-        --norm-adv 0 \
-        \
-        --timesteps 2000000 \
-        --batch-size 64 \
-        --log-dir ../../log/teacher \
-        --resume-path /data/RL/RL_AUV_tracking/RL_AUV_tracking/log/teacher/PPO/04-21_21/rl_model_1000000_steps.zip \
+# 2. Choose the environment config
+ENV_CONFIG="configs/envs/v0_config.yml"
 
-else
-    echo "Unknown policy"
-fi
+# 3. Choose the action: "0" (train), "1" (keep train), "2" (eval)
+CHOICE="0"
+
+# 4. Param
+EVAL="0"
+
+
+echo "================================================="
+echo "Running experiment with the following settings:"
+echo "Env Config:   $ENV_CONFIG"
+echo "Alg Config:   $ALG_CONFIG"
+echo "Action:       $CHOICE"
+echo "================================================="
+
+# Build the command
+CMD="python SB3_trainer.py --env_config $ENV_CONFIG --alg_config $ALG_CONFIG --choice $CHOICE"
+
+# Execute the command
+eval $CMD

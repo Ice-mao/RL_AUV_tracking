@@ -1,0 +1,51 @@
+# Algorithm specific parameters for PPO
+# Can be merged with a main environment config
+
+training:
+  device: "cuda"
+  seed: 46
+  nb_envs: 2
+  timesteps: 1000000
+  batch_size: 64
+  log_dir: "log/teacher"
+  resume_path: "log/teacher/PPO/04-21_21/rl_model_1000000_steps.zip"
+  net_arch:
+    pi: [256, 256, 256]
+    vf: [256, 256]
+
+policy:
+  # _target_: diffusion_policy.policy.diffusion_unet_image_policy.DiffusionUnetImagePolicy
+  net_arch:
+    pi: [256, 256, 256]
+    vf: [256, 256]
+
+  obs_encoder:
+    # _target_: diffusion_policy.model.vision.multi_image_obs_encoder.MultiImageObsEncoder
+    # shape_meta: ${shape_meta}
+    # rgb_model:
+    #   _target_: diffusion_policy.model.vision.model_getter.get_resnet
+    #   name: resnet18
+    #   weights: null
+    # resize_shape: null
+    # crop_shape: [76, 76]
+    # # constant center crop
+    # random_crop: True
+    # use_group_norm: True
+    # share_rgb_model: False
+    # imagenet_norm: True
+
+policy_hparams:
+  policy: "PPO"
+  lr: 0.0003
+  gamma: 0.99
+  buffer_size: 100000
+
+  # PPO specific
+  n_steps: 1024
+  vf_coef: 0.25
+  ent_coef: 0.0
+  gae_lambda: 0.95
+  max_grad_norm: 0.5
+  eps_clip: 0.2
+  value_clip: 0.1
+  norm_adv: false

@@ -11,7 +11,6 @@ Therefore, in the display_wrapper, the map is flipped.
 """
 import numpy as np
 import yaml
-from metadata import METADATA
 
 def round(x):
     if x >= 0:
@@ -251,7 +250,7 @@ class GridMap(object):
         local_mapmin = np.array([-im_size/2*self.mapres[0], 0.0])
         return self.local_map_helper(im_size, odom, local_mapmin, R, get_visit_freq)
 
-    def local_visit_map(self, im_size, odom, get_visit_freq=True):
+    def local_visit_map(self, im_size, odom, get_visit_freq=False):
         """
         Return a local visit frequency map around the odom. odom position should
         be the center.

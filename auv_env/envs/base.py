@@ -15,14 +15,13 @@ import os, copy
 import holoocean
 
 from auv_control import scenario
+from auv_control.control import CmdVel
 from auv_control.estimation import KFbelief, UKFbelief
-
-from metadata import METADATA
 
 from auv_env.maps import map_utils
 import auv_env.util as util
 from auv_env.envs.obstacle import Obstacle
-from auv_env.envs.agent import AgentAuv, AgentSphere, AgentAuvTarget
+from auv_env.envs.agent import AgentAuv, AgentAuvTarget, AgentAuvManual
 
 
 class TargetTrackingBase(gym.Env):
@@ -30,20 +29,17 @@ class TargetTrackingBase(gym.Env):
         base class for env creation
     """
 
-    def __init__(self, world_class, map="TestMap", num_targets=1, show_viewport=True, verbose=True, is_training=False, **kwargs):
+    def __init__(self, world_class, map, show_viewport, config,):
         gym.Env.__init__(self)
         np.random.seed()
         self.state = None
+        self.config = config
         # init some params
-        self.num_targets = num_targets
-        self.is_training = is_training
-        self.action_space = spaces.Box(low=np.float32(METADATA['action_range_low']),
-                                       high=np.float32(METADATA['action_range_high']),
-                                       dtype=np.float32)
+        self.num_targets = config['env']['num_targets']
         # init the scenario
-        self.world = world_class(map=map, show=show_viewport, verbose=verbose, num_targets=self.num_targets)
+        self.world = world_class(map=map, show=show_viewport, config=self.config)
         # # init the action space
-        # self.action_space = self.world.action_space
+        self.action_space = self.world.action_space
         self.observation_space = self.world.observation_space
         self.reset_num = 0
 
@@ -52,7 +48,7 @@ class TargetTrackingBase(gym.Env):
         self.reset_num += 1
         self.has_discovered = [1] * self.num_targets  # if initial state is observed:1
         self.state = []
-        return self.world.reset()
+        return self.world.reset(**kwargs)
 
     def step(self, action):
         """
@@ -61,7 +57,7 @@ class TargetTrackingBase(gym.Env):
         :param action:
         :return:
         """
-        return self.world.step(action_waypoint=action)
+        return self.world.step(action=action)
 
     def seed(self, seed):
         np.random.seed(seed)
@@ -72,22 +68,20 @@ class WorldBase:
         different from world: target is also an auv
         for v0、v1
     """
-    def __init__(self, map, show, verbose, num_targets, **kwargs):
-        # define the entity
-        # self.ocean = holoocean.make(scenario_cfg=scenario, show_viewport=show, verbose=verbose)
+    def __init__(self, config, map, show):
         self.map = map
         self.ocean = holoocean.make(self.map, show_viewport=show)
         scenario = holoocean.get_scenario(self.map)
-        self.ocean.should_render_viewport(METADATA['render'])
+        self.config = config
+        self.ocean.should_render_viewport(self.config['render'])
         self.agent = None
         # init the param
         self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time
-        self.task_random = METADATA['env']['task_random']
-        self.control_period = METADATA['env']['control_period']
-        self.num_targets = num_targets  # num of target
-        self.action_range_scale = METADATA['action_range_scale']
-        self.noblock = METADATA['env']['noblock']
-        self.insight = METADATA['env']['insight'][0]
+        self.task_random = self.config['env']['task_random']
+        self.control_period = self.config['env']['control_period']
+        self.num_targets = self.config['env']['num_targets']  # num of targets
+        self.noblock = self.config['env']['noblock']
+        self.insight = self.config['env']['insight'][0]
         if self.insight:
             self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         else:
@@ -98,46 +92,44 @@ class WorldBase:
 
         # Setup environment
         margin = 0.25
-        self.size = np.array([METADATA['scenario']['size'][0] - 2 * margin,
-                              METADATA['scenario']['size'][1] - 2 * margin,
-                              METADATA['scenario']['size'][2]])
-        self.bottom_corner = np.array([METADATA['scenario']['bottom_corner'][0] + margin,
-                                       METADATA['scenario']['bottom_corner'][1] + margin,
-                                       METADATA['scenario']['bottom_corner'][2]])
-        self.fix_depth = METADATA['scenario']['fix_depth']
-        self.margin = METADATA['env']['margin']
-        self.margin2wall = METADATA['env']['margin2wall']
-        # self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
-        #                     lifetime=0)  # draw the area
+        self.size = np.array([self.config['scenario']['size'][0] - 2 * margin,
+                              self.config['scenario']['size'][1] - 2 * margin,
+                              self.config['scenario']['size'][2]])
+        self.bottom_corner = np.array([self.config['scenario']['bottom_corner'][0] + margin,
+                                       self.config['scenario']['bottom_corner'][1] + margin,
+                                       self.config['scenario']['bottom_corner'][2]])
+        self.fix_depth = self.config['scenario']['fix_depth']
+        self.margin = self.config['env']['margin']
+        self.margin2wall = self.config['env']['margin2wall']
 
         # Setup obstacles
-        # rule is obstacles combined will rotate from their own center
-        self.obstacles = Obstacle(self.ocean, self.fix_depth)
+        self.obstacles = Obstacle(self.ocean, self.fix_depth, self.config)
 
-        # Record for reward obtain(diff from the control period and the sampling period)
-        self.agent_w = None
-        # for u calculate:when receive the new waypoints
-        self.agent_last_u = None
-        self.agent_u = None
         self.sensors = {}
         self.set_limits()
-        # Cal random  pos of agent and target
-        self.reset()
 
-    def step(self, action_waypoint):
-        global_waypoint = np.zeros(3)
-        observed = []
-        # 归一化展开
-        r = action_waypoint[0] * self.action_range_scale[0]
-        theta = action_waypoint[1] * self.action_range_scale[1]
-        global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
-                                                         np.radians(self.agent.est_state.vec[8]))
-        angle = action_waypoint[2] * self.action_range_scale[2]
-        global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
-        self.agent_w = angle / 0.5
-        if self.agent_u is not None:
-            self.agent_last_u = self.agent_u
-        for j in range(50):
+    def step(self, action):
+        if self.action_dim == self.config['agent']['controller_config']['LQR']['action_dim']:
+            # waypoint for LQR
+            global_waypoint = np.zeros(3)
+            observed = []
+            r = action[0] * self.action_range_scale[0]
+            theta = action[1] * self.action_range_scale[1]
+            global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
+                                                            np.radians(self.agent.est_state.vec[8]))
+            angle = action[2] * self.action_range_scale[2]
+            global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
+            self.action = global_waypoint
+            frequency = self.config['agent']['controller_config']['LQR']['control_frequency']
+        elif self.action_dim == self.config['agent']['controller_config']['PID']['action_dim']:
+            # cmd_vel for PID
+            cmd_vel = CmdVel()
+            cmd_vel.linear.x = action[0] * self.action_range_scale[0]
+            cmd_vel.angular.z = action[1] * self.action_range_scale[1]
+            self.action = cmd_vel
+            frequency = self.config['agent']['controller_config']['PID']['control_frequency']
+
+        for _ in range(frequency):
             for i in range(self.num_targets):
                 target = 'target'+str(i)
                 if self.has_discovered[i]:
@@ -146,15 +138,15 @@ class WorldBase:
                 else:
                     self.target_u = np.zeros(8)
                     self.ocean.act(target, self.target_u)
-            if j == 0:
-                self.agent_u = self.u
-            self.u = self.agent.update(global_waypoint, self.fix_depth, self.sensors['auv0'])
+            self.u = self.agent.update(self.action, self.fix_depth, self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()
+            # update
             self.sensors['auv0'].update(sensors['auv0'])
             for i in range(self.num_targets):
                 target = 'target'+str(i)
                 self.sensors[target].update(sensors[target])
+            self.update_every_tick(sensors)
 
         # The targets are observed by the agent (z_t+1) and the beliefs are updated.
         observed = self.observe_and_update_belief()
@@ -163,40 +155,44 @@ class WorldBase:
                       and np.linalg.norm(self.agent.state.vec[:2] - self.targets[0].state.vec[:2]) > self.margin)
 
         # Compute a reward from b_t+1|t+1 or b_t+1|t.
-        reward, done, mean_nlogdetcov, std_nlogdetcov = self.get_reward(is_col=is_col)
+        reward, done, mean_nlogdetcov, std_nlogdetcov = self.get_reward(is_col=is_col, action=self.action)
         # Predict the target for the next step, b_t+2|t+1
         for i in range(self.num_targets):
             self.belief_targets[i].predict()
 
         # Compute the RL state.
-        state = self.state_func(observed, action_waypoint)
+        state = self.state_func(observed, action)
         self.record_observed = observed
-        if METADATA['render']:
+        if self.config['render']:
             print(is_col, observed[0], reward)
         self.is_col = is_col
         return state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
 
-    def build_models(self, sampling_period, agent_init_state, target_init_state, time, **kwargs):
+    def build_models(self, sampling_period, agent_init_state, target_init_state, time):
         """
         :param sampling_period:
         :param agent_init_state:list [[x,y,z],yaw(theta)]
         :param target_init_state:list [[x,y,z],yaw(theta)]
-        :param kwargs:
         :return:
         """
         # Build a robot
         self.agent = AgentAuv(dim=3, sampling_period=sampling_period, sensor=agent_init_state,
-                              scenario=self.map)
-        self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i
-                                       , obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
-                                       bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
-                                       l_p=METADATA['target']['lqr_l_p'])
-                        for i in range(self.num_targets)]
-        # Build target beliefs.
-        if METADATA['target']['random']:
-            self.const_q = np.random.choice(METADATA['target']['const_q'][1])
+                              scenario=self.map, config=self.config)
+        if self.config['target']['controller'] == 'Manual':
+            self.targets = [AgentAuvManual(dim=3, sampling_period=sampling_period, fixed_depth=self.fix_depth,
+                    sensor=target_init_state,
+                    scene=self.ocean, config=self.config)
+                for _ in range(self.num_targets)]
         else:
-            self.const_q = METADATA['target']['const_q'][0]
+            self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i,
+                        obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
+                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean, scenario=self.map, config=self.config)
+                for i in range(self.num_targets)]
+        # Build target beliefs.
+        if self.config['target']['random']:
+            self.const_q = np.random.choice(self.config['target']['const_q'][1])
+        else:
+            self.const_q = self.config['target']['const_q'][0]
         self.targetA = np.concatenate((np.concatenate((np.eye(2),
                                                        self.control_period * np.eye(2)), axis=1),
                                        [[0, 0, 1, 0], [0, 0, 0, 1]]))
@@ -205,31 +201,30 @@ class WorldBase:
                             self.control_period ** 2 / 2 * np.eye(2)), axis=1),
             np.concatenate((self.control_period ** 2 / 2 * np.eye(2),
                             self.control_period * np.eye(2)), axis=1)))
-        self.belief_targets = [KFbelief(dim=METADATA['target']['target_dim'],
-                                        limit=self.limit['target'], A=self.targetA,
+        self.belief_targets = [KFbelief(dim=self.config['target']['target_dim'],
+                                        limit=self.target_limit, A=self.targetA,
                                         W=self.target_noise_cov,
                                         obs_noise_func=self.observation_noise)
                                for _ in range(self.num_targets)]
 
-    def reset(self, action_dim=3):
+    def reset(self, seed=None, **kwargs):
         self.ocean.reset()
-        if METADATA['render']:
+        if self.config['render']:
             self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
                                 lifetime=0)  # draw the area
         self.obstacles.reset()
         self.obstacles.draw_obstacle()
 
         if self.task_random:
-            self.insight = np.random.choice(METADATA['env']['insight'][1])
+            self.insight = np.random.choice(self.config['env']['insight'][1])
         else:
-            self.insight = METADATA['env']['insight'][0]
+            self.insight = self.config['env']['insight'][0]
         print("insight is :", self.insight)
         if self.insight:
             self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         else:
             self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
         # reset the reward record
-        self.agent_w = None
         self.agent_last_state = None
         self.agent_last_u = None
         # reset the random position
@@ -242,7 +237,7 @@ class WorldBase:
         self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw, self.belief_init_pos \
             = self.get_init_pose_random()
 
-        if METADATA['eval_fixed']:
+        if self.config['eval_fixed']:
             self.agent_init_pos = np.array([-12.05380736, -17.06450028, -5.])
             self.agent_init_yaw = -0.9176929024434316
             self.target_init_pos = np.array([-8.92739928, -17.99615254, -5.])
@@ -288,7 +283,7 @@ class WorldBase:
             self.belief_targets[i].reset(
                 init_state=np.concatenate((self.belief_init_pos[:2], np.zeros(2))),
                 # init_state=np.concatenate((np.array([-10, -10]), np.zeros(2))),
-                init_cov=METADATA['target']['target_init_cov'])
+                init_cov=self.config['target']['target_init_cov'])
 
         # The targets are observed by the agent (z_0) and the beliefs are updated (b_0).
         observed = self.observe_and_update_belief()
@@ -299,7 +294,7 @@ class WorldBase:
 
         observed = [True]
         # Compute the RL state.
-        state = self.state_func(observed, action_waypoint=np.zeros(action_dim))
+        state = self.state_func(observed, action=np.zeros(self.action_dim))
         info = {'reset_info': 'yes'}
         return state, info
 
@@ -311,12 +306,11 @@ class WorldBase:
     def top_corner(self):
         return self.bottom_corner + self.size
 
-    def get_init_pose_random(self,
-                             lin_dist_range_a2t=METADATA['target']['lin_dist_range_a2t'],
-                             ang_dist_range_a2t=METADATA['target']['ang_dist_range_a2t'],
-                             lin_dist_range_t2b=METADATA['target']['lin_dist_range_t2b'],
-                             ang_dist_range_t2b=METADATA['target']['ang_dist_range_t2b'],
-                             blocked=None, ):
+    def get_init_pose_random(self, blocked=None):
+        lin_dist_range_a2t=self.config['target']['lin_dist_range_a2t']
+        ang_dist_range_a2t=self.config['target']['ang_dist_range_a2t']
+        lin_dist_range_t2b=self.config['target']['lin_dist_range_t2b']
+        ang_dist_range_t2b=self.config['target']['ang_dist_range_t2b']
         is_agent_valid = False
         print(self.insight)
         while not is_agent_valid:
@@ -351,8 +345,8 @@ class WorldBase:
                             target_init_yaw = np.random.uniform(-np.pi / 2, np.pi / 2)
                             # confirm is not insight
                             r, alpha = util.relative_distance_polar(target_init_pos, agent_init_pos, agent_init_yaw)
-                            if (r > METADATA['agent']['sensor_r'] or np.rad2deg(alpha) > METADATA['agent']['fov'] / 2
-                                    or np.rad2deg(alpha) < -METADATA['agent']['fov'] / 2):
+                            if (r > self.config['agent']['sensor_r'] or np.rad2deg(alpha) > self.config['agent']['fov'] / 2
+                                    or np.rad2deg(alpha) < -self.config['agent']['fov'] / 2):
                                 is_not_insight = True
                             else:
                                 is_not_insight = False
@@ -429,18 +423,10 @@ class WorldBase:
         #                                                                                       self.margin2wall + 2))
         return is_valid, rand_xy_global, util.wrap_around(rand_ang + frame_theta)
 
-    @abstractmethod
-    def set_limits(self):
-        '''
-        you should define your limit due to the cfg
-        like self.limit['agent'], self.limit['target'], self.limit['state'], self.observation_space
-        :return:
-        '''
-
     def observation_noise(self, z):
         # 测量噪声矩阵，假设独立
-        obs_noise_cov = np.array([[METADATA['agent']['sensor_r_sd'] * METADATA['agent']['sensor_r_sd'], 0.0],
-                                  [0.0, METADATA['agent']['sensor_b_sd'] * METADATA['agent']['sensor_b_sd']]])
+        obs_noise_cov = np.array([[self.config['agent']['sensor_r_sd'] * self.config['agent']['sensor_r_sd'], 0.0],
+                                  [0.0, self.config['agent']['sensor_b_sd'] * self.config['agent']['sensor_b_sd']]])
         return obs_noise_cov
 
     def observation(self, target):
@@ -451,8 +437,8 @@ class WorldBase:
                                                 xy_base=self.agent.state.vec[:2],
                                                 theta_base=np.radians(self.agent.state.vec[8]))
         # 判断是否观察到目标
-        observed = (r <= METADATA['agent']['sensor_r']) \
-                   & (abs(alpha) <= METADATA['agent']['fov'] / 2 / 180 * np.pi) \
+        observed = (r <= self.config['agent']['sensor_r']) \
+                   & (abs(alpha) <= self.config['agent']['fov'] / 2 / 180 * np.pi) \
                    & self.obstacles.check_obstacle_block(target.state.vec[:2], self.agent.state.vec[:2],
                                                          self.margin)
         z = None
@@ -477,28 +463,49 @@ class WorldBase:
             self.record_cov_posterior.append(self.belief_targets[i].cov)
         return observed
 
+
+    @abstractmethod
+    def set_limits(self):
+        '''
+        you should define :
+            self.action_dim (for LQR or PID)
+            self.action_space
+            self.action_range_scale
+            self.observation_space  
+            self.target_limit (for kf belief)
+        here due to the cfg
+        :return:
+        '''
+    
+    @abstractmethod
+    def update_every_tick(self, sensors):
+        '''
+        you should define your own update_every_tick when you inherit the child class.
+        such as update extra image buffer
+        '''
+
     from typing import Dict
     @abstractmethod
-    def get_reward(self, is_col: bool, params: Dict[str, float]):
+    def get_reward(self, is_col: bool, action: np.ndarray | CmdVel ):
         """
         calulate the reward should return
         :param is_col:
-        :param params:
+        :param action: may be used for reward calculation
         :return:
         """
 
     from typing import Union
     @abstractmethod
-    def state_func(self, observed, action_waypoint) -> Union[np.ndarray, dict]:
+    def state_func(self, observed, action) -> Union[np.ndarray, dict]:
         """
-            should define your own state_func when you inherit the child class.
+            should define your own state_func when you inherit the child class due to the observation.
             just an example below
         """
         # Find the closest obstacle coordinate.
-        if self.agent.rangefinder.min_distance < METADATA['agent']['sensor_r']:
+        if self.agent.rangefinder.min_distance < self.config['agent']['sensor_r']:
             obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.angle))
         else:
-            obstacles_pt = (METADATA['agent']['sensor_r'], 0)
+            obstacles_pt = (self.config['agent']['sensor_r'], 0)
 
         state = []
         state.extend(self.agent.gridMap.to_grayscale_image().flatten())  # dim:64*64
@@ -513,7 +520,7 @@ class WorldBase:
         state.extend([self.agent.state.vec[0], self.agent.state.vec[1],
                       np.radians(self.agent.state.vec[8])])  # dim:3
         # self.state.extend(obstacles_pt)
-        state.extend(action_waypoint.tolist())  # dim:3
+        state.extend(action.tolist())  # dim:3
 
         state = np.array(state)
         return state
@@ -530,4 +537,3 @@ if __name__ == '__main__':
         action = [1 * np.random.rand(), 1 * np.random.rand(), 0.1 * np.random.rand(),
                   0.01 * np.random.rand(), 0.01 * np.random.rand(), 0.01 * np.random.rand()]
         obs, reward, done, _, inf = env.step(action)
-        print(reward)

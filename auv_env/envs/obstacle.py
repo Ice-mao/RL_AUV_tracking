@@ -10,7 +10,6 @@ import math
 import numpy as np
 import copy
 
-from metadata import METADATA
 from shapely import LineString
 from shapely.geometry import Point, Polygon
 
@@ -94,9 +93,10 @@ def polygon_2_points(center, scale, _res, rotate_center, rotate_angle, global_of
 
 
 class Obstacle:
-    def __init__(self, env, fix_depth):
+    def __init__(self, env, fix_depth, config):
         self.env = env
         self.fix_depth = fix_depth
+        self.config = config
         self.num_obstacles = 4
         self.res = 0.2  # m remeber to * with scale
         self.sub_center = [25 * self.res, 25 * self.res]  # m sub obstacle rotate center
@@ -111,7 +111,7 @@ class Obstacle:
 
     def reset(self):
         np.random.seed()
-        if not METADATA['eval_fixed']:
+        if not self.config['eval_fixed']:
             self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=False)
             self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         else:
@@ -133,7 +133,7 @@ class Obstacle:
                                           self.rot_angs[i], self.sub_coordinates[i])
                 # drew the obstacle's boundary
                 # need the -1 factor, because the coordinates of line is opposite
-                if METADATA['render']:
+                if self.config['debug']:
                     self.env.draw_line([points[0][0], points[0][1], self.fix_depth],
                                        [points[1][0], points[1][1], self.fix_depth],
                                        thickness=5.0, lifetime=0.0)
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     import time
 
     with holoocean.make("SimpleUnderwater-Bluerov2") as env:
-        obstacle = Obstacle(env, fix_depth=-5)
+        obstacle = Obstacle(env, fix_depth=-5, config={'eval_fixed': False, 'render': True})
         obstacle.reset()
         obstacle.draw_obstacle()
         # # Define the properties of the box to be spawned
