@@ -293,17 +293,13 @@ This repository is released under the MIT license. See [LICENSE](LICENSE) for ad
 
 ## 🙏 Acknowledgement
 
-Our AUV tracking environment is built upon HoloOcean underwater simulation platform.
-Our control system implementations are adapted from classical robotics control theory.
-The Kalman Filter and belief state tracking are based on standard estimation theory.
-The reinforcement learning algorithms are implemented using Stable Baselines3.
-The neural network architectures utilize PyTorch framework.
-The IEKF implementation is adapted from the inekf library.
-Our configuration management system is inspired by modern ML practices.
-The multi-modal sensor fusion approach draws from underwater robotics research.
+Our [`auv_control`](./auv_control/) implementation is adapted from [`AUVControl`](https://github.com/contagon/AUVControl.git).
 
-## Additional information
+## 📝 TODO
 
-If you want to know more details,you should read the code.
+- [ ] **Obs Encoder**: for v1 env training
+- [ ] **Evaluation Metrics**: Implement detailed evaluation metrics for tracking performance.
+- [ ] **Sample Data Collection and Imitation Learning Integration**: Develop pipelines for data collection and integrate imitation learning algorithms.
+- [ ] **New Image Processing Algorithms**: Research and implement advanced image processing techniques for underwater environments.
 
-Please keep staying tuning😊!
+**Please keep staying tuning 😊!**

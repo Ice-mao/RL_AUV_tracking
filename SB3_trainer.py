@@ -62,9 +62,9 @@ def make_callback(
 ) -> CallbackList:
     # Use get to provide a default value if the key doesn't exist
     nb_envs = alg_config['training']['nb_envs']
-    callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=log_dir, save_path=log_dir)
+    callback = SaveOnBestTrainingRewardCallback(check_freq=alg_config['training']['log_freq'], log_dir=log_dir, save_path=log_dir)
     checkpoint_callback = CheckpointCallback(
-        save_freq=max(10000 // nb_envs, 1),
+        save_freq=max(alg_config['training']['save_freq'] // nb_envs, 1),
         save_path=log_dir,
         name_prefix="rl_model",
         save_replay_buffer=True,
@@ -155,16 +155,17 @@ def keep_learn(env, log_dir, model_name, config):
     model.save(os.path.join(log_dir, 'final_model'))
 
 
-def evaluate(model_name: str, config: dict):
+def evaluate(model_name: str, env_config: dict, alg_config: dict):
     """
     2
     :param model_name:
     :return:
     """
-    eval_config = load_config(os.path.join(ROOT_DIR, 'configs/eval_tracking_config.yml'))
-    env_name = config['env']['name']
-    env = SubprocVecEnv([lambda: gym.make(env_name, config=config) for _ in range(1)], )
-    policy_name = config['policy_hparams']['policy']
+    env = auv_env.make(env_config['name'],
+                        config=env_config,
+                        eval=True, t_steps=200,
+                        show_viewport=True) 
+    policy_name = alg_config['policy_hparams']['policy']
 
     if policy_name == 'SAC':
         model = SAC.load(model_name, device='cuda', env=env,
@@ -175,11 +176,11 @@ def evaluate(model_name: str, config: dict):
     else:
         raise ValueError(f"Unknown policy {policy_name}")
 
-    obs = env.reset()
+    obs, _ = env.reset()
     for _ in range(50000):
         action, _ = model.predict(obs, deterministic=True)
         print(action)
-        obs, reward, dones, inf = env.step(action)
+        obs, reward, done, _, inf = env.step(action)
 
 
 def eval_greedy(model_dir, config: dict):
@@ -248,7 +249,7 @@ if __name__ == '__main__':
     choice = int(args.choice)
     # Create a unique log directory
     policy_name = alg_config['policy_hparams']['policy']
-    log_dir = os.path.join(alg_config['training']['log_dir'], env_config['version'], policy_name, time_string)
+    log_dir = os.path.join(alg_config['training']['log_dir'], env_config['name'], policy_name, time_string)
     os.makedirs(log_dir, exist_ok=True)
 
     if choice == 0:  # Train
@@ -256,6 +257,7 @@ if __name__ == '__main__':
         learn(env, log_dir, env_config, alg_config)
     elif choice == 1:  # Keep training
         model_path = alg_config['training']['resume_path']
+        log_dir = os.path.dirname(model_path)
         if not model_path:
             raise ValueError("Resume path must be provided for 'keep training' choice.")
         env = make_env(env_config['name'], alg_config['training']['nb_envs'], log_dir)
@@ -264,7 +266,7 @@ if __name__ == '__main__':
         model_path = alg_config['training']['resume_path']
         if not model_path:
             raise ValueError("Resume path must be provided for 'evaluate' choice.")
-        evaluate(model_path, alg_config)
+        evaluate(model_path, env_config, alg_config)
     elif choice == 3:  # Calibrate/Eval Greedy
         model_dir = os.path.dirname(alg_config['training']['resume_path'])
-        eval_greedy(model_dir, alg_config)
+        eval_greedy(model_dir, env_config, alg_config)

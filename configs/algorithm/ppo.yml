@@ -7,8 +7,10 @@ training:
   nb_envs: 2
   timesteps: 1000000
   batch_size: 64
-  log_dir: "log/teacher"
-  resume_path: "log/teacher/PPO/04-21_21/rl_model_1000000_steps.zip"
+  save_freq: 50000
+  log_freq: 1000
+  log_dir: "log"
+  resume_path: "media/best_model.zip" # for keep training and eval
   net_arch:
     pi: [256, 256, 256]
     vf: [256, 256]

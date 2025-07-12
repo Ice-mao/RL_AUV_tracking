@@ -14,8 +14,7 @@ ENV_CONFIG="configs/envs/v0_config.yml"
 CHOICE="2"
 
 # 4. Param
-EVAL="0"
-RESUME_PATH=""
+EVAL="1"
 
 
 echo "================================================="
