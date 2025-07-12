@@ -1,107 +1,309 @@
 # RL_AUV_tracking
 
-test for mac
+Using **reinforcement learning(RL)** to train **an AUV agent** to tracking the target in the unknown underwater scenario in **HoloOcean**(support for 2.0.0).
 
-A project for my major related graduation paper.
+## 🛠️ Installation
 
-Using reinforcement learning(RL) to train an agent to tracking the target in the unknown underwater scenario in HoloOcean.
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/Ice-mao/RL_AUV_tracking.git
+    cd RL_AUV_tracking
+    ```
 
-# Quick Start
+2.  **Create and activate the Conda environment:**
 
-To run the simulation, first install all dependencies
+    We recommend using Ubuntu 20.04 with an Nvidia GPU (tested on 3060, 4090).
+    ```bash
+    # coming soon
+    # conda env create -f environment.yaml
+    # conda activate auv_env
+    ```
 
-- HoloOcean==1.0.0
-- Stable Baseline3
-- pynput
-- bezier
-- filterpy
-- inekf
-- scipy
-- sb3-contrib
-- seaborn
-- shapely
+3.  **Install Python packages:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-if you want to run in my scenario,I give the scenario link below:
-https://drive.google.com/drive/folders/1MdT8NMozJARde7zL5kKebBi4WULfv2KC?usp=drive_link
+4.  **Install inekf:**
+    ```bash
+    # Install inekf
+    git clone https://github.com/mbrossar/inekf.git
+    cd inekf
+    python setup.py install
+    cd ..
+    ```
 
-you should copy the folder into /home/'yourname'/.local/share/holoocean/0.5.0/worlds/
+5.  **Install HoloOcean**
+    Follow the official documentation to install HoloOcean 2.0.0 and download the Ocean packages:
+    [HoloOcean Installation Guide](https://byu-holoocean.github.io/holoocean-docs/v2.0.0/usage/installation.html)
 
-Then simply run the script
+6.  **Set up HoloOcean Scenarios**
+    Copy the scenario configuration files from `configs/json` to the HoloOcean worlds directory.
+    ```bash
+    scp -r configs/json/* ～/.local/share/holoocean/worlds/Ocean/
+    ```
+
+## 🌊 Environments
+
+This project provides three Gymnasium-compatible environments for AUV target tracking:
+
+### Environment Overview
+
+| Environment | Observation Space | Action Space (LQR) | Action Space (PID) |
+|-------------|-------------------|-------------------|-------------------|
+| `AUVTracking_v0` | `Box(6)` | `Box(3)` | `Box(2)` |
+| `AUVTracking_v1` | `Dict` | `Box(3)` | `Box(2)` |
+| `AUVTracking_v2` | `Dict` | `Box(3)` | `Box(2)` |
+
+### Detailed Observation Spaces
+
+#### AUVTracking_v0
+- **Observation Type**: `Box(6, dtype=float32)`
+- **Components**: State vector `[target distance,target angle, 协方差行列式值, bool, closest obstacle distance, closest obstacle angle]`
+- **Range**: `[-inf, inf]` for position, `[-π, π]` for angles
+
+#### AUVTracking_v1
+- **Observation Type**: `Dict`
+- **Components**:
+  - `'state'`: `Box(6, dtype=float32)` - AUV state vector
+  - `'rgb'`: `Box((5, 3, 224, 224), dtype=uint8)` - RGB camera image
+- **Ranges**:
+  - State: `[-inf, inf]` for position, `[-π, π]` for angles
+  - RGB: `[0, 255]` for pixel values
+
+#### AUVTracking_v2
+- **Observation Type**: `Dict`
+- **Components**:
+  - `'state'`: `Box(6, dtype=float32)` - AUV state vector
+  - `'rgb'`: `Box((5, 3, 224, 224), dtype=uint8)` - RGB camera image
+  - `'sonar'`: `Box((5, 1, 128, 128), dtype=uint8)` - Sonar depth map
+- **Ranges**:
+  - State: `[-inf, inf]` for position, `[-π, π]` for angles
+  - RGB: `[0, 255]` for pixel values
+  - Sonar: `[0, 255]` for pixel values
+
+### Action Spaces
+
+#### LQR Control
+- **Action Type**: `Box(3, dtype=float32)`
+- **Components**: Waypoint in the robot coordinate system:[$r$, $\theta$, $\gamma$]
+- **Range**: $r$:`[0.0, 1.0]`,
+others:`[-1.0, 1.0]`
+
+#### PID Control
+- **Action Type**: `Box(2, dtype=float32)`
+- **Components**: [$v$, $\omega$]
+- **Range**: `[-1.0, 1.0]` (normalized velocity commands)
+
+### Usage
+
+We provide two ways to use our environments:
+
+#### Method 1: Direct Environment Creation
+
+```python
+import auv_env
+env = auv_env.make("AUVTracking_v0", 
+                   config=config,
+                   eval=True, 
+                   t_steps=200,
+                   show_viewport=True)
 ```
-python SB3_learning.py --env TargetTracking1 --map TestMap_AUV --nb_envs 5 --choice 0 --render 0 
+**Parameters:**
+- `config`: Configuration file from `configs/envs/` directory, use `config_loader.load_config` to parse the YAML.
+- `eval`: Enable 2D visualization of the environment for debugging
+- `t_steps`: Maximum episode steps
+- `show_viewport`: Show HoloOcean 3D viewport, `False` for no display training.
+
+#### Method 2: Gymnasium Registration
+
+```python
+import gymnasium as gym
+import auv_env
+env = gym.make("AUVTracking_v0")
 ```
-choice:(0:train 1:keep training 2:eval)
+Only with default config and eval and show_viewport are True.
 
-render:(0:false 1:true)
+<!-- ### Available Environment IDs
+| Environment ID | Description |
+|----------------|-------------|
+| `v1-state` | Basic teacher environment with rendering |
+| `v1-state-norender` | Teacher environment for fast training |
+| `v1-Teacher-render` | Teacher environment with 2D visualization |
+| `v2-Teacher` | Advanced teacher environment with multi-modal inputs |
+| `v2-Teacher-norender` | Advanced teacher environment for training |
+| `v2-sample-render` | Evaluation environment with rendering | -->
 
-## Env Setup
-### world_auv_rgb
-obs: dict type, including 
-images[(3,224,224)*2] and state[(10)]
 
-action:[(3)]
+## 🚀 Quick Start
 
-## Simulation Process
+### Training
 
-![simulation](media/simulation.png)
+Start training with the provided script:
+
+```bash
+./train.sh
+```
+
+You can modify the training configuration by editing:
+- **Environment config**: `configs/envs/<env_config>.yml` - Configure environment parameters
+- **Algorithm config**: `configs/algorithm/<alg_config>.yml` - Configure RL algorithm settings
+
+### Evaluation
+
+After training is completed, the policy files will be saved. To evaluate a trained model:
+
+1. Add your trained policy file to the `RESUME_PATH` directory
+2. Run the evaluation script:
+
+```bash
+./eval.sh
+```
+
+This will load the trained policy and evaluate its performance in the environment.
+
+### Simulation Process
+
+<div align="center">
+<img src="media/simulation.png" alt="simulation" width="400">
+</div>
+
+### Configuration Tips
+
+- **Training Phase**: Disable `eval`, `render`, and `draw_traj` to increase training speed
+- **Evaluation Phase**: Enable `eval`, `render`, and `draw_traj` to visualize model performance
+
+## 📚 Codebase Tutorial
+
+### Project Architecture
+
+```
+RL_AUV_tracking/
+├── auv_env/                    # Core environment package
+│   ├── envs/                  # Environment implementations
+│   │   ├── base.py           # Base classes (TargetTrackingBase, WorldBase)
+│   │   ├── world_auv_v0.py   # State-only environment
+│   │   ├── world_auv_v1.py   # State + RGB environment  
+│   │   ├── world_auv_v2.py   # State + RGB + Sonar environment
+│   │   ├── agent.py          # Agent implementations (AUV, Target)
+│   │   └── obstacle.py       # Obstacle detection and collision
+│   ├── maps/                 # Map utilities and scenarios
+│   └── wrappers/             # Environment wrappers
+├── auv_control/              # Control and estimation modules
+│   ├── control/              # Controllers (LQR, PID)
+│   └── estimation/           # State estimation (KF, UKF, IEKF)
+├── auv_track_launcher/       # Training algorithms and networks
+│   ├── algorithms/           # RL algorithms (PPO, SAC, SQIL, etc.)
+│   ├── networks/             # Neural network architectures
+│   └── common/               # Training utilities and callbacks
+├── configs/                  # Configuration files
+│   ├── envs/                # Environment configurations
+│   └── algorithm/           # Algorithm configurations
+└── tests/                   # Test scripts and examples
+```
+
+### Core Components
+
+#### 1. Environment Base Classes (`auv_env/envs/base.py`)
+
+**`TargetTrackingBase`**: Main Gymnasium environment wrapper
+- Handles environment lifecycle (reset, step, seed)
+- Delegates actual simulation to `WorldBase` subclasses
+- Manages episode counting and state tracking
+
+**`WorldBase`**: Abstract base class for all underwater simulation environments
+- HoloOcean simulation management
+- Agent and target initialization with random positioning
+- Sensor data processing and belief state tracking
+- Collision detection and boundary checking
+- Reward computation and episode termination
+
+**Key Methods**:
+```python
+def step:  # Env step process
+def build_models:  # Create agent and target model and belief
+def reset:  # Env reset function
+```
+
+#### 2. Environment Variants
+
+**AUVTracking_v0**: Basic state-based tracking
+- Observation: 6D state vector (target distance, angle, belief covariance, etc.)
+- Focus: Classical control and basic RL algorithms
+
+**AUVTracking_v1**: Vision-enhanced tracking  
+- Observation: Dict with state + RGB camera frames (5×3×224×224)
+- Focus: Visual navigation and multi-modal learning
+
+**AUVTracking_v2**: Full sensor suite
+- Observation: Dict with state + RGB + sonar data (5×1×128×128)
+- Focus: Robust underwater navigation with multiple modalities
+
+
+#### 3. Key Features
+
+**Belief State Tracking**: 
+- Kalman Filter-based target tracking (`belief_targets`)
+- Handles partial observability and sensor noise
+- Maintains uncertainty estimates for decision making
+
+**Randomized Initialization**:
+- `get_init_pose_random()`: Generates valid agent/target positions
+- Supports "insight" vs "no-insight" scenarios
+- Ensures collision-free and bounded initial states
+
+**Configuration-Driven Architecture**
+- All parameters controlled via YAML files in `configs/`
+- Runtime behavior modification without code changes
+- Environment-specific and algorithm-specific configurations
+
+### Adding New Environments
+1. **Read `auv_env/envs/world_auv_v0/1/2.py`** 
+
+2. **Create new environment class like them**:
+```python
+class WorldAuvCustom(WorldBase):
+    def __init__(self, config, map, show):
+        # Custom initialization
+        super().__init__(config, map, show)
+    
+    def reset(self, seed=None, **kwargs):
+        # Custom reset
+        return super().reset(seed=seed, **kwargs)
+
+    def set_limits(self):
+        
+    def update_every_tick(self, sensors):
+
+    def state_func(self, observed, action):
+        
+    def get_reward(self, is_col, action):
+```
+
+2. **Register in `auv_env/__init__.py`**:
+```python
+world_map = {
+    'AUVTracking_custom': (WorldAuvCustom, "YourHoloOceanMap"),
+}
+```
+
+## 🏷️ License
+
+This repository is released under the MIT license. See [LICENSE](LICENSE) for additional details.
+
+## 🙏 Acknowledgement
+
+Our AUV tracking environment is built upon HoloOcean underwater simulation platform.
+Our control system implementations are adapted from classical robotics control theory.
+The Kalman Filter and belief state tracking are based on standard estimation theory.
+The reinforcement learning algorithms are implemented using Stable Baselines3.
+The neural network architectures utilize PyTorch framework.
+The IEKF implementation is adapted from the inekf library.
+Our configuration management system is inspired by modern ML practices.
+The multi-modal sensor fusion approach draws from underwater robotics research.
 
 ## Additional information
 
 If you want to know more details,you should read the code.
-:smile: 
 
-Or please keep staying tuning!
-
-## Something mentioned
-
-Just for single target, mutitarget task needs revise the code
-
-(revise the target0 -> target+str(rank))
-
-# Env List
-## edtion
-v0:traditional work
-v1:for RGB work, LQR controller
-v2:for RGB、 sonar work, PID controller
-
-We show the basic env can be used and their function:
-
-| 环境ID | 渲染模式 | 功能描述 |
-|--------|----------|---------|
-| Teacher-v0 | 默认 | state中包含全局定位真值信息 |
-| Teacher-v1 | 默认 | state中不包含全局定位真值信息 |
-| Teacher-v1-norender | 无渲染 | 可用于服务器快速训练 |
-| Teacher-v1-render | 渲染，2D场景展示 | 渲染场景的Teacher-v1，用于可视化演示以及调试 |
-| Student-v0 | 默认 | state为图像信息 |
-| Student-v0-norender | 无渲染 | 可用于服务器快速训练 |
-| Student-v0-sample | 默认 | 学生模型采样环境，用于评估和测试 |
-| Student-v0-sample-teacher | 默认 | 将教师策略应用于学生采样环境，用于比较性能 |
-
-## 环境使用建议
-
-- **训练阶段**: 使用 `-norender` 版本环境提高训练速度
-- **评估阶段**: 使用标准或 `-render` 版本查看模型表现
-- **教师-学生模式**: 先训练 Teacher 模型，然后用于指导 Student 模型学习
-
-## 环境参数设置
-
-使用环境时可以通过以下方式创建:
-
-```python
-import gymnasium as gym
-import auv_env  # 确保已导入自定义环境包
-
-# 创建环境实例
-env = gym.make("Teacher-v1")  # 创建带渲染的教师环境
-env_train = gym.make("Teacher-v1-norender")  # 创建不渲染的训练环境
-```
-
-## 模型训练命令示例
-
-```bash
-# 训练教师模型
-python SB3_trainer.py --device cuda --choice 0 --env Teacher-v1 --policy SAC --render 0
-
-# 训练学生模型（基于教师模型）
-python SB3_trainer.py --device cuda --choice 0 --env Student-v0 --policy PPO --render 0
-```
+Please keep staying tuning😊!

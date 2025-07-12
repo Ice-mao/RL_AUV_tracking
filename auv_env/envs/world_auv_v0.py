@@ -54,7 +54,7 @@ class WorldAuvV0(WorldBase):
             raise ValueError("Unknown target dimension: {}".format(self.config['target']['target_dim']))
         
         # observation_space:
-        # target distance、angle、协方差行列式值、bool; agent 自身定位;
+        # target distance、angle、协方差行列式值、bool; 最近障碍物距离、角度;
         state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
                                             [0.0, -np.pi]))
         state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,

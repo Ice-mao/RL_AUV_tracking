@@ -20,11 +20,9 @@ class YOLOTracker:
         YOLOwithLQR
     """
 
-    def __init__(self, config):
-        self.config = config
+    def __init__(self):
         # 加载YOLO模型
-        # self.model = YOLO("yolov8n.pt")  # 使用YOLOv8 nano模型，根据需要替换为合适的模型
-        self.model = YOLO("/home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/auv_baseline/best.pt")
+        self.model = YOLO("/best.pt")
         self.last_detection = None
         self.action = CmdVel()
 
