@@ -1,0 +1,121 @@
+{
+    "name": "Hovering",
+    "world": "SimpleUnderwater",
+    "main_agent": "auv0",
+    "ticks_per_sec": 100,
+    "frames_per_sec": true,
+    "agents":[
+        {
+            "agent_name": "auv0",
+            "agent_type": "BlueROV2",
+            "sensors": [
+                {
+                    "sensor_type": "PoseSensor",
+                    "socket": "IMUSocket"
+                },
+                {
+                    "sensor_type": "VelocitySensor",
+                    "socket": "IMUSocket"
+                },
+                {
+                    "sensor_type": "LocationSensor",
+                    "socket": "COM"
+                },
+                {
+                    "sensor_type": "IMUSensor",
+                    "sensor_name": "IMUSensorClean",
+                    "socket": "COM"
+                },
+                {
+                    "sensor_type": "IMUSensor",
+                    "socket": "COM",
+                    "Hz": 100,
+                    "configuration": {
+                        "AccelSigma": 0.00277,
+                        "AngVelSigma": 0.00123,
+                        "AccelBiasSigma": 0.0,
+                        "AngVelBiasSigma": 0.0,
+                        "AccelBiasSigma": 0.00141,
+                        "AngVelBiasSigma": 0.00388,
+                        "ReturnBias": true
+                    }
+                },
+                {
+                    "sensor_type": "OrientationSensor",
+                    "sensor_name": "CompassSensor",
+                    "socket": "COM",
+                    "Hz": 50,
+                    "configuration": {
+                        "Sigma": 0.05
+                    }
+                },
+                {
+                    "sensor_type": "DVLSensor",
+                    "socket": "DVLSocket",
+                    "Hz": 20,
+                    "configuration": {
+                        "Elevation": 22.5,
+                        "VelSigma": 0.02626,
+                        "ReturnRange": true,
+                        "MaxRange": 50,
+                        "RangeSigma": 0.1
+                    }
+                },
+                {
+                    "sensor_type": "DepthSensor",
+                    "socket": "DepthSocket",
+                    "Hz": 100,
+                    "configuration": {
+                        "Sigma": 0.255
+                    }
+                }
+            ],
+            "control_scheme": 0,
+            "location": [0.0, 0.0, -5.0],
+            "rotation": [0.0, 0.0, 0.0]
+        },
+        {
+            "agent_name": "target0",
+            "agent_type": "BlueROV2",
+            "sensors": [
+                {
+                    "sensor_type": "PoseSensor",
+                    "socket": "COM"
+                },
+                {
+                    "sensor_type": "LocationSensor",
+                    "socket": "COM"
+                },
+                {
+                    "sensor_type": "VelocitySensor",
+                    "socket": "COM"
+                },
+                {
+                    "sensor_type": "IMUSensor",
+                    "sensor_name": "IMUSensorClean",
+                    "socket": "COM"
+                },
+                {
+                    "sensor_type": "IMUSensor",
+                    "socket": "COM",
+                    "Hz": 100,
+                    "configuration": {
+                        "AccelSigma": 0.00277,
+                        "AngVelSigma": 0.00123,
+                        "AccelBiasSigma": 0.0,
+                        "AngVelBiasSigma": 0.0,
+                        "AccelBiasSigma": 0.00141,
+                        "AngVelBiasSigma": 0.00388,
+                        "ReturnBias": true
+                    }
+                }
+            ],
+            "control_scheme": 0,
+            "location": [10, 10, -5.0],
+            "rotation": [0.0, 0.0, 0.0]
+        }
+    ],
+
+    "window_width":  1280,
+    "window_height": 720
+}
