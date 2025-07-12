@@ -1,5 +1,7 @@
 # RL_AUV_tracking
 
+test for mac
+
 A project for my major related graduation paper.
 
 Using reinforcement learning(RL) to train an agent to tracking the target in the unknown underwater scenario in HoloOcean.
@@ -41,7 +43,7 @@ action:[(3)]
 
 ## Simulation Process
 
-![simulation](config/simulation.png)
+![simulation](media/simulation.png)
 
 ## Additional information
 
