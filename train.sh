@@ -25,7 +25,8 @@ echo "Action:       $CHOICE"
 echo "================================================="
 
 # Build the command
-CMD="python SB3_trainer.py --env_config $ENV_CONFIG --alg_config $ALG_CONFIG --choice $CHOICE --eval $EVAL --show_viewport $SHOW_VIEWPORT"
+CMD="python SB3_trainer.py --env_config $ENV_CONFIG --alg_config $ALG_CONFIG
+    --choice $CHOICE --eval $EVAL --show_viewport $SHOW_VIEWPORT"
 
 # Execute the command
 eval $CMD
