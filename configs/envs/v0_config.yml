@@ -1,6 +1,6 @@
 version: v0
 name: AUVTracking_v0
-render: true
+render: true # print
 draw_traj: true
 eval_fixed: false
 map: 'SimpleUnderwater-Bluerov2'

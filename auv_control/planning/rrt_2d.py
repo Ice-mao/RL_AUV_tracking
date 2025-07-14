@@ -6,7 +6,8 @@ import bezier
 
 class RRT_2d(BasePlanner):
     def __init__(self, num_seconds=10, start=None, end=None, speed=None, obstacles=None, margin=None,
-                 fixed_depth=None, bottom_corner=None, size=None, start_time=None, render=True):
+                fixed_depth=None, bottom_corner=None, size=None, start_time=None,
+                render=True, draw_flag=True):
         # setup goal
         self.start = np.array([0, 0, -5]) if start is None else start
         self.end = np.array([20, 20, -5]) if end is None else end
@@ -20,6 +21,7 @@ class RRT_2d(BasePlanner):
         self.bottom_corner = bottom_corner
         self.size = size
         self.render = render
+        self.draw_flag = draw_flag
 
         # setup RRT
         self.start_time = start_time
@@ -35,7 +37,7 @@ class RRT_2d(BasePlanner):
 
         # setup plotter.
         self.figID = 2  # for rrt render
-        if self.render:
+        if self.draw_flag:
             plt.ion()
             self.fig = plt.figure(self.figID)
         # from reset to build path

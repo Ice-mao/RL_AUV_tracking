@@ -16,7 +16,6 @@ CHOICE="0"
 # 4. Param
 EVAL="0"
 
-
 echo "================================================="
 echo "Running experiment with the following settings:"
 echo "Env Config:   $ENV_CONFIG"

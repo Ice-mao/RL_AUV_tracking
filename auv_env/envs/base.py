@@ -73,7 +73,6 @@ class WorldBase:
         self.ocean = holoocean.make(self.map, show_viewport=show)
         scenario = holoocean.get_scenario(self.map)
         self.config = config
-        self.ocean.should_render_viewport(self.config['render'])
         self.agent = None
         # init the param
         self.sampling_period = 1 / scenario["ticks_per_sec"]  # sample time

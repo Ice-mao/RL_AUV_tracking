@@ -194,9 +194,9 @@ class AgentAuvTarget(Agent):
                                                                                               self.margin2wall + 2)
         self.target_pos = np.append(_target, self.fix_depth)
         self.planner = RRT_2d(start=self.init_pos, end=self.target_pos, obstacles=self.obstacles, margin=self.margin,
-                              fixed_depth=self.fix_depth, num_seconds=30,
-                              bottom_corner=self.bottom_corner, size=self.size, start_time=start_time, render=self.config['render'])
-
+                            fixed_depth=self.fix_depth, num_seconds=30,
+                            bottom_corner=self.bottom_corner, size=self.size, start_time=start_time,
+                            render=self.config['render'], draw_flag=self.config['draw_traj'])
         # reset
         _target = None
         is_end_valid = False
