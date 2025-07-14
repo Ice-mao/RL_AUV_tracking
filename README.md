@@ -14,33 +14,33 @@ Using **reinforcement learning(RL)** to train **an AUV agent** to tracking the t
 
     We recommend using Ubuntu 20.04 with an Nvidia GPU (tested on 3060, 4090).
     ```bash
-    # coming soon
-    # conda env create -f environment.yaml
-    # conda activate auv_env
+    conda env create -f environment.yaml
+    conda activate auv_env
     ```
 
-3.  **Install Python packages:**
+3.  **Install bezier and inekf:**
     ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Install inekf:**
-    ```bash
+    # Install bezier
+    python -m pip install  bezier==2023.7.28
     # Install inekf
-    git clone https://github.com/mbrossar/inekf.git
+    git clone https://bitbucket.org/frostlab/inekf.git
     cd inekf
-    python setup.py install
-    cd ..
+    mkdir build
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release -DPYTHON=ON ..
+    make
+    make python-install
+    cd ../..
     ```
 
-5.  **Install HoloOcean**
+4.  **Install HoloOcean**
     Follow the official documentation to install HoloOcean 2.0.0 and download the Ocean packages:
     [HoloOcean Installation Guide](https://byu-holoocean.github.io/holoocean-docs/v2.0.0/usage/installation.html)
 
-6.  **Set up HoloOcean Scenarios**
-    Copy the scenario configuration files from `configs/json` to the HoloOcean worlds directory.
+5.  **Set up HoloOcean Scenarios**
+    Copy the scenario configuration files from `configs/holoocean` to the HoloOcean worlds directory.
     ```bash
-    scp -r configs/json/* ～/.local/share/holoocean/worlds/Ocean/
+    scp -r configs/holoocean/* ~/.local/share/holoocean/2.0.0/worlds/Ocean/
     ```
 
 ## 🌊 Environments

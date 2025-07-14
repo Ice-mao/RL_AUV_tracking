@@ -3,7 +3,6 @@ import datetime
 import os
 import pathlib
 import sys
-import gym
 import torch
 import numpy as np
 import auv_env

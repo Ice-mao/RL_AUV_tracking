@@ -1,0 +1,74 @@
+name: auv_env
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  
+  # PyTorch with CUDA support
+  - pytorch=2.1.0
+  - torchvision=0.16.0
+  - torchaudio=2.1.0
+  - pytorch-cuda=11.8
+  
+  # Core Scientific Computing
+  - numpy=1.24.2
+  - scipy=1.14.0
+  - pandas=2.1.0
+  
+  # Visualization and Data
+  - matplotlib=3.10.0
+  - seaborn=0.12.1
+  - tensorboard=2.17.0
+  
+  # System and Configuration
+  - pyyaml=6.0.1
+  - tqdm
+  - pynput=1.7.7
+  
+  # Jupyter and Development
+  - jupyter
+  - jupyterlab
+  - notebook
+  
+  # Additional required libraries via pip
+  - pip:
+    # Core AUV and RL dependencies
+    - stable-baselines3==2.4.0
+    - gymnasium==0.29.1
+    
+    # Control and Estimation
+    - filterpy==1.4.5
+    - shapely==2.0.3
+    
+    # Computer Vision
+    - opencv-python==4.10.0.84
+    - pillow==10.2.0
+    - scikit-image==0.25.2
+    - imageio==2.36.1
+    - ultralytics==8.0.196
+    
+    # Scientific Computing
+    - scikit-learn==1.6.0
+    - numba==0.57.1
+    - h5py==3.11.0
+    - networkx==3.2.1
+    
+    # Configuration and Utilities
+    - hydra-core==1.3.2
+    - omegaconf==2.3.0
+    - colorlog==6.9.0
+    - rich==13.9.4
+    - keyboard==0.13.5
+    - evdev==1.7.1
+    - psutil==5.9.0
+    
+    # Optional: Diffusion models (only if needed)
+    # - diffusers==0.32.2
+    # - accelerate==1.6.0
+    # - transformers==4.51.1
+    # - safetensors==0.5.3
+    # - huggingface-hub==0.30.2
