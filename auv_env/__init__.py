@@ -27,6 +27,7 @@ def make(env_name, config, eval=False, t_steps=100, num_targets=1, show_viewport
         'AUVTracking_v0': (WorldAuvV0, "SimpleUnderwater-Bluerov2"),
         'AUVTracking_v1': (WorldAuvV1, "SimpleUnderwater-Bluerov2_RGB"),
         'AUVTracking_v2': (WorldAuvV2, "SimpleUnderwater-Bluerov2_sonar"),
+        # 'AUVTracking3D_v0': (WorldAuv3DV0, "SimpleUnderwater-Bluerov2"),
     }
 
     if env_name not in world_map:

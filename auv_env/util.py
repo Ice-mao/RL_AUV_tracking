@@ -283,7 +283,144 @@ def get_nlogdetcov_bounds_step(P0, A, W, TH):
     return lower_bound, upper_bound
 
 
+def cartesian2spherical(xyz):
+    """
+    笛卡尔坐标系坐标转球坐标系坐标
+    
+    Parameters
+    ----------
+    xyz : array_like, shape (3,)
+        笛卡尔坐标 [x, y, z]
+    
+    Returns
+    -------
+    r : float
+        径向距离
+    theta : float  
+        方位角 (azimuth) - 从x轴到xy平面投影的角度 [-π, π]
+    gamma : float
+        俯仰角 (elevation) - 从xy平面到z轴的角度 [-π/2, π/2]
+    """
+    x, y, z = xyz[0], xyz[1], xyz[2]
+    
+    # 径向距离
+    r = np.sqrt(x*x + y*y + z*z)
+    
+    # 方位角 (azimuth) - 水平角度
+    theta = np.arctan2(y, x)
+    
+    # 俯仰角 (elevation) - 垂直角度
+    if r > 1e-8:  # 避免除零
+        gamma = np.arcsin(z / r)
+    else:
+        gamma = 0.0
+    
+    return r, theta, gamma
+
+
+def transform_3d(vec, theta_base, xyz_base=[0.0, 0.0, 0.0]):
+    """
+    3D坐标变换：从世界坐标系到智能体坐标系
+    只考虑绕z轴的旋转(yaw)，保持x-forward, y-left, z-up的约定
+    
+    Parameters
+    ----------
+    vec : array_like, shape (3,)
+        世界坐标系下的3D向量
+    theta_base : float
+        智能体相对于世界坐标系的yaw角 (绕z轴旋转)
+    xyz_base : array_like, shape (3,)
+        智能体在世界坐标系中的位置
+    
+    Returns
+    -------
+    vec_transformed : array_like, shape (3,)
+        智能体坐标系下的3D向量
+    """
+    assert len(vec) == 3
+    
+    # 平移
+    vec_translated = vec - np.array(xyz_base)
+    
+    # 绕z轴旋转 (yaw rotation)
+    cos_theta = np.cos(theta_base)
+    sin_theta = np.sin(theta_base)
+    
+    rotation_matrix = np.array([
+        [cos_theta,  sin_theta, 0],
+        [-sin_theta, cos_theta, 0],
+        [0,          0,         1]
+    ])
+    
+    return np.matmul(rotation_matrix, vec_translated)
+
+
+def relative_distance_spherical(xyz_target, xyz_base, theta_base):
+    """
+    计算目标相对于智能体的3D球坐标
+    
+    Parameters
+    ----------
+    xyz_target : array_like, shape (3,)
+        目标在世界坐标系中的位置 [x, y, z]
+    xyz_base : array_like, shape (3,)  
+        智能体在世界坐标系中的位置 [x, y, z]
+    theta_base : float
+        智能体的yaw角 (绕z轴旋转角度)
+    
+    Returns
+    -------
+    r : float
+        目标到智能体的直线距离
+    theta : float
+        方位角 - 目标相对于智能体前向方向的水平角度 [-π, π]
+        正值表示目标在智能体右侧，负值表示在左侧
+    gamma : float  
+        俯仰角 - 目标相对于智能体水平面的垂直角度 [-π/2, π/2]
+        正值表示目标在智能体上方，负值表示在下方
+    """
+    # 将目标坐标转换到智能体坐标系
+    xyz_target_relative = transform_3d(xyz_target, theta_base, xyz_base)
+    
+    # 转换为球坐标
+    return cartesian2spherical(xyz_target_relative)
+
+
 if __name__ == "__main__":
-    image = np.full((256, 256, 4), [0, 0, 255, 1], dtype=np.uint8)
-    ouput = image_preprocess(image)
-    print('debug')
+    print('=== 3D球坐标转换函数测试 ===')
+
+    # 测试1: 正前方目标
+    agent_pos = np.array([0, 0, 0])
+    target_pos = np.array([10, 0, 0])  # 正前方10米
+    agent_yaw = 0.0
+
+    r, theta, gamma = relative_distance_spherical(target_pos, agent_pos, agent_yaw)
+    print(f'测试1 - 正前方目标:')
+    print(f'  距离: {r:.2f}m')
+    print(f'  方位角: {np.rad2deg(theta):.1f}° (应该约为0°)')
+    print(f'  俯仰角: {np.rad2deg(gamma):.1f}° (应该约为0°)')
+
+    # 测试2: 右侧目标
+    target_pos = np.array([0, -10, 0])  # 右侧10米
+    r, theta, gamma = relative_distance_spherical(target_pos, agent_pos, agent_yaw)
+    print(f'\n测试2 - 右侧目标:')
+    print(f'  距离: {r:.2f}m')
+    print(f'  方位角: {np.rad2deg(theta):.1f}° (应该约为-90°)')
+    print(f'  俯仰角: {np.rad2deg(gamma):.1f}° (应该约为0°)')
+
+    # 测试3: 上方目标
+    target_pos = np.array([7, 0, 7])  # 前方7米，上方7米
+    r, theta, gamma = relative_distance_spherical(target_pos, agent_pos, agent_yaw)
+    print(f'\n测试3 - 上方目标:')
+    print(f'  距离: {r:.2f}m (应该约为{np.sqrt(7*7+7*7):.2f}m)')
+    print(f'  方位角: {np.rad2deg(theta):.1f}° (应该约为0°)')
+    print(f'  俯仰角: {np.rad2deg(gamma):.1f}° (应该约为45°)')
+
+    # 测试4: 智能体旋转情况
+    agent_yaw = np.pi/2  # 智能体向左转90度
+    target_pos = np.array([10, 0, 5])  # 世界坐标系中的位置
+    r, theta, gamma = relative_distance_spherical(target_pos, agent_pos, agent_yaw)
+    print(f'\n测试4 - 智能体旋转90°:')
+    print(f'  距离: {r:.2f}m')
+    print(f'  方位角: {np.rad2deg(theta):.1f}°')
+    print(f'  俯仰角: {np.rad2deg(gamma):.1f}°')

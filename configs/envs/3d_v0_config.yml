@@ -44,6 +44,7 @@ agent:
   h_fov: 60
   sensor_r_sd: 0.2
   sensor_b_sd: 0.01
+  sensor_e_sd: 0.01
 
 target:
   target_dim: 4

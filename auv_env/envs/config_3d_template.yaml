@@ -1,0 +1,60 @@
+# 3D AUV Tracking Environment Configuration Template
+
+agent:
+  sensor_r: 20.0              # 传感器探测距离
+  fov: 120                    # 水平视野角度 (度)
+  h_fov: 60                   # 垂直视野角度 (度) - 3D新增
+  sensor_r_sd: 0.2            # 距离测量噪声标准差
+  sensor_b_sd: 0.1            # 方位角测量噪声标准差  
+  sensor_e_sd: 0.1            # 俯仰角测量噪声标准差 - 3D新增
+
+env:
+  num_targets: 1
+  task_random: false
+  control_period: 0.1
+  margin: 2.0                 # 最小安全距离
+  margin2wall: 1.0            # 墙壁安全距离
+  noblock: true
+  insight: [true]             # 初始时目标是否可见
+
+target:
+  target_dim: 6               # 3D目标状态维度: [x,y,z,vx,vy,vz]
+  target_init_cov: 10.0       # 2D兼容的初始协方差
+  target_init_cov_3d: 25.0    # 3D初始协方差 (6x6矩阵对角线值)
+  random: false
+  const_q: [0.01]             # 过程噪声强度
+  controller: 'Manual'        # 目标控制器类型
+  
+  # 3D距离范围配置
+  lin_dist_range_a2t: [5.0, 15.0]    # 智能体到目标的线性距离范围
+  ang_dist_range_a2t: [-1.57, 1.57]  # 智能体到目标的角度范围 (弧度)
+  depth_range_a2t: [-3.0, 3.0]       # 智能体到目标的深度范围 - 3D新增
+  
+  lin_dist_range_t2b: [1.0, 5.0]     # 目标到信念的线性距离范围
+  ang_dist_range_t2b: [-0.79, 0.79]  # 目标到信念的角度范围 (弧度)
+  depth_range_t2b: [-1.0, 1.0]       # 目标到信念的深度范围 - 3D新增
+
+scenario:
+  size: [40, 40, 20]          # 3D环境尺寸 [长, 宽, 高]
+  bottom_corner: [-20, -20, -15]  # 3D环境底部角点
+  fix_depth: -5.0             # 固定深度 (当未启用深度控制时)
+
+# 控制器配置
+controller_config:
+  LQR:
+    action_dim: 4             # 3D LQR动作维度: [r, theta, depth_change, yaw_change]
+    control_frequency: 5      # 控制频率
+  PID:
+    action_dim: 3             # 3D PID动作维度: [vx, vz, yaw_rate]
+    control_frequency: 10     # 控制频率
+
+# 其他配置
+eval_fixed: false             # 是否使用固定的评估位置
+render: false                 # 是否渲染可视化
+
+# 使用说明:
+# 1. depth_range_* 参数控制3D位置生成的深度范围
+# 2. h_fov 是垂直视野角度，与原有的 fov (水平视野) 结合使用
+# 3. sensor_e_sd 是俯仰角(elevation)的测量噪声
+# 4. target_init_cov_3d 用于6x6协方差矩阵的初始化
+# 5. scenario.size 和 bottom_corner 现在包含z维度

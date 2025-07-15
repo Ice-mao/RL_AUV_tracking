@@ -190,9 +190,9 @@ class Obstacle:
         """
         for _ in range(20):
             theta = np.random.uniform(-np.pi, np.pi)
-            point1 + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
+            point1[:2] + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
             theta = np.random.uniform(-np.pi, np.pi)
-            point2 + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
+            point2[:2] + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
             # 定义线段
             line = LineString([point1, point2])
 
