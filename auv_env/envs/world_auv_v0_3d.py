@@ -23,7 +23,7 @@ from gymnasium import spaces
 import logging
 import copy
 
-class WorldAuvV0_3D(WorldBase3D):
+class WorldAuv3DV0(WorldBase3D):
     """
     3D AUV tracking environment with spherical observations
     """
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     print('test')
     from config_loader import load_config
     config = load_config('configs/envs/3d_v0_config.yml')
-    world = WorldAuvV0_3D(config=config, map='SimpleUnderwater-Bluerov2', show=True)
+    world = WorldAuv3DV0(config=config, map='SimpleUnderwater-Bluerov2', show=True)
     world.reset()
 
 

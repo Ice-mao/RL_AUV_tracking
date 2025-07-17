@@ -20,8 +20,8 @@ from auv_control.estimation import KFbelief, UKFbelief
 
 from auv_env.maps import map_utils
 import auv_env.util as util
-from auv_env.envs.obstacle import Obstacle
-from auv_env.envs.agent import AgentAuv, AgentAuvTarget, AgentAuvManual
+from auv_env.envs.obstacle_3d import Obstacle3D
+from auv_env.envs.agent import AgentAuv, AgentAuvTarget3D, AgentAuvManual
 from auv_env.envs.base import WorldBase
 
 class WorldBase3D:
@@ -64,7 +64,7 @@ class WorldBase3D:
         self.margin2wall = self.config['env']['margin2wall']
 
         # Setup obstacles
-        self.obstacles = Obstacle(self.ocean, self.fix_depth, self.config)
+        self.obstacles = Obstacle3D(self.ocean, self.fix_depth, self.config)
 
         self.sensors = {}
         self.set_limits()
@@ -80,8 +80,8 @@ class WorldBase3D:
             yaw = action[3] * self.action_range_scale[3]
             global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
                                                             np.radians(self.agent.est_state.vec[8]))
-            global_waypoint[3] = self.agent.est_state.vec[2] + depth
-            global_waypoint[4] = self.agent.est_state.vec[8] + np.rad2deg(yaw)
+            global_waypoint[2] = self.agent.est_state.vec[2] + depth
+            global_waypoint[3] = self.agent.est_state.vec[8] + np.rad2deg(yaw)
             self.action = global_waypoint
             frequency = self.config['agent']['controller_config']['LQR']['control_frequency']
         elif self.action_dim == self.config['agent']['controller_config']['PID']['action_dim']:
@@ -96,13 +96,9 @@ class WorldBase3D:
         for _ in range(frequency):
             for i in range(self.num_targets):
                 target = 'target'+str(i)
-                if self.has_discovered[i]:
-                    self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
-                    self.ocean.act(target, self.target_u)
-                else:
-                    self.target_u = np.zeros(8)
-                    self.ocean.act(target, self.target_u)
-            self.u = self.agent.update(self.action, self.fix_depth, self.sensors['auv0'])
+                self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
+                self.ocean.act(target, self.target_u)
+            self.u = self.agent.update(self.action, depth=None, sensors=self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()
             # update
@@ -148,8 +144,8 @@ class WorldBase3D:
                     scene=self.ocean, config=self.config)
                 for _ in range(self.num_targets)]
         else:
-            self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i,
-                        obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
+            self.targets = [AgentAuvTarget3D(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i,
+                        obstacles=self.obstacles, size=self.size,
                         bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean, scenario=self.map, config=self.config)
                 for i in range(self.num_targets)]
         # Build target beliefs.
@@ -237,7 +233,7 @@ class WorldBase3D:
 
         self.build_models(sampling_period=self.sampling_period,
                           agent_init_state=self.sensors['auv0'],
-                          target_init_state=self.sensors['target0'],  # TODO
+                          target_init_state=self.sensors['target0'],
                           time=self.sensors['t'])
         # reset model
         self.agent.reset(self.sensors['auv0'])

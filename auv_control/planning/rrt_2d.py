@@ -5,18 +5,13 @@ import matplotlib.pyplot as plt
 import bezier
 
 class RRT_2d(BasePlanner):
-    def __init__(self, num_seconds=10, start=None, end=None, speed=None, obstacles=None, margin=None,
-                fixed_depth=None, bottom_corner=None, size=None, start_time=None,
+    def __init__(self, num_seconds=10, speed=None, obstacles=None, margin=None,
+                fixed_depth=None, bottom_corner=None, size=None,
                 render=True, draw_flag=True):
-        # setup goal
-        self.start = np.array([0, 0, -5]) if start is None else start
-        self.end = np.array([20, 20, -5]) if end is None else end
-        self.start = self.start[:2]
-        self.end = self.end[:2]
         self.num_seconds = num_seconds
         self.speed = speed
         self.obstacles = obstacles
-        self.margin = margin + 1.0  # get enough space to move
+        self.margin = margin
         self.fixed_depth = fixed_depth
         self.bottom_corner = bottom_corner
         self.size = size
@@ -24,11 +19,9 @@ class RRT_2d(BasePlanner):
         self.draw_flag = draw_flag
 
         # setup RRT
-        self.start_time = start_time
         self.count = 0
         self.desire_path_num = 0
         self.step_size = 2
-        self.tree = self.start[0:2].reshape(1, -1)
         self.dist = [0]
         self.parent = [0]
         self.finish = [False]
@@ -40,17 +33,13 @@ class RRT_2d(BasePlanner):
         if self.draw_flag:
             plt.ion()
             self.fig = plt.figure(self.figID)
-        # from reset to build path
-        # self._run_rrt()
 
 
     def reset(self, time, start, end):
-        # setup RRT
-        self.start = start
-        self.end = end
-        self.start = self.start[:2]
-        self.end = self.end[:2]
         self.start_time = time
+        self.start = start[:2]
+        self.end = end[:2]
+
         self.tree = self.start[0:2].reshape(1, -1)
         self.desire_path_num = 0
         self.dist = [0]

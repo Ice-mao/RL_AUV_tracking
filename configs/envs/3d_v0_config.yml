@@ -11,25 +11,25 @@ env:
   insight: [true, [true, false]]
   noblock: true
   control_period: 0.5
-  margin: 1.0
+  margin: 0.5
   margin2wall: 1.0
   num_targets: 1
 
 scenario:
   size: [40, 40, 20]
   bottom_corner: [-20, -20, -20]
-  fix_depth: -5
+  fix_depth: [-5, -15]
 
 agent:
   controller: 'PID'
   controller_config:
     LQR:
-      action_dim: 3
+      action_dim: 4
       control_frequency: 2
       random_lp: false
       l_p: [50, [10, 20, 30, 50, 75, 100, 200]]
     PID:
-      action_dim: 2
+      action_dim: 3
       control_frequency: 10
   random: false
   use_sonar: false
@@ -47,7 +47,7 @@ agent:
   sensor_e_sd: 0.01
 
 target:
-  target_dim: 4
+  target_dim: 6 # 3D target state: [x, y, z, vx, vy, vz]
   random: false
   const_q: [0.5, [0.01, 0.02, 0.05, 0.1, 0.4, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0]]
   controller: 'LQR'
@@ -69,9 +69,9 @@ algorithms: 'PPO'
 policy: 'CNN'
 
 # action is defined by the controller
-action_range_high: [[1, 1, 1], [1, 1]]
-action_range_low: [[0, -1, -1], [-1, -1]]
-action_range_scale: [[1.5, 3.14159/2, 3.14159/4], [1.5, 0.5]]
+action_range_high: [[1, 1, 1, 1], [1, 1, 1]]
+action_range_low: [[0, -1, -1, -1], [-1, -1, 1]]
+action_range_scale: [[1.5, 3.14159/2, 1, 3.14159/4], [1.5, 0.5, 0.5]]
 
 reward_param:
   c_mean: 0.2

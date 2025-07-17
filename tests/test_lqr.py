@@ -62,7 +62,7 @@ for i in range(20000):
         yaw = 0
     elif 3 <= t < 6:
         pos = [5, 3, -5]
-        yaw = 0
+        yaw = 90
     elif 6 <= t < 9:
         pos = [5, -3, -8]
         yaw = -90

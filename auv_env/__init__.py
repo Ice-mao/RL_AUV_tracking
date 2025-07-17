@@ -3,8 +3,9 @@ from .envs.base import TargetTrackingBase
 from .envs.world_auv_v0 import WorldAuvV0
 from .envs.world_auv_v1 import WorldAuvV1
 from .envs.world_auv_v2 import WorldAuvV2
+from .envs.world_auv_v0_3d import WorldAuv3DV0
 
-def make(env_name, config, eval=False, t_steps=100, num_targets=1, show_viewport=True, **kwargs):
+def make(env_name, config=None, eval=False, t_steps=100, show_viewport=True, **kwargs):
     """
     Parameters:
     ----------
@@ -24,16 +25,19 @@ def make(env_name, config, eval=False, t_steps=100, num_targets=1, show_viewport
         the number of steps per episode.
     """
     world_map = {
-        'AUVTracking_v0': (WorldAuvV0, "SimpleUnderwater-Bluerov2"),
-        'AUVTracking_v1': (WorldAuvV1, "SimpleUnderwater-Bluerov2_RGB"),
-        'AUVTracking_v2': (WorldAuvV2, "SimpleUnderwater-Bluerov2_sonar"),
-        # 'AUVTracking3D_v0': (WorldAuv3DV0, "SimpleUnderwater-Bluerov2"),
+        'AUVTracking_v0': (WorldAuvV0, "SimpleUnderwater-Bluerov2", "../configs/envs/v0_config.yml"),
+        'AUVTracking_v1': (WorldAuvV1, "SimpleUnderwater-Bluerov2_RGB", "../configs/envs/v1_config.yml"),
+        'AUVTracking_v2': (WorldAuvV2, "SimpleUnderwater-Bluerov2_sonar", "../configs/envs/v2_config.yml"),
+        'AUVTracking3D_v0': (WorldAuv3DV0, "SimpleUnderwater-Bluerov2", "../configs/envs/3d_v0_config.yml"),
     }
 
     if env_name not in world_map:
         raise ValueError('No such environment exists.')
 
-    world_class, default_map = world_map[env_name]
+    world_class, default_map, default_config_path = world_map[env_name]
+    if config is None:
+        from config_loader import load_config
+        config = load_config(default_config_path)
     if 'map' not in config:
         map_name = default_map
     else:

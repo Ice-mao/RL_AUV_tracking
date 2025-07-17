@@ -4,7 +4,7 @@ import auv_env.util as util
 
 from auv_control.estimation import InEKF
 from auv_control.control import LQR, PID
-from auv_control.planning import RRT_2d
+from auv_control.planning import RRT_2d, RRT_3d
 from auv_control.state import rot_to_rpy
 from auv_control import State
 
@@ -185,39 +185,31 @@ class AgentAuvTarget(Agent):
                 self.controller = LQR(l_p=self.config['target']['controller_config']['LQR']['l_p'][0], l_v=0.001, robo_type=robo_type)
         self.state = State(sensor)
         # init planner rrt
-        self.init_pos = self.state.vec[:3]
-        _target = None
-        is_end_valid = False
-        while not is_end_valid:
-            _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
-            is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
-                                                                                              self.margin2wall + 2)
-        self.target_pos = np.append(_target, self.fix_depth)
-        self.planner = RRT_2d(start=self.init_pos, end=self.target_pos, obstacles=self.obstacles, margin=self.margin,
+        self.planner = RRT_2d(obstacles=self.obstacles, margin=self.margin,
                             fixed_depth=self.fix_depth, num_seconds=30,
-                            bottom_corner=self.bottom_corner, size=self.size, start_time=start_time,
+                            bottom_corner=self.bottom_corner, size=self.size,
                             render=self.config['render'], draw_flag=self.config['draw_traj'])
         # reset
-        _target = None
-        is_end_valid = False
-        while not is_end_valid:
-            _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
-            is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
-                                                                                              self.margin2wall + 2)
-        self.target_pos = np.append(_target, self.fix_depth)
-        while not self.planner.reset(start=self.init_pos, end=self.target_pos, time=start_time):
-            # do not generate the correct path
-            is_end_valid = False
-            while not is_end_valid:
-                _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
-                is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
-                                                                                                  self.margin2wall + 2)
-            self.target_pos = np.append(_target, self.fix_depth)
-        if self.planner.desire_path_num == 0:
-            self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
-                                                           -np.rad2deg(np.arctan2(
-                                                               self.planner.path[1, 1] - self.planner.path[1, 0],
-                                                               self.planner.path[0, 1] - self.planner.path[0, 0]))])
+        # _target = None
+        # is_end_valid = False
+        # while not is_end_valid:
+        #     _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+        #     is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
+        #                                                                                       self.margin2wall + 2)
+        # self.target_pos = np.append(_target, self.fix_depth)
+        # while not self.planner.reset(start=self.init_pos, end=self.target_pos, time=start_time):
+        #     # do not generate the correct path
+        #     is_end_valid = False
+        #     while not is_end_valid:
+        #         _target = np.random.random((2,)) * self.size[0:2] + self.bottom_corner[0:2]
+        #         is_end_valid = self.in_bound(_target) and self.obstacles.check_obstacle_collision(_target,
+        #                                                                                           self.margin2wall + 2)
+        #     self.target_pos = np.append(_target, self.fix_depth)
+        # if self.planner.desire_path_num == 0:
+        #     self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
+        #                                                    -np.rad2deg(np.arctan2(
+        #                                                        self.planner.path[1, 1] - self.planner.path[1, 0],
+        #                                                        self.planner.path[0, 1] - self.planner.path[0, 0]))])
 
     def reset(self, sensor, obstacles, scene, start_time):
         self.obstacles = obstacles
@@ -297,7 +289,6 @@ class AgentAuvTarget(Agent):
                                     0.00, 0.00, 0.00,
                                     0.00, 0.00, angle,
                                     -0.00, -0.00, 0.00]))
-        # Autopilot Commands
         u = self.controller.u(self.state, des_state)
         return u
 
@@ -310,6 +301,119 @@ class AgentAuvTarget(Agent):
                     or (pos[0] > self.size[0] + self.bottom_corner[0] - self.margin2wall)
                     or (pos[1] < self.bottom_corner[1] + self.margin2wall)
                     or (pos[1] > self.size[1] + self.bottom_corner[1] - self.margin2wall))
+
+class AgentAuvTarget3D(Agent):
+    """
+        use for 3D motion target of HoveringAUV
+    """
+    def __init__(self, rank, dim,
+                  sampling_period, sensor, obstacles, size, bottom_corner, start_time,
+                  scene, scenario, config):
+        Agent.__init__(self, dim, sampling_period, config)
+        self.rank = rank
+        self.size = size
+        self.bottom_corner = bottom_corner
+        self.obstacles = obstacles
+        self.scene = scene
+        scenario_cfg = holoocean.packagemanager.get_scenario(scenario)
+        robo_type = scenario_cfg['agents'][rank]['agent_type']
+        # init the controller part of Auv
+        if self.config['target']['controller'] == 'LQR':
+            if self.config['target']['controller_config']['LQR']['random_lp']:
+                self.controller = LQR(l_p=np.random.choice(self.config['target']['controller_config']['LQR']['l_p'][1]), l_v=0.001, robo_type=robo_type)
+            else:
+                self.controller = LQR(l_p=self.config['target']['controller_config']['LQR']['l_p'][0], l_v=0.001, robo_type=robo_type)
+        self.state = State(sensor)
+        # init planner rrt
+        self.planner = RRT_3d(obstacles=self.obstacles, margin=self.margin,
+                            num_seconds=30,
+                            bottom_corner=self.bottom_corner, size=self.size,
+                            render=self.config['render'], draw_flag=self.config['draw_traj'])
+
+    def __generate_valid_target(self):
+        while True:
+            target = np.random.random((3,)) * self.size[0:3] + self.bottom_corner[0:3]
+            if (self.in_bound(target) and 
+                self.obstacles.check_obstacle_collision(target, self.margin2wall)):
+                return target
+            
+    def reset(self, sensor, obstacles, scene, start_time):
+        self.obstacles = obstacles
+        self.scene = scene  # have a check if is changed
+        self.state = State(sensor)
+        self.init_pos = self.state.vec[:3]
+        
+        # 设置初始目标点
+        if not self.config['eval_fixed']:
+            self.target_pos = self.__generate_valid_target()
+        else:
+            self.target_pos = np.array([-15, 15, -5])
+
+        while not self.planner.reset(start=self.init_pos, end=self.target_pos, time=start_time):
+            self.target_pos = self.__generate_valid_target()
+
+        if self.planner.desire_path_num == 0:
+            self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
+                                                           np.rad2deg(np.arctan2(
+                                                               self.planner.path[1, 1] - self.planner.path[1, 0],
+                                                               self.planner.path[0, 1] - self.planner.path[0, 0]))])
+        if self.config['draw_traj']:
+            self.planner.draw_traj(self.scene, 30)
+
+    def update(self, sensors, t):
+        # update time
+        self.time = t
+        # true state
+        self.state = State(sensors)
+        true_state = self.state.vec[:3]
+        # desire state
+        if self.planner.finish_flag == 1:
+            if not self.config['eval_fixed']:
+                self.target_pos = self.__generate_valid_target()
+            else:
+                self.target_pos = np.array([-15, 15, -5])
+
+            while not self.planner.reset(time=t, start=true_state, end=self.target_pos):
+                self.target_pos = self.__generate_valid_target()
+
+            if self.config['draw_traj']:
+                self.planner.draw_traj(self.scene, 30)
+        
+        if self.planner.desire_path_num == 0:
+            self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
+                                                           np.rad2deg(np.arctan2(
+                                                               self.planner.path[1, 1] - self.planner.path[1, 0],
+                                                               self.planner.path[0, 1] - self.planner.path[0, 0]))])
+        
+        des_state = self.planner.tick(true_state)
+        
+        if self.planner.desire_path_num != 0:
+            angle = np.rad2deg(np.arctan2(
+                self.planner.path[1, self.planner.desire_path_num] - self.planner.path[
+                    1, self.planner.desire_path_num - 1],
+                self.planner.path[0, self.planner.desire_path_num] - self.planner.path[
+                    0, self.planner.desire_path_num - 1]))
+        else:
+            angle = 0
+
+        des_state = State(np.array([des_state[0], des_state[1], des_state[2],
+                                    0.00, 0.00, 0.00,
+                                    0.00, 0.00, angle,
+                                    -0.00, -0.00, 0.00]))
+        u = self.controller.u(self.state, des_state)
+        return u
+
+    def in_bound(self, pos):
+        """
+        :param pos:
+        :return: True: in area, False: out area
+        """
+        return not ((pos[0] < self.bottom_corner[0] + self.margin2wall)
+                    or (pos[0] > self.size[0] + self.bottom_corner[0] - self.margin2wall)
+                    or (pos[1] < self.bottom_corner[1] + self.margin2wall)
+                    or (pos[1] > self.size[1] + self.bottom_corner[1] - self.margin2wall)
+                    or (pos[2] < self.bottom_corner[2] + self.margin2wall)
+                    or (pos[2] > self.size[2] + self.bottom_corner[2] - self.margin2wall))
 
 class AgentAuvManual(Agent):
     """

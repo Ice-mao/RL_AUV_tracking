@@ -38,8 +38,10 @@ for i in range(20000):
     t = sensors["t"]
     true_state = State(sensors['auv0'])
     current_lin_x = true_state.vec[3]  # 前向速度 (body frame)
-    current_ang_z = true_state.vec[11] 
-    print(f"时间t, {t}, 当前前向速度: {current_lin_x}, 当前角速度: {current_ang_z}")
+    current_lin_z = true_state.vec[5]  # 垂直速度 (body frame)
+    current_ang_z = true_state.vec[11]
+    print(f"时间t, {t}, 当前前向速度: {current_lin_x}, 当前垂直速度: {current_lin_z}, 当前角速度: {current_ang_z}")
     cmd_vel.linear.x = 0.0 # 前进速度 0.5 m/s
+    cmd_vel.linear.z = -0.1 # 垂直速度 -0.1 m/s
     cmd_vel.angular.z = 0.1 # 绕z轴旋转角速度 0.1 rad/s
     u = controller.u(true_state, cmd_vel)

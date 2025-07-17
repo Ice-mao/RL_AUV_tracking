@@ -50,28 +50,6 @@ def rotate_point(point, center, angle):
 
     return new_point
 
-
-# def rotate_point(point, center, angle):
-#     angle_rad = np.radians(angle)
-#
-#     # 计算点相对于中心的偏移量
-#     offset = np.array(point) - np.array(center)
-#
-#     # 构建旋转矩阵
-#     # In HoloOcean,x and y is contrary to the Cartesian coordinate system
-#     rotation_matrix = np.array([[np.cos(angle_rad), -np.sin(angle_rad)],
-#                                 [np.sin(angle_rad), np.cos(angle_rad)]])
-#     # rotation_matrix = np.array([[np.sin(angle_rad), np.cos(angle_rad)],
-#     #                             [np.cos(angle_rad), -np.sin(angle_rad)]])
-#
-#     # 计算旋转后的偏移量
-#     new_offset = np.dot(rotation_matrix, offset)
-#
-#     # 将旋转后的偏移量添加到中心点的坐标上，得到旋转后的点的坐标
-#     new_point = np.array(center) + new_offset
-#
-#     return new_point
-
 def polygon_2_points(center, scale, _res, rotate_center, rotate_angle, global_offset):
     # tmp = rotate_point(np.array([center[0] + scale[0] / 2 * _res, center[1] - scale[1] / 2 * _res])
     #              , rotate_center, rotate_angle)
@@ -107,7 +85,6 @@ class Obstacle:
         print(self.chosen_idx)
         self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         self.polygons = []  # ready for collision detection
-        print('finish obstacles')
 
     def reset(self):
         np.random.seed()

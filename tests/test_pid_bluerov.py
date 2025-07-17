@@ -8,7 +8,7 @@ os.chdir(ROOT_DIR)
 import numpy as np
 import holoocean
 
-from auv_control.control.pid_bluerov import BlueROV2_PID, CmdVel
+from auv_control.control import PID, CmdVel
 from auv_control import State
 from auv_control import scenario
 
@@ -16,8 +16,7 @@ from auv_control import scenario
 ts = 1 / scenario["ticks_per_sec"]
 
 # Set everything up
-controller = BlueROV2_PID()
-controller.set_depth_target(-5.0)
+controller = PID(robo_type="BlueROV2")
 # Run simulation!
 u = np.zeros(8)
 env = holoocean.make("SimpleUnderwater-Bluerov2")
@@ -36,12 +35,16 @@ for i in range(2000):  # 缩短测试时间
     # Pluck true state from sensors
     t = sensors["t"]
     true_state = State(sensors['auv0'])
-    current_lin_x = true_state.vec[3]  # 前向速度 (body frame)
-    current_ang_z = true_state.vec[11] 
-    
+    body_vel = true_state.body_velocity
+    body_ang_vel = true_state.body_angular_velocity
+    current_lin_x = body_vel[0]  # 前向速度 (body frame)
+    current_lin_z = body_vel[2]  # 垂直速度 (body frame)
+    current_ang_z = body_ang_vel[2] 
+
     # 设置控制目标
     cmd_vel.linear.x = 0.0  # 前进速度 0.0 m/s
-    cmd_vel.angular.z = 0.2 # 绕z轴旋转角速度 0.1 rad/s
+    cmd_vel.linear.z = 0.1 # 垂直速度 -0.1 m/s
+    cmd_vel.angular.z = 0.0 # 绕z轴旋转角速度 0.1 rad/s
     
     # 计算控制输出
     u = controller.u(true_state, cmd_vel)
@@ -50,11 +53,13 @@ for i in range(2000):  # 缩短测试时间
     if i % 100 == 0:
         lin_x_error = cmd_vel.linear.x - current_lin_x
         ang_z_error = cmd_vel.angular.z - current_ang_z
+        lin_z_error = cmd_vel.linear.z - current_lin_z
         max_thrust = np.max(np.abs(u))
         
         print(f"步骤 {i:4d} (t={t:.2f}s):")
         print(f"  前向速度: {current_lin_x:.3f} -> {cmd_vel.linear.x:.3f} (误差: {lin_x_error:.3f})")
         print(f"  角速度:   {current_ang_z:.3f} -> {cmd_vel.angular.z:.3f} (误差: {ang_z_error:.3f})")
+        print(f"  垂直速度: {current_lin_z:.3f} -> {cmd_vel.linear.z:.3f} (误差: {lin_z_error:.3f})")
         print(f"  最大推力: {max_thrust:.1f}N")
         print()
 

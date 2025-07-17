@@ -53,6 +53,20 @@ class State:
     def data_plot(self):
         return np.append(self.vec[:9], self.bias)
 
+    @property
+    def body_velocity(self):
+        """获取机体坐标系下的线速度 [vx_body, vy_body, vz_body]"""
+        rotation_matrix = self.mat[:3, :3]
+        world_vel = self.vec[3:6]
+        return rotation_matrix.T @ world_vel
+    
+    @property
+    def body_angular_velocity(self):
+        """获取机体坐标系下的角速度 [wx_body, wy_body, wz_body]"""
+        rotation_matrix = self.mat[:3, :3]
+        world_ang_vel = self.vec[9:12]
+        return rotation_matrix.T @ world_ang_vel
+
 
 def rot_to_rpy(mat):
     return Rotation.from_matrix(mat).as_euler("xyz") * 180 / np.pi

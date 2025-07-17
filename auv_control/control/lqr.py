@@ -80,12 +80,12 @@ class LQR:
         # self.Q[9:12] = 10  # angular velocity
         self.Q[0:3] = l_p  # position
         self.Q[3:6] = l_v  # velocity
-        self.Q[6:9] = [.01, .01, .01]  # 0.01 # rotation
+        self.Q[6:9] = [.01, .01, 0.02]  # 0.01 # rotation
         self.Q[9:12] = 0.01  # angular velocity
         self.Q = np.diag(self.Q)
 
         self.R = np.zeros(6)
-        self.R[0:3] = .01  # force
+        self.R[0:3] = .05  # force
         self.R[3:6] = 1  # torque
         self.R = np.diag(self.R)
 

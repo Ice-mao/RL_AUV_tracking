@@ -12,7 +12,7 @@ from config_loader import load_config
 
 def main():
     # 加载配置文件
-    config_path = os.path.join('configs', 'v0_config.yml')
+    config_path = os.path.join('configs','envs', 'v0_config.yml')
     config = load_config(config_path)
     
     # 使用加载的配置创建环境
