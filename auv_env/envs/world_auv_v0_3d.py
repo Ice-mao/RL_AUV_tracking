@@ -52,33 +52,16 @@ class WorldAuv3DV0(WorldBase3D):
             raise ValueError("Unknown controller type: {}".format(self.config['agent']['controller']))
         
         # target_limit for kf belief (3D case)
-        if self.config['target']['target_dim'] == 6:
-            # 6D state: [x, y, z, vx, vy, vz]
-            self.target_limit = [np.concatenate((self.bottom_corner, np.array([-3, -3, -3]))),
-                                 np.concatenate((self.top_corner, np.array([3, 3, 3])))]
-        elif self.config['target']['target_dim'] == 2:
-            self.target_limit = [self.bottom_corner[:2], self.top_corner[:2]]
-        elif self.config['target']['target_dim'] == 4:
-            self.target_limit = [np.concatenate((self.bottom_corner[:2], np.array([-3, -3]))),
-                                 np.concatenate((self.top_corner[:2], np.array([3, 3])))]
-        else:
-            raise ValueError("Unknown target dimension: {}".format(self.config['target']['target_dim']))
+        # 6D state: [x, y, z, vx, vy, vz]
+        self.target_limit = [np.concatenate((self.bottom_corner, np.array([-2, -2, -1]))),
+                                np.concatenate((self.top_corner, np.array([2, 2, 1])))]
         
-        # observation_space for 3D:
-        # target distance、azimuth、elevation、协方差行列式值、bool; 最近障碍物距离、角度、高度角;
-        if self.config['target']['target_dim'] == 6:
-            # 3D observation: [r, theta, gamma, log_det_cov, observed] * nb_targets, [o_r, o_theta, o_gamma]
-            state_lower_bound = np.concatenate(([0.0, -np.pi, -np.pi/2, -50.0, 0.0] * self.num_targets,
-                                                [0.0, -np.pi, -np.pi/2]))
-            state_upper_bound = np.concatenate(([600.0, np.pi, np.pi/2, 50.0, 2.0] * self.num_targets,
-                                                [self.config['agent']['sensor_r'], np.pi, np.pi/2]))
-        else:
-            # 2D observation fallback
-            state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
-                                                [0.0, -np.pi]))
-            state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
-                                                [self.config['agent']['sensor_r'], np.pi]))
-        
+        # 3D observation: [r, theta, gamma, log_det_cov, observed] * nb_targets, [o_r, o_theta, o_gamma]
+        state_lower_bound = np.concatenate(([0.0, -np.pi, -np.pi/2, -50.0, 0.0] * self.num_targets,
+                                            [0.0, -np.pi, -np.pi/2]))
+        state_upper_bound = np.concatenate(([600.0, np.pi, np.pi/2, 50.0, 2.0] * self.num_targets,
+                                            [self.config['agent']['sensor_r'], np.pi, np.pi/2]))
+
         self.observation_space = spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32)
 
     def update_every_tick(self, sensors):
@@ -104,16 +87,15 @@ class WorldAuv3DV0(WorldBase3D):
         For 3D: RL state: [r, theta, gamma, log det(Sigma), observed] * nb_targets, [o_r, o_theta, o_gamma]
         For 2D: RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
-        if self.config['target']['target_dim'] == 6:
-            # 3D case: use spherical coordinates for obstacles
-            if self.agent.rangefinder.min_distance < self.config['agent']['sensor_r']:
-                # In 3D, we need to extend this to include elevation angle
-                # For now, assume obstacle is at same height (gamma=0)
-                obstacles_pt = (self.agent.rangefinder.min_distance, 
-                              np.radians(self.agent.rangefinder.min_angle), 
-                              0.0)  # elevation = 0 for ground obstacles
-            else:
-                obstacles_pt = (self.config['agent']['sensor_r'], 0.0, 0.0)
+        # 3D case: use spherical coordinates for obstacles
+        if self.agent.rangefinder.min_distance < self.config['agent']['sensor_r']:
+            # In 3D, we need to extend this to include elevation angle
+            # For now, assume obstacle is at same height (gamma=0)
+            obstacles_pt = (self.agent.rangefinder.min_distance, 
+                            np.radians(self.agent.rangefinder.min_angle), 
+                            0.0)  # elevation = 0 for ground obstacles
+        else:
+            obstacles_pt = (self.config['agent']['sensor_r'], 0.0, 0.0)
 
         state_observation = []
         for i in range(self.num_targets):
