@@ -104,11 +104,16 @@ class AgentAuv(Agent):
                 self.count += 1
 
         if self.config['agent']['controller'] == "LQR":
-            des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,
-                                        0.00, 0.00, 0.00,
-                                        0.00, 0.00, action_waypoint[2],
-                                        -0.00, -0.00, 0.00]))
-            u = self.controller.u(self.est_state, des_state)
+            if self.config['agent']['controller_config']['LQR']['action_dim'] == 3: 
+                des_state = State(np.array([action_waypoint[0], action_waypoint[1], depth,
+                                            0.00, 0.00, 0.00,
+                                            0.00, 0.00, action_waypoint[2],
+                                            -0.00, -0.00, 0.00]))
+            elif self.config['agent']['controller_config']['LQR']['action_dim'] == 4:
+                des_state = State(np.array([action_waypoint[0], action_waypoint[1], action_waypoint[2],
+                                                0.00, 0.00, 0.00,
+                                                0.00, 0.00, action_waypoint[3],
+                                                -0.00, -0.00, 0.00]))
         elif self.config['agent']['controller'] == "PID":
             u = self.controller.u(self.est_state, action_waypoint)
         else:
@@ -379,11 +384,11 @@ class AgentAuvTarget3D(Agent):
             if self.config['draw_traj']:
                 self.planner.draw_traj(self.scene, 30)
         
-        if self.planner.desire_path_num == 0:
-            self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
-                                                           np.rad2deg(np.arctan2(
-                                                               self.planner.path[1, 1] - self.planner.path[1, 0],
-                                                               self.planner.path[0, 1] - self.planner.path[0, 0]))])
+        # if self.planner.desire_path_num == 0:
+        #     self.scene.agents['target'+str(self.rank)].teleport(rotation=[0.0, 0.0,
+        #                                                    np.rad2deg(np.arctan2(
+        #                                                        self.planner.path[1, 1] - self.planner.path[1, 0],
+        #                                                        self.planner.path[0, 1] - self.planner.path[0, 0]))])
         
         des_state = self.planner.tick(true_state)
         

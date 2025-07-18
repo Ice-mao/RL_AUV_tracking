@@ -14,7 +14,6 @@ from shapely.geometry import Point, Polygon
 
 import fcl
 FCL_AVAILABLE = True
-print("FCL可用，将使用高性能3D碰撞检测")
 
 from auv_env.envs.obstacle import obstacles, rotate_point, polygon_2_points
 

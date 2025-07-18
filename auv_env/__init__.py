@@ -5,7 +5,7 @@ from .envs.world_auv_v1 import WorldAuvV1
 from .envs.world_auv_v2 import WorldAuvV2
 from .envs.world_auv_v0_3d import WorldAuv3DV0
 
-def make(env_name, config=None, eval=False, t_steps=100, show_viewport=True, **kwargs):
+def make(env_name, config=None, eval:bool=False, t_steps=100, show_viewport=True, **kwargs):
     """
     Parameters:
     ----------
@@ -44,11 +44,16 @@ def make(env_name, config=None, eval=False, t_steps=100, show_viewport=True, **k
         map_name = config['map']
     env0 = TargetTrackingBase(world_class, map_name, show_viewport, config, **kwargs)
 
-    # some wrappers
     env = gym.wrappers.TimeLimit(env0, max_episode_steps=t_steps)
     if eval:
-        from auv_env.wrappers.display_wrapper import Display2D
-        env = Display2D(env)
+        print(eval)
+        if '3D' in env_name:
+            from auv_env.wrappers.display_wrapper import Display3D
+            env = Display3D(env)
+            print("Using Display3D wrapper for 3D environment.")
+        else:
+            from auv_env.wrappers.display_wrapper import Display2D
+            env = Display2D(env)
     # if record:
     #     from auv_env.wrappers.display_wrapper import Video2D
     #     env = Video2D(env, dirname=directory)

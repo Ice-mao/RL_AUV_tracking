@@ -20,13 +20,14 @@ def main():
     # 其他参数如 num_targets, eval 等现在从 config 文件中读取
     env = auv_env.make("AUVTracking3D_v0", 
                        config=config,
-                       eval=False, t_steps=200,
+                       eval=True, t_steps=200,
                        show_viewport=True,
                        )
 
     obs, info = env.reset()
     for i in range(1000):
-        action = np.array([1, 0, -0.5])
+        # action = np.array([0, 0, 0.0])
+        action = env.action_space.sample()  # 随机动作
         obs, reward, terminate, truncate, info = env.step(action)
         if terminate or truncate:
             obs, info = env.reset()

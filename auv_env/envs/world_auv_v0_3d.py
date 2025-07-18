@@ -104,7 +104,6 @@ class WorldAuv3DV0(WorldBase3D):
         For 3D: RL state: [r, theta, gamma, log det(Sigma), observed] * nb_targets, [o_r, o_theta, o_gamma]
         For 2D: RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
-        # Find the closest obstacle coordinate
         if self.config['target']['target_dim'] == 6:
             # 3D case: use spherical coordinates for obstacles
             if self.agent.rangefinder.min_distance < self.config['agent']['sensor_r']:
@@ -115,12 +114,6 @@ class WorldAuv3DV0(WorldBase3D):
                               0.0)  # elevation = 0 for ground obstacles
             else:
                 obstacles_pt = (self.config['agent']['sensor_r'], 0.0, 0.0)
-        else:
-            # 2D case
-            if self.agent.rangefinder.min_distance < self.config['agent']['sensor_r']:
-                obstacles_pt = (self.agent.rangefinder.min_distance, np.radians(self.agent.rangefinder.min_angle))
-            else:
-                obstacles_pt = (self.config['agent']['sensor_r'], 0)
 
         state_observation = []
         for i in range(self.num_targets):
@@ -131,15 +124,6 @@ class WorldAuv3DV0(WorldBase3D):
                     xyz_base=self.agent.est_state.vec[:3],
                     theta_base=np.radians(self.agent.est_state.vec[8]))
                 state_observation.extend([r_b, theta_b, gamma_b,
-                                          np.log(LA.det(self.belief_targets[i].cov)),
-                                          float(observed[i])])
-            else:
-                # 2D polar coordinates (fallback)
-                r_b, alpha_b = util.relative_distance_polar(
-                    self.belief_targets[i].state[:2],
-                    xy_base=self.agent.est_state.vec[:2],
-                    theta_base=np.radians(self.agent.est_state.vec[8]))
-                state_observation.extend([r_b, alpha_b,
                                           np.log(LA.det(self.belief_targets[i].cov)),
                                           float(observed[i])])
         

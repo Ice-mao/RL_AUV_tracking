@@ -34,8 +34,10 @@ parser.add_argument('--choice', choices=['0', '1', '2', '3', '4'], help='0:train
                     default='0')
 parser.add_argument('--env_config', type=str, required=True, help='Path to the environment configuration file.')
 parser.add_argument('--alg_config', type=str, required=True, help='Path to the algorithm configuration file.')
-parser.add_argument('--eval', choices=['0', '1'], help='Whether to evaluate the model.')
-parser.add_argument('--show_viewport', choices=['0', '1'], help='Whether to show the viewport during training/evaluation.')
+parser.add_argument('--eval', 
+                    action='store_true')
+parser.add_argument('--show_viewport',
+                    action='store_true')
 args = parser.parse_args()
 
 
@@ -45,7 +47,7 @@ def make_env(
         monitor_dir: str,
 ) -> VecEnv:
     # train_envs = SubprocVecEnv([lambda: gym.make(task, config=config) for _ in range(num_train_envs)], )
-    train_envs = SubprocVecEnv([lambda: auv_env.make("AUVTracking_v0",
+    train_envs = SubprocVecEnv([lambda: auv_env.make(env_config['name'],
                                 config=env_config,
                                 eval=args.eval, t_steps=200,
                                 show_viewport=args.show_viewport) for _ in range(num_train_envs)], )

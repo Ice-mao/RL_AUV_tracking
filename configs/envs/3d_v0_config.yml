@@ -1,7 +1,7 @@
 version: v0
-name: AUVTracking_v0
-render: true # print
-draw_traj: true
+name: AUVTracking3D_v0
+render: false # print
+draw_traj: false
 eval_fixed: false
 map: 'SimpleUnderwater-Bluerov2'
 debug: false
@@ -41,7 +41,7 @@ agent:
     resolution: 0.1
   sensor_r: 10.0
   fov: 100
-  h_fov: 60
+  h_fov: 50
   sensor_r_sd: 0.2
   sensor_b_sd: 0.01
   sensor_e_sd: 0.01
