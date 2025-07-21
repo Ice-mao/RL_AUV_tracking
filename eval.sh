@@ -26,7 +26,15 @@ echo "================================================="
 
 # Build the command
 CMD="python SB3_trainer.py --env_config $ENV_CONFIG --alg_config $ALG_CONFIG
-    --choice $CHOICE --eval $EVAL --show_viewport $SHOW_VIEWPORT"
+    --choice $CHOICE"
+
+if [ "$EVAL" = '1' ]; then
+    CMD="$CMD --eval"
+fi
+
+if [ "$SHOW_VIEWPORT" = '1' ]; then
+    CMD="$CMD --show_viewport"
+fi
 
 # Execute the command
 eval $CMD

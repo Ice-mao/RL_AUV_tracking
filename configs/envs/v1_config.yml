@@ -1,4 +1,5 @@
 version: 1
+name: AUVTracking_v1
 render: true
 draw_traj: true
 eval_fixed: false

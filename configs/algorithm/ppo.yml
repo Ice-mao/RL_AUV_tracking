@@ -5,21 +5,27 @@ training:
   device: "cuda"
   seed: 46
   nb_envs: 2
-  timesteps: 1000000
+  timesteps: 10000000
   batch_size: 64
   save_freq: 50000
   log_freq: 1000
   log_dir: "log"
-  resume_path: "media/best_model.zip" # for keep training and eval
+  resume_path: "log/AUVTracking_v0/PPO/07-12_22/best_model.zip" # for keep training and eval
   net_arch:
     pi: [256, 256, 256]
     vf: [256, 256]
 
 policy:
-  # _target_: diffusion_policy.policy.diffusion_unet_image_policy.DiffusionUnetImagePolicy
   net_arch:
     pi: [256, 256, 256]
     vf: [256, 256]
+  features_extractor:
+    class_name: "Encoder"
+    module_path: "auv_track_launcher.networks.student_network"
+    kwargs:
+      features_dim: 512
+      num_images: 5
+      resnet_output_dim: 128
 
   obs_encoder:
     # _target_: diffusion_policy.model.vision.multi_image_obs_encoder.MultiImageObsEncoder

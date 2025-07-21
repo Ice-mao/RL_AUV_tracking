@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 from auv_track_launcher.networks.tcn import TemporalConvNet
@@ -17,12 +17,12 @@ from auv_track_launcher import utils
 
 class Encoder(BaseFeaturesExtractor):
     """
-        Viusal encoder
+        Visual encoder
     """
-    def __init__(self, observation_space: spaces.Box, features_dim: int = 512, num_images: int = 5, resnet_output_dim=64):
-        super().__init__(observation_space, features_dim)
+    def __init__(self, observation_space: spaces.Dict, features_dim: int = 512, num_images: int = 5, resnet_output_dim=64):
+        super().__init__(observation_space, features_dim + observation_space['state'].shape[0])
         self.num_images = num_images
-        self.resnets = nn.ModuleList([EncoderResNet(encoder_dim=resnet_output_dim) for _ in range(self.num_images)])
+        self.resnet = EncoderResNet(encoder_dim=resnet_output_dim)
         num_channels = [128, 64]
         self.tcn = TemporalConvNet(num_inputs=resnet_output_dim, num_channels=num_channels, kernel_size=2,
                                    dropout=0.2)
@@ -30,7 +30,15 @@ class Encoder(BaseFeaturesExtractor):
                                    nn.LayerNorm(features_dim), nn.Tanh())
         self.apply(utils.weight_init)
 
-    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        # for key, subspace in observation_space.spaces.items():
+        #     if key == "image":
+        #         print(f"Image subspace shape: {subspace.shape}")
+        #     elif key == "vector":
+        #         # Run through a simple MLP
+        #         print(f"Vector subspace shape: {subspace.shape}")
+
+    def forward(self, observations: torch.Tensor) -> torch.Tensor:
+        images = observations['images']
         # 输入 images: [batch_size, num_images, 3, H, W]
         batch_size, num_images, C, H, W = images.size()
         assert num_images == self.num_images, "Input number of images must match num_images."
@@ -39,7 +47,7 @@ class Encoder(BaseFeaturesExtractor):
         features = []
         for i in range(num_images):
             img = images[:, i, :, :, :]  # 取出第 i 张图像: [batch_size, 3, H, W]
-            feature = self.resnets[i](img)  # 提取特征: [batch_size, resnet_output_dim]
+            feature = self.resnet(img)  # 提取特征: [batch_size, resnet_output_dim]
             features.append(feature)
 
         # 拼接特征: [batch_size, N, resnet_output_dim]

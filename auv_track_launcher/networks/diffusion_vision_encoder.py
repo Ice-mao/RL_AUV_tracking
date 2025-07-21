@@ -10,7 +10,7 @@ from torchvision import models
 from auv_track_launcher.networks.tcn import TemporalConvNet
 
 from gymnasium import spaces
-from auv_track_launcher.networks.utils import get_resnet, replace_submodules, replace_bn_with_gn
+from auv_track_launcher.networks.utils import get_resnet, replace_bn_with_gn
 
 class Encoder(nn.Module):
     """

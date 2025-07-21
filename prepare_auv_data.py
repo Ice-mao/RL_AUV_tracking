@@ -305,18 +305,18 @@ def validate_dataset(data_path: str):
 if __name__ == "__main__":
     # 创建演示数据
     print("=== 创建AUV演示数据集 ===")
-    data_path = create_demonstration_data(n_episodes=50, 
-                                        save_path='auv_demo_data.npz')
+    data_path = create_demonstration_data(n_episodes=1, 
+                                        save_path='log/sample/auv_demo_data.npz')
     
     # 验证数据集
     print(f"\n=== 验证数据集 ===")
     if validate_dataset(data_path):
         # 可视化数据
         print(f"\n=== 可视化数据 ===")
-        visualize_episode_data(data_path, episode_idx=0)
+        # visualize_episode_data(data_path, episode_idx=0)
         
-        print(f"\n✅ 数据集创建完成！")
-        print(f"   数据路径: {data_path}")
-        print(f"   可以用此数据测试 AUVTrackingDataset 类")
+        # print(f"\n✅ 数据集创建完成！")
+        # print(f"   数据路径: {data_path}")
+        # print(f"   可以用此数据测试 AUVTrackingDataset 类")
     else:
         print("❌ 数据集创建失败")

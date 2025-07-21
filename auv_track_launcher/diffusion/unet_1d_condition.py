@@ -25,7 +25,7 @@ from diffusers.models.embeddings import GaussianFourierProjection, TimestepEmbed
 from diffusers.models.modeling_utils import ModelMixin
 from diffusers.models.unets.unet_1d_blocks import get_down_block, get_mid_block, get_out_block, get_up_block
 from diffusers.models.activations import get_activation
-from auv_track_launcher.networks.unet_1d_block import Downsample1d, Upsample1d, Conv1dBlock, ConditionalResidualBlock1D
+from auv_track_launcher.diffusion.unet_1d_block import Downsample1d, Upsample1d, Conv1dBlock, ConditionalResidualBlock1D
 
 import einops
 

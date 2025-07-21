@@ -7,6 +7,7 @@ import torch
 import numpy as np
 import auv_env
 import csv
+import importlib
 
 from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
@@ -92,11 +93,18 @@ def learn(env, log_dir, env_config, alg_config):
     training_params = alg_config['training']
 
     if policy_params['policy'] == 'SAC':
+        features_extractor_class, fe_kwargs = get_features_extractor(alg_config)
         policy_kwargs = dict(
-            net_arch=alg_config['policy']['net_arch']
+            net_arch=alg_config['policy']['net_arch'],
         )
+        if features_extractor_class:
+            policy_kwargs['features_extractor_class'] = features_extractor_class
+            policy_kwargs['features_extractor_kwargs'] = fe_kwargs
+            policy_type = 'MultiInputPolicy'
+        else:
+            policy_type = 'MlpPolicy'
         action_noise = create_action_noise(env_config)
-        model = SAC("MlpPolicy", env, verbose=1,
+        model = SAC(policy_type, env, verbose=1,
                     learning_rate=policy_params['lr'],
                     buffer_size=policy_params['buffer_size'],
                     learning_starts=policy_params['start_timesteps'],
@@ -115,10 +123,17 @@ def learn(env, log_dir, env_config, alg_config):
         model.save(os.path.join(log_dir, 'final_model'))
         
     elif policy_params['policy'] == 'PPO':
+        features_extractor_class, fe_kwargs = get_features_extractor(alg_config)
         policy_kwargs = dict(
             net_arch=alg_config['policy']['net_arch'],
         )
-        model = PPO("MlpPolicy", env, verbose=1,
+        if features_extractor_class:
+            policy_kwargs['features_extractor_class'] = features_extractor_class
+            policy_kwargs['features_extractor_kwargs'] = fe_kwargs
+            policy_type = 'MultiInputPolicy'
+        else:
+            policy_type = 'MlpPolicy'
+        model = PPO(policy_type, env, verbose=1,
                     learning_rate=policy_params['lr'],
                     batch_size=training_params['batch_size'],
                     n_epochs=10,
@@ -241,6 +256,13 @@ def eval_greedy(model_dir, config: dict):
         write = csv.writer(f)
         write.writerows(is_col)
 
+def get_features_extractor(config):
+    if 'features_extractor' in config['policy']:
+        fe_config = config['policy']['features_extractor']
+        module = importlib.import_module(fe_config['module_path'])
+        fe_class = getattr(module, fe_config['class_name'])
+        return fe_class, fe_config.get('kwargs', {})
+    return None, {}
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -263,8 +285,8 @@ if __name__ == '__main__':
         log_dir = os.path.dirname(model_path)
         if not model_path:
             raise ValueError("Resume path must be provided for 'keep training' choice.")
-        env = make_env(env_config['name'], alg_config['training']['nb_envs'], log_dir)
-        keep_learn(env, log_dir, model_path)
+        env = make_env(env_config, alg_config['training']['nb_envs'], log_dir)
+        keep_learn(env, log_dir, model_path, alg_config)
     elif choice == 2:  # Evaluate
         model_path = alg_config['training']['resume_path']
         if not model_path:
@@ -272,4 +294,4 @@ if __name__ == '__main__':
         evaluate(model_path, env_config, alg_config)
     elif choice == 3:  # Calibrate/Eval Greedy
         model_dir = os.path.dirname(alg_config['training']['resume_path'])
-        eval_greedy(model_dir, env_config, alg_config)
+        eval_greedy(model_dir, env_config)

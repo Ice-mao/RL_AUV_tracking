@@ -43,6 +43,7 @@ dependencies:
     # Control and Estimation
     - filterpy==1.4.5
     - shapely==2.0.3
+    - python-fcl
     
     # Computer Vision
     - opencv-python==4.10.0.84
