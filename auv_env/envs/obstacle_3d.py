@@ -225,31 +225,7 @@ class Obstacle3D:
                 if not self.check_obstacle_collision(test_point, 0):
                     return False
         
-        return True  # 路径畅通
-
-    def get_obstacle_info(self):
-        """
-        获取障碍物信息
-        
-        Returns:
-        --------
-        dict : 包含障碍物详细信息的字典
-        """
-        info = {
-            'depths': self.fix_depths,
-            'num_obstacles_per_layer': self.num_obstacles,
-            'total_obstacles': len(self.obstacle_boxes_3d),
-            'layer1_polygons': len(self.polygons_layer1),
-            'layer2_polygons': len(self.polygons_layer2),
-            'layer1_indices': self.chosen_idx_layer1,
-            'layer2_indices': self.chosen_idx_layer2,
-            'layer1_rotations': self.rot_angs_layer1,
-            'layer2_rotations': self.rot_angs_layer2,
-            'collision_detection_method': 'FCL'
-        }
-        if FCL_AVAILABLE:
-            info['total_fcl_objects'] = len(self.obstacle_objects_fcl)
-        return info
+        return True
 
 if __name__ == "__main__":
     import holoocean

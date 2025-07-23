@@ -6,7 +6,7 @@ training:
   seed: 46
   nb_envs: 2
   timesteps: 10000000
-  batch_size: 64
+  batch_size: 32
   save_freq: 50000
   log_freq: 1000
   log_dir: "log"
@@ -19,13 +19,27 @@ policy:
   net_arch:
     pi: [256, 256, 256]
     vf: [256, 256]
-  # features_extractor:
-  #   class_name: "Encoder"
-  #   module_path: "auv_track_launcher.networks.student_network"
-  #   kwargs:
-  #     features_dim: 512
-  #     num_images: 5
-  #     resnet_output_dim: 128
+  features_extractor:
+    class_name: "Encoder"
+    module_path: "auv_track_launcher.networks.feature_network"
+    kwargs:
+      features_dim: 512
+      resnet_output_dim: 128
+
+  # obs_encoder:
+    # _target_: diffusion_policy.model.vision.multi_image_obs_encoder.MultiImageObsEncoder
+    # shape_meta: ${shape_meta}
+    # rgb_model:
+    #   _target_: diffusion_policy.model.vision.model_getter.get_resnet
+    #   name: resnet18
+    #   weights: null
+    # resize_shape: null
+    # crop_shape: [76, 76]
+    # # constant center crop
+    # random_crop: True
+    # use_group_norm: True
+    # share_rgb_model: False
+    # imagenet_norm: True
 
 policy_hparams:
   policy: "PPO"

@@ -25,9 +25,9 @@ class WorldAuvV1(WorldBase):
         self.image_buffer = CameraBuffer(5, (3, 224, 224), time_gap=0.5)
         super().__init__(config, map, show)
 
-    def reset(self):
+    def reset(self, seed=None, **kwargs):
         self.image_buffer.reset()
-        return super().reset()
+        return super().reset(seed=seed, **kwargs)
 
     def set_limits(self):
         # action_dim and action_space
@@ -68,7 +68,7 @@ class WorldAuvV1(WorldBase):
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
-            "images": spaces.Box(low=0, high=255, shape=(5, 3, 224, 224), dtype=np.float32),
+            "images": spaces.Box(low=0, high=255, shape=(3, 224, 224), dtype=np.float32),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
@@ -120,8 +120,8 @@ class WorldAuvV1(WorldBase):
         # state_observation.extend(action.tolist())  # dim:3
         state_observation = np.array(state_observation)
 
-        images = np.stack(self.image_buffer.get_buffer())
-        # images = util.image_preprocess(images)
+        # images = np.stack(self.image_buffer.get_buffer()[-1])
+        images = self.image_buffer.get_buffer()[-1]
         self.obs = {'images': images, 'state': state_observation}
         return copy.deepcopy({'images': images, 'state': state_observation})
         # Update the visit map for the evaluation purpose.

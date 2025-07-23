@@ -170,7 +170,7 @@ class WorldBase3D:
 
     def reset(self, seed=None, **kwargs):
         self.ocean.reset()
-        if self.config['render']:
+        if self.config['draw_traj']:
             self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
                                 lifetime=0)  # draw the area
         self.obstacles.reset()

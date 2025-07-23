@@ -8,7 +8,7 @@ os.chdir(ROOT_DIR)
 import numpy as np
 import torch
 from gymnasium import spaces
-from auv_track_launcher.networks.student_network import Encoder
+from auv_track_launcher.networks.feature_network import Encoder
 batch_size = 4
 num_images = 5  # n+1 张图片
 image_size = (3, 224, 224)  # 符合 ResNet 的输入要求

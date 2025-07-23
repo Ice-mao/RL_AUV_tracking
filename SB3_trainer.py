@@ -148,7 +148,7 @@ def learn(env, log_dir, env_config, alg_config):
                     policy_kwargs=policy_kwargs,
                     tensorboard_log=log_dir,
                     device=training_params['device']
-                    )
+                )
         model.learn(total_timesteps=training_params['timesteps'], tb_log_name="first_run", log_interval=1, callback=callback)
         model.save(os.path.join(log_dir, 'final_model'))
 

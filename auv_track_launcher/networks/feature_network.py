@@ -19,45 +19,30 @@ class Encoder(BaseFeaturesExtractor):
     """
         Visual encoder
     """
-    def __init__(self, observation_space: spaces.Dict, features_dim: int = 512, num_images: int = 5, resnet_output_dim=64):
-        super().__init__(observation_space, features_dim + observation_space['state'].shape[0])
-        self.num_images = num_images
+    def __init__(self, observation_space: spaces.Dict, features_dim: int = 512, resnet_output_dim=64):
+        super().__init__(observation_space, 1)
         self.resnet = EncoderResNet(encoder_dim=resnet_output_dim)
-        num_channels = [128, 64]
-        self.tcn = TemporalConvNet(num_inputs=resnet_output_dim, num_channels=num_channels, kernel_size=2,
-                                   dropout=0.2)
-        self.trunk = nn.Sequential(nn.Linear(num_channels[-1]*self.num_images, features_dim),
+        # num_channels = [128, 64]
+        # self.tcn = TemporalConvNet(num_inputs=resnet_output_dim, num_channels=num_channels, kernel_size=2,
+        #                            dropout=0.2)
+        self.trunk = nn.Sequential(nn.Linear(resnet_output_dim, features_dim),
                                    nn.LayerNorm(features_dim), nn.Tanh())
         self.apply(utils.weight_init)
 
-        # for key, subspace in observation_space.spaces.items():
-        #     if key == "image":
-        #         print(f"Image subspace shape: {subspace.shape}")
-        #     elif key == "vector":
-        #         # Run through a simple MLP
-        #         print(f"Vector subspace shape: {subspace.shape}")
+        # Update the features dim manually
+        self._features_dim = features_dim + observation_space['state'].shape[0]
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         images = observations['images']
         # 输入 images: [batch_size, num_images, 3, H, W]
-        batch_size, num_images, C, H, W = images.size()
-        assert num_images == self.num_images, "Input number of images must match num_images."
+        batch_size, C, H, W = images.size()
 
-        # 提取每张图像的特征
-        features = []
-        for i in range(num_images):
-            img = images[:, i, :, :, :]  # 取出第 i 张图像: [batch_size, 3, H, W]
-            feature = self.resnet(img)  # 提取特征: [batch_size, resnet_output_dim]
-            features.append(feature)
+        feature = self.resnet(images)  # 提取特征: [batch_size, resnet_output_dim]
 
-        # 拼接特征: [batch_size, N, resnet_output_dim]
-        features = torch.stack(features, dim=1)
-        features = features.permute(0, 2, 1)
-
-        # 输入 TCN 进行时序建模
-        encoding = self.tcn(features)  # 输出: [batch_size, tcn_output_dim]
-        encoding = torch.flatten(encoding, start_dim=1)
-        output = self.trunk(encoding)
+        output = self.trunk(feature)
+        # 添加状态信息
+        state = observations['state']
+        output = torch.cat((output, state), dim=1) 
         return output
 
 
