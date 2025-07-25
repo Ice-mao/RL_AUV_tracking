@@ -1,9 +1,3 @@
-"""
-简单的AUV数据采集脚本
-
-直接从你的环境中采集obs和action，保存为zarr格式用于AUVTrackingDataset
-"""
-
 import sys
 import os
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -17,8 +11,8 @@ from diffusion_policy.common.replay_buffer import ReplayBuffer
 import time
 from auv_track_launcher.dataset.data_collector import AUVCollector
 
-def collect_auv_data(n_episodes=50):
-    collector = AUVCollector()
+def collect_auv_data(collect, n_episodes=50):
+    collector = collect
     
     config_path = os.path.join('configs', 'envs', 'v1_config.yml')
     config = load_config(config_path)
@@ -55,9 +49,5 @@ def collect_auv_data(n_episodes=50):
 
 if __name__ == '__main__':
     # 简单调用
-    # collect_auv_data(n_episodes=3)  # 采集3个episodes作为测试
-
-    from auv_track_launcher.dataset.auv_tracking_dataset import AUVTrackingDataset
-    
-    dataset = AUVTrackingDataset('log/sample/auv_data/auv_data_final.zarr')
-    print(f"数据集大小: {len(dataset)}")
+    collector = AUVCollector(exist_replay_path="/home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/sample/auv_data/auv_data_final.zarr")
+    collect_auv_data(collector, n_episodes=3)  # 采集3个episodes作为测试

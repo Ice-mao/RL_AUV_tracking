@@ -7,12 +7,14 @@ import time
 
 
 class AUVCollector:
-    def __init__(self, save_dir="./simple_auv_data"):
+    def __init__(self, save_dir="./simple_auv_data", exist_replay_path=None):
         self.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
-        self.replay_buffer = ReplayBuffer.create_empty_numpy()
-        
-        print(f"数据保存目录: {save_dir}")
+        self.keys = ['camera_image', 'state', 'action']
+        if exist_replay_path is not None:
+            self.replay_buffer = ReplayBuffer.copy_from_path(exist_replay_path, keys=self.keys)
+        else:
+            self.replay_buffer = ReplayBuffer.create_empty_numpy()
 
     def start_episode(self):
         self.current_episode = {

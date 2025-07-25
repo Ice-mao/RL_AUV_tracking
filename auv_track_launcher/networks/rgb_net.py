@@ -84,10 +84,6 @@ class EncoderTCN(nn.Module):
 
 
 class Encoder(nn.Module):
-    """
-
-    """
-
     def __init__(self, N, resnet_output_dim=64, output_dim=256, tcn_hidden_dim=512, tcn_output_dim=256, tcn_layers=2,
                  device='cuda'):
         super(Encoder, self).__init__()
