@@ -53,8 +53,8 @@ class WorldAuv3DV0(WorldBase3D):
         
         # target_limit for kf belief (3D case)
         # 6D state: [x, y, z, vx, vy, vz]
-        self.target_limit = [np.concatenate((self.bottom_corner, np.array([-2, -2, -1]))),
-                                np.concatenate((self.top_corner, np.array([2, 2, 1])))]
+        self.target_limit = [np.concatenate((self.bottom_corner, np.array([-1, -1, -1]))),
+                                np.concatenate((self.top_corner, np.array([1, 1, 1])))]
         
         # 3D observation: [r, theta, gamma, log_det_cov, observed] * nb_targets, [o_r, o_theta, o_gamma]
         state_lower_bound = np.concatenate(([0.0, -np.pi, -np.pi/2, -50.0, 0.0] * self.num_targets,

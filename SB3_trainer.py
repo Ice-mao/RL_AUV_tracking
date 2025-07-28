@@ -274,10 +274,10 @@ if __name__ == '__main__':
     choice = int(args.choice)
     # Create a unique log directory
     policy_name = alg_config['policy_hparams']['policy']
-    log_dir = os.path.join(alg_config['training']['log_dir'], env_config['name'], policy_name, time_string)
-    os.makedirs(log_dir, exist_ok=True)
 
     if choice == 0:  # Train
+        log_dir = os.path.join(alg_config['training']['log_dir'], env_config['name'], policy_name, time_string)
+        os.makedirs(log_dir, exist_ok=True)
         env = make_env(env_config, alg_config['training']['nb_envs'], log_dir)
         learn(env, log_dir, env_config, alg_config)
     elif choice == 1:  # Keep training
