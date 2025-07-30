@@ -108,7 +108,7 @@ def learn(env, log_dir, env_config, alg_config):
                     learning_rate=policy_params['lr'],
                     buffer_size=policy_params['buffer_size'],
                     learning_starts=policy_params['start_timesteps'],
-                    batch_size=training_params['batch_size'],
+                    batch_size=policy_params['batch_size'],
                     tau=policy_params['tau'],
                     gamma=policy_params['gamma'],
                     train_freq=1,
@@ -276,7 +276,8 @@ if __name__ == '__main__':
     policy_name = alg_config['policy_hparams']['policy']
 
     if choice == 0:  # Train
-        log_dir = os.path.join(alg_config['training']['log_dir'], env_config['name'], policy_name, time_string)
+        log_dir = os.path.join(alg_config['training']['log_dir'], env_config['name'],
+                                env_config['agent']['controller'], policy_name, time_string)
         os.makedirs(log_dir, exist_ok=True)
         env = make_env(env_config, alg_config['training']['nb_envs'], log_dir)
         learn(env, log_dir, env_config, alg_config)

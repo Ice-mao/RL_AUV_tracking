@@ -10,7 +10,7 @@ training:
   save_freq: 50000
   log_freq: 1000
   log_dir: "log"
-  resume_path: "log/AUVTracking3D_v0/PPO/07-25_12/rl_model_2000000_steps.zip" # for keep training and eval
+  resume_path: "log/AUVTracking_v0/PPO/07-25_12/rl_model_1000000_steps.zip" # for keep training and eval
   net_arch:
     pi: [256, 256, 256]
     vf: [256, 256]
