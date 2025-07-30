@@ -114,6 +114,7 @@ class AgentAuv(Agent):
                                                 0.00, 0.00, 0.00,
                                                 0.00, 0.00, action_waypoint[3],
                                                 -0.00, -0.00, 0.00]))
+            u = self.controller.u(self.est_state, des_state)
         elif self.config['agent']['controller'] == "PID":
             u = self.controller.u(self.est_state, action_waypoint)
         else:
