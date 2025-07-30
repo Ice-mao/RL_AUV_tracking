@@ -9,7 +9,12 @@ training:
   save_freq: 200000
   log_dir: "log"
   log_freq: 1000
-  resume_path: "log/AUVTracking_v0/PID/SAC/07-28_16/rl_model_2000000_steps.zip"
+  resume_path: "log/teacher/SAC/01-13_12/rl_model_1240000_steps.zip"
+
+policy:
+  net_arch:
+    pi: [256, 256, 256]
+    qf: [256, 256]
 
 policy_hparams:
   policy: "SAC"

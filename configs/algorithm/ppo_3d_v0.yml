@@ -4,22 +4,16 @@
 training:
   device: "cuda:3"
   seed: 46
-  nb_envs: 2
-  timesteps: 2000000
   nb_envs: 5
-  timesteps: 2000000
-  batch_size: 64
+  timesteps: 5000000
+  batch_size: 128
   save_freq: 200000
   log_freq: 1000
   log_dir: "log"
-<<<<<<< Updated upstream
-  resume_path: "log/AUVTracking_v0/PPO/07-25_12/rl_model_1000000_steps.zip" # for keep training and eval
+  resume_path: "log/AUVTracking3D_v0/PPO/07-26_01/final_model.zip" # for keep training and eval
   net_arch:
     pi: [256, 256, 256]
     vf: [256, 256]
-=======
-  resume_path: "log/AUVTracking3D_v0/PPO/07-25_12/rl_model_2000000_steps.zip" # for keep training and eval
->>>>>>> Stashed changes
 
 policy:
   net_arch:
