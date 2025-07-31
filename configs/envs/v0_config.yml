@@ -21,7 +21,7 @@ scenario:
   fix_depth: -5
 
 agent:
-  controller: 'PID'
+  controller: 'LQR'
   controller_config:
     LQR:
       action_dim: 3
@@ -39,7 +39,7 @@ agent:
     p_occ: 0.8
     p_free: 0.25
     resolution: 0.1
-  sensor_r: 10.0
+  sensor_r: 4.0
   fov: 100
   h_fov: 60
   sensor_r_sd: 0.2
@@ -58,7 +58,7 @@ target:
       force: 10
   measurement_disfactor: 0.9
   target_init_cov: 50.0
-  lin_dist_range_a2t: [3.0, 8.0]
+  lin_dist_range_a2t: [1.0, 4.0]
   ang_dist_range_a2t: [-3.14159/5, 3.14159/5]
   lin_dist_range_t2b: [0.0, 2.0]
   ang_dist_range_t2b: [-3.14159/2, 3.14159/2]

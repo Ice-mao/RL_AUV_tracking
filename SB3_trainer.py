@@ -79,9 +79,15 @@ def make_callback(
 
 def create_action_noise(config):
     if config['agent']['controller']=='PID':
-        noise = NormalActionNoise(np.array([0.0, 0.0]), np.array([0.05, 0.05]))
+        if config['agent']['controller_config']['PID']['action_dim'] == 2:
+            noise = NormalActionNoise(np.array([0.0, 0.0]), np.array([0.05, 0.05]))
+        elif config['agent']['controller_config']['PID']['action_dim'] == 3:
+            noise = NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.05]))
     elif config['agent']['controller']=='LQR':
-        noise = NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.08]))
+        if config['agent']['controller_config']['LQR']['action_dim'] == 3:
+            noise = NormalActionNoise(np.array([0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.03]))
+        elif config['agent']['controller_config']['LQR']['action_dim'] == 4:
+            noise = NormalActionNoise(np.array([0.0, 0.0, 0.0, 0.0]), np.array([0.05, 0.05, 0.05, 0.03]))
     else:
         noise = None
     return noise

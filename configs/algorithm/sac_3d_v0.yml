@@ -2,11 +2,11 @@
 # Can be merged with a main environment config
 
 training:
-  device: "cuda:2"
+  device: "cuda:3"
   seed: 41
   nb_envs: 5
-  timesteps: 2000000
-  save_freq: 200000
+  timesteps: 3000000
+  save_freq: 500000
   log_dir: "log"
   log_freq: 1000
   resume_path: "log/teacher/SAC/01-13_12/rl_model_1240000_steps.zip"
@@ -18,13 +18,13 @@ policy:
 
 policy_hparams:
   policy: "SAC"
-  lr: 0.0001
-  buffer_size: 100000
+  lr: 0.0003
+  buffer_size: 200000
   batch_size: 512
   gamma: 0.99
   tau: 0.005
   noise_std: 0.12
-  start_timesteps: 10000
+  start_timesteps: 30000
   
   # SAC specific
   auto_alpha: true
