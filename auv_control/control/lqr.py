@@ -101,9 +101,6 @@ class LQR:
         e = x.vec - x_d.vec
         u_til = -self.K @ e
 
-        # u_til[1:3] = -u_til[1:3]
-        # u_til[4:6] = -u_til[4:6]
-
         # Feedback linearization
         u_til[:3] = (x.mat[:3, :3] @ x.T_ned_to_nwu).T @ u_til[:3]  # rotate force to body framed
         u_til[3:] += np.cross((x.mat[:3, :3]@ x.T_ned_to_nwu).T @ np.array([0, 0, 1]),

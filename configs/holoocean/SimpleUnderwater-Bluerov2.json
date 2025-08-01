@@ -80,7 +80,7 @@
             "sensors": [
                 {
                     "sensor_type": "PoseSensor",
-                    "socket": "COM"
+                    "socket": "IMUSocket"
                 },
                 {
                     "sensor_type": "LocationSensor",
@@ -88,7 +88,7 @@
                 },
                 {
                     "sensor_type": "VelocitySensor",
-                    "socket": "COM"
+                    "socket": "IMUSocket"
                 },
                 {
                     "sensor_type": "IMUSensor",
