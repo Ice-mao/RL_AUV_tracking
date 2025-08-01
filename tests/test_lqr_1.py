@@ -1,3 +1,10 @@
+import sys
+import os
+
+ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
+sys.path.append(ROOT_DIR)
+os.chdir(ROOT_DIR)
+
 import numpy as np
 import holoocean
 
@@ -11,7 +18,7 @@ ts = 1 / scenario["ticks_per_sec"]
 # num_ticks = int(num_seconds / ts)
 
 # Set everything up
-controller = LQR()
+controller = LQR(l_p=50, robo_type="BlueROV2")
 # observer = InEKF()
 # if route == "rrt":
 #     planner = RRT(num_seconds)
@@ -24,7 +31,7 @@ controller = LQR()
 
 # Run simulation!
 u = np.zeros(8)
-env = holoocean.make(scenario_cfg=scenario)
+env = holoocean.make("SimpleUnderwater-Bluerov2")
 # planner.draw_traj(env, num_seconds)
 
 # for i in tqdm(range(num_ticks)):
@@ -51,16 +58,28 @@ for i in range(20000):
 
     # Autopilot Commands
     depth = -5
+    # if t < 3000:
+    #     vel = [5 ,0, 0]
+    #     w = 0.5
+    #     yaw = 0
+    # # elif 3 <= t < 6:
+    # #     vel = [0,1,0]
+    # #     yaw = 0
+    # # elif 6 <= t < 9:
+    # #     vel = [0,0,1]
+    # #     yaw = 0
+    # des_state = State(np.array([0.00, 0.00, depth, vel[0], vel[1], vel[2], 0.00, 0.00, yaw, - 0.00, - 0.00, w]))
+    # # des_state.vec = [-5, 3, -5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, - 0.00, - 0.00, 0.00]
+    # u = controller.u(true_state, des_state)
+
     if t < 3000:
-        vel = [5 ,0, 0]
-        w = 0.5
-        yaw = 0
-    # elif 3 <= t < 6:
-    #     vel = [0,1,0]
-    #     yaw = 0
-    # elif 6 <= t < 9:
-    #     vel = [0,0,1]
-    #     yaw = 0
-    des_state = State(np.array([0.00, 0.00, depth, vel[0], vel[1], vel[2], 0.00, 0.00, yaw, - 0.00, - 0.00, w]))
-    # des_state.vec = [-5, 3, -5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, - 0.00, - 0.00, 0.00]
+        pos = [-5, 3, -5]
+        yaw = 90
+    elif 3 <= t < 6:
+        pos = [5, 3, -5]
+        yaw = 90
+    elif 6 <= t < 9:
+        pos = [5, -3, -8]
+        yaw = -90
+    des_state = State(np.array([pos[0], pos[1], pos[2], 0.00, 0.00, 0.00, 0.0, 0.00, yaw, - 0.00, - 0.00, 0.00]))
     u = controller.u(true_state, des_state)

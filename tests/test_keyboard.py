@@ -61,9 +61,10 @@ class KeyBoardCmd:
 
 from PIL import Image
 from torchvision import transforms
+from auv_control import scenario
 
-scenario = "SimpleUnderwater-Bluerov2" # "AUV_RGB"
-with holoocean.make(scenario) as env:
+# scenario = "SimpleUnderwater-Bluerov2" # "AUV_RGB"
+with holoocean.make(scenario_cfg=scenario) as env:
     kb = KeyBoardCmd(force=25)
     from auv_control import State
     for _ in range(20000):
@@ -76,7 +77,11 @@ with holoocean.make(scenario) as env:
         state = env.tick()
         state = state["auv0"]
         true_state = State(state)
-        print(true_state.vec[8])
+        # print(true_state.vec)
+        # print(state['VelocitySensor'])
+        state["PoseSensor"][:3, 3]
+        # t = np.diag([1, -1, -1])
+        # print(state["PoseSensorNED"][:3, :3] @ t)
         # if "LeftCamera" in state:
         #     pixels = state["LeftCamera"]
         #     cv2.namedWindow("Camera Output")

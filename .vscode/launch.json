@@ -12,7 +12,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--env_config", "configs/envs/v0_config.yml",
-                "--alg_config", "configs/algorithm/ppo.yml",
+                "--alg_config", "configs/algorithm/sac.yml",
                 "--choice", "0"
             ],
             "env": {
@@ -43,8 +43,8 @@
             "program": "${workspaceFolder}/SB3_trainer.py",
             "console": "integratedTerminal",
             "args": [
-                "--env_config", "configs/envs/3d_v0_config.yml",
-                "--alg_config", "configs/algorithm/ppo.yml",
+                "--env_config", "configs/envs/v0_config.yml",
+                "--alg_config", "configs/algorithm/sac.yml",
                 "--choice", "2",
                 "--eval",
                 "--show_viewport"

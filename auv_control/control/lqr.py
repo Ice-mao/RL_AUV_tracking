@@ -30,7 +30,7 @@ class LQR:
                 [-20.64, 18.23, -0.21],
                 [-20.64, -18.23, -0.21]
             ]) / 100
-            self.J = np.eye(3) * 1.0
+            self.J = np.eye(3) * 1
         else:
             raise ValueError("Unknown robot type. Use 'HoveringAUV' or 'BlueROV2'.")
         self.rho = 997
@@ -80,7 +80,7 @@ class LQR:
         # self.Q[9:12] = 10  # angular velocity
         self.Q[0:3] = l_p  # position
         self.Q[3:6] = l_v  # velocity
-        self.Q[6:9] = [.01, .01, 0.02]  # 0.01 # rotation
+        self.Q[6:9] = [.01, .01, .02]  # 0.01 # rotation
         self.Q[9:12] = 0.01  # angular velocity
         self.Q = np.diag(self.Q)
 
@@ -101,11 +101,13 @@ class LQR:
         e = x.vec - x_d.vec
         u_til = -self.K @ e
 
-        # Feedback linearization
-        u_til[:3] = x.mat[:3, :3].T @ u_til[:3]  # rotate force to body framed
-        u_til[3:] += np.cross(x.mat[:3, :3].T @ np.array([0, 0, 1]),
-                              self.cob) * self.V * self.rho * self.gravity  # subtract off bouyant torque
+        # u_til[1:3] = -u_til[1:3]
+        # u_til[4:6] = -u_til[4:6]
 
+        # Feedback linearization
+        u_til[:3] = (x.mat[:3, :3] @ x.T_ned_to_nwu).T @ u_til[:3]  # rotate force to body framed
+        u_til[3:] += np.cross((x.mat[:3, :3]@ x.T_ned_to_nwu).T @ np.array([0, 0, 1]),
+                              self.cob) * self.V * self.rho * self.gravity  # subtract off bouyant torque
         # Convert forces/torques to thruster commands
         f = self.Minv @ u_til
 

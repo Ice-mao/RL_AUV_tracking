@@ -43,7 +43,7 @@ class AgentAuv(Agent):
                 l_p = np.random.normal(40, 15)
             else:
                 l_p = 50
-            self.controller = LQR(l_p=l_p)
+            self.controller = LQR(l_p=l_p, robo_type=robo_type)
         elif self.config['agent']['controller'] == "PID":
             self.controller = PID(robo_type=robo_type)
         else:

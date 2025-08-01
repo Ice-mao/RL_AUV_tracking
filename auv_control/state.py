@@ -6,6 +6,7 @@ from inekf import SE3
 class State:
     """A uniform representation of our state from various sources.
 
+    Be careful!!!: PoseSensor、VelocitySensor must be in IMUSocket for NED coordinate system.
     Can come from a dictionary (HoloOcean), SE[2,6] object (InEKF library), or from a simple
     numpy array.     
 
@@ -16,12 +17,14 @@ class State:
         self.vec = np.zeros(12)
         self.mat = np.eye(5)
         self.bias = np.zeros(6)
+        self.T_ned_to_nwu = np.diag([1, -1, -1])
 
         # True State
         if isinstance(state, dict):
             self.vec[0:3] = state["PoseSensor"][:3, 3]
             self.vec[3:6] = state["VelocitySensor"]
-            self.vec[6:9] = rot_to_rpy(state["PoseSensor"][:3, :3])
+            self.vec[6:9] = rot_to_rpy(state["PoseSensor"][:3, :3] @ self.T_ned_to_nwu)
+            # self.vec[6:9] = rot_to_rpy(state["PoseSensor"][:3, :3])
             self.vec[9:12] = state["IMUSensorClean"][1]
 
             self.bias[0:3] = state["IMUSensor"][3]
@@ -70,3 +73,4 @@ class State:
 
 def rot_to_rpy(mat):
     return Rotation.from_matrix(mat).as_euler("xyz") * 180 / np.pi
+

@@ -105,10 +105,16 @@ class WorldBase:
         self.obstacles = Obstacle(self.ocean, self.fix_depth, self.config)
 
         self.sensors = {}
+        if self.config['agent']['controller'] == 'LQR':
+            self.controller = 'LQR'
+        elif self.config['agent']['controller'] == 'PID':
+            self.controller = 'PID'
+        self.frequency = self.config['agent']['controller_config'][self.controller]['control_frequency']
+        
         self.set_limits()
 
     def step(self, action):
-        if self.action_dim == self.config['agent']['controller_config']['LQR']['action_dim']:
+        if self.controller == 'LQR':
             # waypoint for LQR
             global_waypoint = np.zeros(3)
             observed = []
@@ -119,16 +125,14 @@ class WorldBase:
             angle = action[2] * self.action_range_scale[2]
             global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
             self.action = global_waypoint
-            frequency = self.config['agent']['controller_config']['LQR']['control_frequency']
-        elif self.action_dim == self.config['agent']['controller_config']['PID']['action_dim']:
+        elif self.controller == 'PID':
             # cmd_vel for PID
             cmd_vel = CmdVel()
             cmd_vel.linear.x = action[0] * self.action_range_scale[0]
             cmd_vel.angular.z = action[1] * self.action_range_scale[1]
             self.action = cmd_vel
-            frequency = self.config['agent']['controller_config']['PID']['control_frequency']
 
-        for _ in range(frequency):
+        for _ in range(self.frequency):
             for i in range(self.num_targets):
                 target = 'target'+str(i)
                 if self.has_discovered[i]:

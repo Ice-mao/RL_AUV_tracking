@@ -18,7 +18,7 @@ ts = 1 / scenario["ticks_per_sec"]
 # num_ticks = int(num_seconds / ts)
 
 # Set everything up
-controller = LQR()
+controller = LQR(l_p=100)
 # observer = InEKF()
 # if route == "rrt":
 #     planner = RRT(num_seconds)
@@ -69,3 +69,4 @@ for i in range(20000):
     des_state = State(np.array([pos[0], pos[1], pos[2], 0.00, 0.00, 0.00, 0.00, 0.00, yaw, - 0.00, - 0.00, 0.00]))
     # des_state.vec = [-5, 3, -5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, - 0.00, - 0.00, 0.00]
     u = controller.u(true_state, des_state)
+    print(max(u))

@@ -12,8 +12,13 @@ scenario = {
             "sensors": [
                 {
                     "sensor_type": "PoseSensor",
-                    "socket": "COM"
+                    "socket": "IMUSocket"
                 },
+                # {
+                #     "sensor_type": "PoseSensor",
+                #     "sensor_name": "PoseSensorNED",
+                #     "socket": "IMUSocket",
+                # },
                 {
                     "sensor_type": "VelocitySensor",
                     "socket": "COM"
