@@ -46,6 +46,8 @@ class AgentAuv(Agent):
             self.controller = LQR(l_p=l_p, robo_type=robo_type)
         elif self.config['agent']['controller'] == "PID":
             self.controller = PID(robo_type=robo_type)
+        elif self.config['agent']['controller'] == "KEYBOARD":
+            self.controller = KeyBoardCmd(force=5)
         else:
             raise ValueError("Unknown controller choice")
 
@@ -117,6 +119,8 @@ class AgentAuv(Agent):
             u = self.controller.u(self.est_state, des_state)
         elif self.config['agent']['controller'] == "PID":
             u = self.controller.u(self.est_state, action_waypoint)
+        elif self.config['agent']['controller'] == "KEYBOARD":
+            u = self.controller.parse_keys()
         else:
             raise ValueError("Unknown controller choice")
 

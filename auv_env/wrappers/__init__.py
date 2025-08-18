@@ -1,1 +1,1 @@
-from .obs_wrapper import TeachObsWrapper, StudentObsWrapper
+from .obs_wrapper import StateOnlyWrapper, RGBOnlyWrapper

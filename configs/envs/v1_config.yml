@@ -21,7 +21,7 @@ scenario:
   fix_depth: -5
 
 agent:
-  controller: 'PID'
+  controller: 'LQR'
   controller_config:
     LQR:
       action_dim: 3

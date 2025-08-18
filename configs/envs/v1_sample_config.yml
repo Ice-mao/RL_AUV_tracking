@@ -1,8 +1,9 @@
 version: 1
+name: AUVTracking_v1_sample
 render: true
-draw_traj: true
+draw_traj: false
 eval_fixed: false
-map: 'SimpleUnderwater-Bluerov2'
+map: 'SimpleUnderwater-Bluerov2_RGB'
 debug: false
 
 env:
@@ -47,7 +48,7 @@ target:
   target_dim: 4
   random: false
   const_q: [0.5, [0.01, 0.02, 0.05, 0.1, 0.4, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0]]
-  controller: 'LQR' # LQR or Manual
+  controller: 'LQR'
   controller_config:
     LQR:
       random_lp: false

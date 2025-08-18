@@ -2,7 +2,7 @@ import gymnasium as gym
 from gymnasium.spaces import flatten_space, flatten
 
 
-class TeachObsWrapper(gym.ObservationWrapper):
+class StateOnlyWrapper(gym.ObservationWrapper):
     """
     This observation wrapper extract the state of observation space for RL
     """
@@ -15,7 +15,7 @@ class TeachObsWrapper(gym.ObservationWrapper):
         return obs["state"]
 
 
-class StudentObsWrapper(gym.ObservationWrapper):
+class RGBOnlyWrapper(gym.ObservationWrapper):
     """
     This observation wrapper extract the image of observation space for RL
     """
