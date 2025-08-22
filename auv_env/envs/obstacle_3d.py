@@ -260,13 +260,13 @@ if __name__ == "__main__":
         # 测试路径阻挡检测
         print("\n=== 路径阻挡测试 ===")
         path_tests = [
-            ([0, 0, -3], [10, 10, -3]),    # 第一层内路径
-            ([0, 0, -7], [10, 10, -7]),    # 第二层内路径
+            ([0, 0, -3], [15, 15, -3]),    # 第一层内路径
+            ([0, 0, -7], [15, 15, -7]),    # 第二层内路径
             ([0, 0, -3], [0, 0, -7]),      # 垂直路径
             ([100, 100, -3], [100, 100, -7])  # 远离障碍物的路径
         ]
-        env.draw_line([0, 0, -3], [10, 10, -3], thickness=5.0, lifetime=0.0)
-        env.draw_line([0, 0, -7], [10, 10, -7], thickness=5.0, lifetime=0.0)
+        env.draw_line([0, 0, -3], [15, 15, -3], thickness=5.0, lifetime=0.0)
+        env.draw_line([0, 0, -7], [15, 15, -7], thickness=5.0, lifetime=0.0)
         env.draw_line([0, 0, -3], [0, 0, -7], thickness=5.0, lifetime=0.0)
         for start, end in path_tests:
             clear = obstacle_3d.check_obstacle_block(start, end, 1.0)

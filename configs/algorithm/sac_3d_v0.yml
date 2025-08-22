@@ -4,27 +4,27 @@
 training:
   device: "cuda:3"
   seed: 41
-  nb_envs: 5
-  timesteps: 3000000
+  nb_envs: 8
+  timesteps: 10000000
   save_freq: 500000
   log_dir: "log"
   log_freq: 1000
-  resume_path: "log/teacher/SAC/01-13_12/rl_model_1240000_steps.zip"
+  resume_path: "log/AUVTracking3D_v0/LQR/SAC/08-21_19/final_model.zip"
 
 policy:
   net_arch:
-    pi: [256, 256, 256]
-    qf: [256, 256]
+    pi: [512, 256, 256]
+    qf: [512, 256]
 
 policy_hparams:
   policy: "SAC"
-  lr: 0.0003
-  buffer_size: 200000
-  batch_size: 512
+  lr: 0.0002
+  buffer_size: 500000
+  batch_size: 256
   gamma: 0.99
   tau: 0.005
   noise_std: 0.12
-  start_timesteps: 30000
+  start_timesteps: 50000
   
   # SAC specific
   auto_alpha: true

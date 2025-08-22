@@ -69,8 +69,9 @@ class WorldBase3D:
             self.controller = 'LQR'
         elif self.config['agent']['controller'] == 'PID':
             self.controller = 'PID'
-        self.frequency = self.config['agent']['controller_config'][self.controller]['control_frequency']
-        
+        elif self.config['agent']['controller'] == 'KEYBOARD':
+            self.controller = 'KEYBOARD'
+        self.ticks_per_rl_step = 1/(self.config['agent']['controller_config'][self.controller]['control_frequency'] * self.sampling_period)
         self.sensors = {}
         self.set_limits()
 
@@ -88,7 +89,7 @@ class WorldBase3D:
             global_waypoint[2] = self.agent.est_state.vec[2] + depth
             global_waypoint[3] = self.agent.est_state.vec[8] + np.rad2deg(yaw)
             self.action = global_waypoint
-            frequency = self.config['agent']['controller_config']['LQR']['control_frequency']
+
         elif self.controller == 'PID':
             # cmd_vel for PID
             cmd_vel = CmdVel()
@@ -96,9 +97,10 @@ class WorldBase3D:
             cmd_vel.angular.z = action[1] * self.action_range_scale[1]
             cmd_vel.linear.z = action[2] * self.action_range_scale[2]  # for depth control(unusual)
             self.action = cmd_vel
-            frequency = self.config['agent']['controller_config']['PID']['control_frequency']
+        else:
+            self.action = np.empty(self.action_dim)
 
-        for _ in range(self.frequency):
+        for _ in range(int(self.ticks_per_rl_step)):
             for i in range(self.num_targets):
                 target = 'target'+str(i)
                 self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
@@ -112,6 +114,7 @@ class WorldBase3D:
                 target = 'target'+str(i)
                 self.sensors[target].update(sensors[target])
             self.update_every_tick(sensors)
+            print(sensors['t'])
 
         # The targets are observed by the agent (z_t+1) and the beliefs are updated.
         observed = self.observe_and_update_belief()

@@ -49,7 +49,12 @@ class WorldAuv3DV0(WorldBase3D):
                             dtype=np.float32)
             self.action_range_scale = self.config['action_range_scale'][1]
         else:
-            raise ValueError("Unknown controller type: {}".format(self.config['agent']['controller']))
+            self.action_dim =  self.config['agent']['controller_config']['PID']['action_dim']
+            self.action_space = spaces.Box(low=np.float32(self.config['action_range_low'][1]),
+                            high=np.float32(self.config['action_range_high'][1]),
+                            dtype=np.float32)
+            self.action_range_scale = self.config['action_range_scale'][1]
+            # raise ValueError("Unknown controller type: {}".format(self.config['agent']['controller']))
         
         # target_limit for kf belief (3D case)
         # 6D state: [x, y, z, vx, vy, vz]

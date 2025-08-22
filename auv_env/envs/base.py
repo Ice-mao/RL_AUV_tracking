@@ -109,8 +109,8 @@ class WorldBase:
             self.controller = 'LQR'
         elif self.config['agent']['controller'] == 'PID':
             self.controller = 'PID'
-        self.frequency = self.config['agent']['controller_config'][self.controller]['control_frequency']
-        
+        self.ticks_per_rl_step = 1/(self.config['agent']['controller_config'][self.controller]['control_frequency'] * self.sampling_period)
+
         self.set_limits()
 
     def step(self, action):
@@ -132,7 +132,7 @@ class WorldBase:
             cmd_vel.angular.z = action[1] * self.action_range_scale[1]
             self.action = cmd_vel
 
-        for _ in range(self.frequency):
+        for _ in range(int(self.ticks_per_rl_step)):
             for i in range(self.num_targets):
                 target = 'target'+str(i)
                 if self.has_discovered[i]:
