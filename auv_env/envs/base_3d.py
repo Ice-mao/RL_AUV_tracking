@@ -114,7 +114,6 @@ class WorldBase3D:
                 target = 'target'+str(i)
                 self.sensors[target].update(sensors[target])
             self.update_every_tick(sensors)
-            print(sensors['t'])
 
         # The targets are observed by the agent (z_t+1) and the beliefs are updated.
         observed = self.observe_and_update_belief()

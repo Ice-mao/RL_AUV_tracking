@@ -74,7 +74,7 @@ policy: 'CNN'
 # action is defined by the controller
 action_range_high: [[1, 1, 1, 1], [1, 1, 1]]
 action_range_low: [[0, -1, -1, -1], [0, -1, -1]]
-action_range_scale: [[1.5, 3.14159/2, 1, 3.14159/10], [1.0, 0.3, 0.3]]
+action_range_scale: [[0.5, 3.14159/2, 0.3, 3.14159/10], [1.0, 0.3, 0.3]]
 
 reward_param:
   c_mean: 0.2

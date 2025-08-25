@@ -1,9 +1,9 @@
 defaults:
   - _self_
-  - task: auvtrack_image
+  - task: track_image
 
 name: train_diffusion_unet_image
-_target_: diffusion_policy.workspace.train_diffusion_unet_image_workspace_custom.TrainDiffusionUnetImageWorkspace
+_target_: diffusion_policy.workspace.train_diffusion_unet_image_workspace.TrainDiffusionUnetImageWorkspace
 
 task_name: ${task.name}
 shape_meta: ${task.shape_meta}
@@ -11,7 +11,7 @@ exp_name: "default"
 
 horizon: 16
 n_obs_steps: 2
-n_action_steps: 8
+n_action_steps: 8 # 1s
 n_latency_steps: 0
 dataset_obs_steps: ${n_obs_steps}
 past_action_visible: False
@@ -37,11 +37,20 @@ policy:
     _target_: diffusion_policy.model.vision.multi_image_obs_encoder.MultiImageObsEncoder
     shape_meta: ${shape_meta}
     rgb_model:
-      _target_: diffusion_policy.model.vision.model_getter.get_resnet
-      name: resnet18
-      weights: null
-    resize_shape: null
-    crop_shape: [76, 76]
+      _target_: builtins.dict
+      camera_image:
+        _target_: diffusion_policy.model.vision.model_getter.get_resnet
+        name: resnet18
+        weights: IMAGENET1K_V1
+      sonar_image:
+        _target_: diffusion_policy.model.vision.model_getter.get_resnet
+        name: resnet18
+        weights: IMAGENET1K_V1
+    resize_shape: 
+      _target_: builtins.dict
+      camera_image: [128, 128]
+      sonar_image: [128, 128]
+    crop_shape: null
     # constant center crop
     random_crop: True
     use_group_norm: True
@@ -79,7 +88,7 @@ dataloader:
   persistent_workers: False
 
 val_dataloader:
-  batch_size: 64
+  batch_size: 32
   num_workers: 4
   shuffle: False
   pin_memory: True
@@ -94,13 +103,13 @@ optimizer:
 
 training:
   device: "cuda:0"
-  seed: 42
+  seed: 41
   debug: False
-  resume: True
+  resume: False
   # optimization
   lr_scheduler: cosine
   lr_warmup_steps: 500
-  num_epochs: 8000
+  num_epochs: 3000
   gradient_accumulate_every: 1
   # EMA destroys performance when used with BatchNorm
   # replace BatchNorm with GroupNorm.
@@ -110,8 +119,8 @@ training:
   # in epochs
   rollout_every: 50
   checkpoint_every: 50
-  val_every: 1
-  sample_every: 5
+  val_every: 10
+  sample_every: 50
   # steps per epoch
   max_train_steps: null
   max_val_steps: null
@@ -119,8 +128,7 @@ training:
   tqdm_interval_sec: 1.0
 
 logging:
-  repo: swanlab  # swanlab / wandb
-  project: diffusion_policy_debug
+  project: diffusion_policy_dam
   resume: True
   mode: online
   name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
@@ -130,10 +138,10 @@ logging:
 
 checkpoint:
   topk:
-    monitor_key: test_mean_score
-    mode: max
-    k: 5
-    format_str: 'epoch={epoch:04d}-test_mean_score={test_mean_score:.3f}.ckpt'
+    monitor_key: val_loss
+    mode: min
+    k: 10
+    format_str: 'epoch={epoch:04d}-val_loss={val_loss:.3f}.ckpt'
   save_last_ckpt: True
   save_last_snapshot: False
 

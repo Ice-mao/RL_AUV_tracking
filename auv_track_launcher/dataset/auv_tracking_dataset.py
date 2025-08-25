@@ -93,30 +93,10 @@ class AUVTrackingDataset(BaseImageDataset):
         return val_set
 
     def get_normalizer(self, mode='limits', **kwargs):
-        """获取数据标准化器"""
-        data = {}
-        
-        # 动作标准化
-        data['action'] = self.replay_buffer['action']
-        
-        # AUV状态标准化
-        auv_states = self.replay_buffer['auv_state']
-        data['auv_pos'] = auv_states[..., :3]      # 位置 [x, y, z]
-        data['auv_euler'] = auv_states[..., 3:6]   # 姿态 [roll, pitch, yaw]
-        data['auv_vel'] = auv_states[..., 6:9]     # 线速度 [vx, vy, vz]
-        data['auv_ang_vel'] = auv_states[..., 9:12] # 角速度 [wx, wy, wz]
-        
-        # 目标状态标准化
-        target_states = self.replay_buffer['target_state']
-        data['target_pos'] = target_states[..., :3]  # 目标位置
-        data['relative_dist'] = target_states[..., 3:4]  # 相对距离
-        data['relative_bearing'] = target_states[..., 4:5]  # 相对方位
-        
-        # 声纳数据标准化
-        if self.use_sonar:
-            data['sonar'] = self.replay_buffer['sonar_data']
-        
-        # 创建标准化器
+        data = {
+            'action': self.replay_buffer['action'],
+            'state': self.replay_buffer['state']
+        } 
         normalizer = LinearNormalizer()
         normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)
         
