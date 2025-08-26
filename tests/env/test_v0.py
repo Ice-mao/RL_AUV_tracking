@@ -9,6 +9,7 @@ import gymnasium as gym
 from gymnasium.utils.env_checker import check_env
 import auv_env
 from config_loader import load_config
+import numpy as np
 
 def main():
     # 加载配置文件
@@ -26,6 +27,8 @@ def main():
     obs, info = env.reset()
     for i in range(1000):
         action = env.action_space.sample()
+        # action = np.array([1, 1, 0])
+        print(action)
         obs, reward, terminate, truncate, info = env.step(action)
         if terminate or truncate:
             obs, info = env.reset()

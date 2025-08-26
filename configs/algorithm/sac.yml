@@ -4,11 +4,11 @@
 training:
   device: "cuda"
   seed: 41
-  nb_envs: 1
+  nb_envs: 2
   timesteps: 2000000
   save_freq: 200000
   log_dir: "log"
-  log_freq: 1000
+  log_freq: 20000
   resume_path: "log/AUVTracking_v0/LQR/SAC/07-30_23/best_model.zip"
 
 policy:
@@ -18,9 +18,9 @@ policy:
 
 policy_hparams:
   policy: "SAC"
-  lr: 0.0001
+  lr: 0.0003
   buffer_size: 100000
-  batch_size: 512
+  batch_size: 128
   gamma: 0.99
   tau: 0.005
   noise_std: 0.12

@@ -17,6 +17,7 @@ import holoocean
 from auv_control import scenario
 from auv_control.control import CmdVel
 from auv_control.estimation import KFbelief, UKFbelief
+from auv_control.planning.local_planner import TrajectoryPlanner, TrajectoryBuffer
 
 from auv_env.maps import map_utils
 import auv_env.util as util
@@ -109,22 +110,59 @@ class WorldBase:
             self.controller = 'LQR'
         elif self.config['agent']['controller'] == 'PID':
             self.controller = 'PID'
-        self.ticks_per_rl_step = 1/(self.config['agent']['controller_config'][self.controller]['control_frequency'] * self.sampling_period)
-
+        
+        # 初始化轨迹规划器 (仅对LQR控制器)
+        self.ticks_per_rl_step = int(1/(self.config['agent']['controller_config'][self.controller]['control_frequency'] * self.sampling_period))
+        if self.controller == 'LQR':
+            self.trajectory_planner = TrajectoryPlanner(
+                control_dt=self.sampling_period,
+                planning_duration=self.ticks_per_rl_step * self.sampling_period  # 转换为时间
+            )
+            self.trajectory_buffer = TrajectoryBuffer()
         self.set_limits()
 
     def step(self, action):
         if self.controller == 'LQR':
-            # waypoint for LQR
-            global_waypoint = np.zeros(3)
-            observed = []
+            # 从RL action生成目标knot
             r = action[0] * self.action_range_scale[0]
             theta = action[1] * self.action_range_scale[1]
-            global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
-                                                            np.radians(self.agent.est_state.vec[8]))
+            target_pos = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
+                                                   np.radians(self.agent.est_state.vec[8]))
             angle = action[2] * self.action_range_scale[2]
-            global_waypoint[2] = self.agent.est_state.vec[8] + np.rad2deg(angle)
-            self.action = global_waypoint
+            target_yaw = self.agent.est_state.vec[8] + np.rad2deg(angle)
+            
+            # 目标knot: [x, y, yaw_radians]
+            self.target_knot = [target_pos[0], target_pos[1], np.radians(target_yaw)]
+            
+            # 生成从当前状态到目标knot的平滑轨迹
+            current_state = [
+                self.agent.est_state.vec[0],  # x
+                self.agent.est_state.vec[1],  # y
+                np.radians(self.agent.est_state.vec[8])  # yaw in radians
+            ]
+            
+            # 生成轨迹并存入缓存 (包含ticks_per_rl_step个路径点)
+            smooth_trajectory = self.trajectory_planner.generate_trajectory_to_knot(
+                current_state, self.target_knot
+            )
+            if self.config['draw_traj']:
+                # 绘制平滑轨迹上的每个点
+                for i, waypoint in enumerate(smooth_trajectory):
+                    self.ocean.draw_point(
+                        loc=[waypoint[0], waypoint[1], -5.0],  # [x, y, z]
+                        color=[0, 255, 0],  # 绿色
+                        thickness=5.0,
+                        lifetime=1.0
+                    )
+                # 绘制目标knot (用红色标出最终目标)
+                self.ocean.draw_point(
+                    loc=[self.target_knot[0], self.target_knot[1], -5.0],
+                    color=[255, 0, 0],  # 红色
+                    thickness=8.0,
+                    lifetime=1.0
+                )
+            self.trajectory_buffer.update_trajectory(smooth_trajectory)
+                
         elif self.controller == 'PID':
             # cmd_vel for PID
             cmd_vel = CmdVel()
@@ -132,7 +170,9 @@ class WorldBase:
             cmd_vel.angular.z = action[1] * self.action_range_scale[1]
             self.action = cmd_vel
 
-        for _ in range(int(self.ticks_per_rl_step)):
+        # 执行仿真循环，在LQR模式下每个tick使用不同的路径点
+        for tick_idx in range(int(self.ticks_per_rl_step)):
+            # 处理目标运动
             for i in range(self.num_targets):
                 target = 'target'+str(i)
                 if self.has_discovered[i]:
@@ -141,6 +181,25 @@ class WorldBase:
                 else:
                     self.target_u = np.zeros(8)
                     self.ocean.act(target, self.target_u)
+            
+            # 为LQR获取当前tick对应的路径点
+            if self.controller == 'LQR':
+                desired_waypoint = self.trajectory_buffer.get_current_waypoint()
+                if desired_waypoint is not None:
+                    self.action = np.array([
+                        desired_waypoint[0],  # target x
+                        desired_waypoint[1],  # target y
+                        np.rad2deg(desired_waypoint[2])  # target yaw in degrees
+                    ])
+                else:
+                    # 如果轨迹用完，保持最后的目标位置
+                    self.action = np.array([
+                        self.target_knot[0], 
+                        self.target_knot[1], 
+                        np.rad2deg(self.target_knot[2])
+                    ])
+            
+            # 更新agent
             self.u = self.agent.update(self.action, self.fix_depth, self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()
@@ -465,7 +524,6 @@ class WorldBase:
                     self.has_discovered[i] = 1
             self.record_cov_posterior.append(self.belief_targets[i].cov)
         return observed
-
 
     @abstractmethod
     def set_limits(self):
