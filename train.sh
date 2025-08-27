@@ -9,6 +9,8 @@ ALG_CONFIG="configs/algorithm/sac.yml"
 # "configs/algorithm/ppo_v1.yml"
 # "configs/algorithm/ppo.yml"
 # ppo_3d_v0
+# sac_3d_v0
+# sac
 
 # 2. Choose the environment config
 ENV_CONFIG="configs/envs/v0_config.yml"

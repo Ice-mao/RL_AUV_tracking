@@ -1,7 +1,7 @@
 version: v0
 name: AUVTracking_v0
 render: false # print
-draw_traj: true
+draw_traj: false
 eval_fixed: false
 map: 'SimpleUnderwater-Bluerov2'
 debug: false
@@ -25,7 +25,7 @@ agent:
   controller_config:
     LQR:
       action_dim: 3
-      control_frequency: 2
+      control_frequency: 4
       random_lp: false
       l_p: [500, [10, 20, 30, 50, 75, 100, 200]]
     PID:
@@ -70,7 +70,7 @@ policy: 'CNN'
 # action is defined by the controller
 action_range_high: [[1, 1, 1], [1, 1]]
 action_range_low: [[0, -1, -1], [-1, -1]]
-action_range_scale: [[1.0, 3.14159/2, 3.14159/4], [1.5, 0.5]]
+action_range_scale: [[0.5, 3.14159/2, 3.14159/16], [1.5, 0.5]]
 
 reward_param:
   c_mean: 0.2

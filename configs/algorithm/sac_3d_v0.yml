@@ -3,9 +3,9 @@
 
 training:
   device: "cuda:3"
-  seed: 41
-  nb_envs: 8
-  timesteps: 10000000
+  seed: 24
+  nb_envs: 6
+  timesteps: 5000000
   save_freq: 500000
   log_dir: "log"
   log_freq: 1000
