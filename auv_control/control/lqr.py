@@ -3,7 +3,20 @@ from scipy.linalg import solve_continuous_are
 
 
 class LQR:
-    def __init__(self, l_p=50, l_v=0.01, robo_type="HoveringAUV"):
+    """Linear Quadratic Regulator controller for AUV trajectory tracking."""
+
+    def __init__(self, l_p=50, l_v=0.01, l_r=[0.01, 0.01, 0.01], r_f=0.05, r_t=1, robo_type="HoveringAUV"):
+        """
+        Initialize LQR controller.
+        
+        Args:
+            l_p (float): Position weight. Higher values increase position tracking accuracy.
+            l_v (float): Velocity weight. Higher values improve velocity tracking.
+            l_r (list): Attitude weights [roll, pitch, yaw]. Controls attitude stability.
+            r_f (float): Force control weight. Higher values limit thruster force usage.
+            r_t (float): Torque control weight. Higher values limit rotational control.
+            robo_type (str): Robot type. "HoveringAUV" or "BlueROV2".
+        """
         # ----------- PARAMETERS OF AUV -----------#
         self.gravity = 9.81
         self.cob = np.array([0, 0, 5.0]) / 100
@@ -80,13 +93,13 @@ class LQR:
         # self.Q[9:12] = 10  # angular velocity
         self.Q[0:3] = l_p  # position
         self.Q[3:6] = l_v  # velocity
-        self.Q[6:9] = [.01, .01, .02]  # 0.01 # rotation
+        self.Q[6:9] = l_r # 0.01 # rotation
         self.Q[9:12] = 0.01  # angular velocity
         self.Q = np.diag(self.Q)
 
         self.R = np.zeros(6)
-        self.R[0:3] = .05  # force
-        self.R[3:6] = 1  # torque
+        self.R[0:3] = r_f  # force
+        self.R[3:6] = r_t  # torque
         self.R = np.diag(self.R)
 
         self.P = solve_continuous_are(self.A, self.B, self.Q, self.R)

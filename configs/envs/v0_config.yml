@@ -1,7 +1,7 @@
 version: v0
 name: AUVTracking_v0
 render: false # print
-draw_traj: false
+draw_traj: true
 eval_fixed: false
 map: 'SimpleUnderwater-Bluerov2'
 debug: false
@@ -27,7 +27,11 @@ agent:
       action_dim: 3
       control_frequency: 4
       random_lp: false
-      l_p: [500, [10, 20, 30, 50, 75, 100, 200]]
+      l_p: [200, [10, 20, 30, 50, 75, 100, 200]]
+      l_v: 0.01
+      l_r: [0.01, 0.01, 0.05]
+      r_f: 0.02
+      r_t: 0.5
     PID:
       action_dim: 2
       control_frequency: 10
@@ -53,7 +57,11 @@ target:
   controller_config:
     LQR:
       random_lp: false
-      l_p: [50, [10, 20, 30, 50, 75, 100, 200]]
+      l_p: [10, [10, 20, 30, 50, 75, 100, 200]]
+      l_v: 0.01
+      l_r: [0.01, 0.01, 0.005]
+      r_f: 0.05
+      r_t: 1.0
     Manual:
       force: 10
   measurement_disfactor: 0.9

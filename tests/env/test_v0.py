@@ -26,8 +26,8 @@ def main():
 
     obs, info = env.reset()
     for i in range(1000):
-        action = env.action_space.sample()
-        # action = np.array([1, 1, 0])
+        # action = env.action_space.sample()
+        action = np.array([0, 0, 1])
         print(action)
         obs, reward, terminate, truncate, info = env.step(action)
         if terminate or truncate:

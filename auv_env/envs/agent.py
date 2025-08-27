@@ -39,11 +39,16 @@ class AgentAuv(Agent):
         robo_type = scenario_cfg['agents'][0]['agent_type']
         # init the control part of Auv
         if self.config['agent']['controller'] == "LQR":
-            if self.config['agent']['random']:
-                l_p = np.random.normal(40, 15)
+            lqr_config = self.config['agent']['controller_config']['LQR']
+            if lqr_config['random_lp']:
+                l_p = np.random.choice(lqr_config['l_p'][1])
             else:
-                l_p = 50
-            self.controller = LQR(l_p=l_p, robo_type=robo_type)
+                l_p = lqr_config['l_p'][0]
+            self.controller = LQR(l_p=l_p, l_v=lqr_config['l_v'],
+                                  l_r=lqr_config['l_r'],
+                                  r_f=lqr_config['r_f'],
+                                  r_t=lqr_config['r_t'],
+                                  robo_type=robo_type)
         elif self.config['agent']['controller'] == "PID":
             self.controller = PID(robo_type=robo_type)
         elif self.config['agent']['controller'] == "KEYBOARD":
@@ -189,10 +194,16 @@ class AgentAuvTarget(Agent):
         robo_type = scenario_cfg['agents'][rank]['agent_type']
         # init the controller part of Auv
         if self.config['target']['controller'] == 'LQR':
-            if self.config['target']['controller_config']['LQR']['random_lp']:
-                self.controller = LQR(l_p=np.random.choice(self.config['target']['controller_config']['LQR']['l_p'][1]), l_v=0.001, robo_type=robo_type)
+            lqr_config = self.config['target']['controller_config']['LQR']
+            if lqr_config['random_lp']:
+                l_p = np.random.choice(lqr_config['l_p'][1])
             else:
-                self.controller = LQR(l_p=self.config['target']['controller_config']['LQR']['l_p'][0], l_v=0.001, robo_type=robo_type)
+                l_p = lqr_config['l_p'][0]
+            self.controller = LQR(l_p=l_p, l_v=lqr_config['l_v'],
+                                l_r=lqr_config['l_r'],
+                                r_f=lqr_config['r_f'],
+                                r_t=lqr_config['r_t'],
+                                robo_type=robo_type)
         self.state = State(sensor)
         # init planner rrt
         self.planner = RRT_2d(obstacles=self.obstacles, margin=self.margin,

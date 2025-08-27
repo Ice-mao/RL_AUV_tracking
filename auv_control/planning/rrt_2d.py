@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import bezier
 
 class RRT_2d(BasePlanner):
-    def __init__(self, num_seconds=10, speed=None, obstacles=None, margin=None,
+    def __init__(self, num_seconds=10, speed=0.5, obstacles=None, margin=None,
                 fixed_depth=None, bottom_corner=None, size=None,
                 render=True, draw_flag=True):
         self.num_seconds = num_seconds
@@ -131,9 +131,9 @@ class RRT_2d(BasePlanner):
 
         # make rot and pos functions
         distance = np.linalg.norm(np.diff(self.path, axis=0), axis=1)
-        if self.speed is None:
-            # self.speed = np.sum(distance) / (self.num_seconds - 3)
-            self.speed = np.sum(distance) / (self.num_seconds)
+        # if self.speed is None:
+        #     # self.speed = np.sum(distance) / (self.num_seconds - 3)
+        #     self.speed = np.sum(distance) / (self.num_seconds)
         times = np.cumsum(distance / self.speed)
         times = times + self.start_time
         def rot(t):
