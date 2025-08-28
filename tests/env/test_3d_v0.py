@@ -26,8 +26,8 @@ def main():
 
     obs, info = env.reset()
     for i in range(1000):
-        # action = np.array([0, 0, 0.0])
-        action = env.action_space.sample()  # 随机动作
+        action = np.array([0, 0, 1, 0.0])
+        # action = env.action_space.sample()  # 随机动作
         obs, reward, terminate, truncate, info = env.step(action)
         if terminate or truncate:
             obs, info = env.reset()

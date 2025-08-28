@@ -105,20 +105,20 @@ class WorldBase:
         # Setup obstacles
         self.obstacles = Obstacle(self.ocean, self.fix_depth, self.config)
 
-        self.sensors = {}
+        # agent controller
         if self.config['agent']['controller'] == 'LQR':
             self.controller = 'LQR'
-        elif self.config['agent']['controller'] == 'PID':
-            self.controller = 'PID'
-        
-        # 初始化轨迹规划器 (仅对LQR控制器)
-        self.ticks_per_rl_step = int(1/(self.config['agent']['controller_config'][self.controller]['control_frequency'] * self.sampling_period))
-        if self.controller == 'LQR':
+            self.ticks_per_rl_step = int(1/(self.config['agent']['controller_config'][self.controller]['control_frequency'] * self.sampling_period))
             self.trajectory_planner = TrajectoryPlanner(
                 control_dt=self.sampling_period,
-                planning_duration=self.ticks_per_rl_step * self.sampling_period  # 转换为时间
+                planning_duration=self.ticks_per_rl_step * self.sampling_period
             )
             self.trajectory_buffer = TrajectoryBuffer()
+        elif self.config['agent']['controller'] == 'PID':
+            self.controller = 'PID'
+            self.ticks_per_rl_step = int(1/(self.config['agent']['controller_config'][self.controller]['control_frequency'] * self.sampling_period))
+
+        self.sensors = {}
         self.set_limits()
 
     def step(self, action):
@@ -132,19 +132,20 @@ class WorldBase:
             target_yaw = self.agent.est_state.vec[8] + np.rad2deg(angle)
             
             # 目标knot: [x, y, yaw_radians]
-            self.target_knot = [target_pos[0], target_pos[1], np.radians(target_yaw)]
+            self.target_knot = np.array([target_pos[0], target_pos[1], np.radians(target_yaw)])
             
-            # 生成从当前状态到目标knot的平滑轨迹
-            current_state = [
+            # 当前状态
+            current_state = np.array([
                 self.agent.est_state.vec[0],  # x
                 self.agent.est_state.vec[1],  # y
                 np.radians(self.agent.est_state.vec[8])  # yaw in radians
-            ]
+            ])
             
-            # 生成轨迹并存入缓存 (包含ticks_per_rl_step个路径点)
             smooth_trajectory = self.trajectory_planner.generate_trajectory_to_knot(
                 current_state, self.target_knot
             )
+
+            # visualization
             if self.config['draw_traj']:
                 # 绘制平滑轨迹上的每个点
                 for i, waypoint in enumerate(smooth_trajectory):

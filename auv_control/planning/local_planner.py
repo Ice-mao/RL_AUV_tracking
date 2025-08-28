@@ -4,7 +4,7 @@ Generates smooth trajectories from single waypoints/knots for LQR control
 """
 
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 
 class TrajectoryPlanner:  
@@ -18,32 +18,39 @@ class TrajectoryPlanner:
         self.planning_duration = planning_duration
         self.num_steps = int(self.planning_duration / self.control_dt)
         
-    def generate_trajectory_to_knot(self, current_state: List[float], target_knot: List[float]) -> List[List[float]]:
+    def generate_trajectory_to_knot(self, current_state: np.ndarray, target_knot: np.ndarray) -> np.ndarray:
         """
-        从当前状态生成到目标knot的平滑轨迹
+        从当前状态生成到目标knot的平滑轨迹 (支持2D和3D)
         
         Args:
-            current_state: [x, y, yaw] 当前状态 (yaw in radians)
-            target_knot: [x, y, yaw] 目标状态 (yaw in radians)
+            current_state: np.array([x, y, yaw]) for 2D or np.array([x, y, z, yaw]) for 3D
+            target_knot: np.array([x, y, yaw]) for 2D or np.array([x, y, z, yaw]) for 3D
             
         Returns:
-            List of waypoints: [[x, y, yaw], ...] for the planning duration
+            np.ndarray: shape (num_steps, 3) for 2D or (num_steps, 4) for 3D
+                       [[x, y, yaw], ...] or [[x, y, z, yaw], ...]
         """
-        trajectory = []
+        # 自动检测是2D还是3D
+        is_3d = len(current_state) == 4 and len(target_knot) == 4
+        state_dim = 4 if is_3d else 3
+        
+        trajectory = np.zeros((self.num_steps, state_dim))
         
         for i in range(self.num_steps):
             t = i / max(1, self.num_steps - 1)  # 从0到1的插值参数
             
-            # 位置线性插值
-            x = current_state[0] + t * (target_knot[0] - current_state[0])
-            y = current_state[1] + t * (target_knot[1] - current_state[1])
-            
-            # 角度插值（处理角度连续性）
-            yaw_diff = self._wrap_angle(target_knot[2] - current_state[2])
-            yaw = current_state[2] + t * yaw_diff
-            yaw = self._wrap_angle(yaw)
-            
-            trajectory.append([x, y, yaw])
+            if is_3d:
+                # 3D版本：位置线性插值 (x, y, z)
+                trajectory[i, :3] = current_state[:3] + t * (target_knot[:3] - current_state[:3])
+                # 角度插值（处理角度连续性）
+                yaw_diff = self._wrap_angle(target_knot[3] - current_state[3])
+                trajectory[i, 3] = self._wrap_angle(current_state[3] + t * yaw_diff)
+            else:
+                # 2D版本：位置线性插值 (x, y)
+                trajectory[i, :2] = current_state[:2] + t * (target_knot[:2] - current_state[:2])
+                # 角度插值（处理角度连续性）
+                yaw_diff = self._wrap_angle(target_knot[2] - current_state[2])
+                trajectory[i, 2] = self._wrap_angle(current_state[2] + t * yaw_diff)
             
         return trajectory
     
@@ -58,14 +65,25 @@ class TrajectoryPlanner:
 
 class TrajectoryBuffer:   
     def __init__(self):
-        self.trajectory = []
-        self.current_index = 0
+        self.trajectory: np.ndarray = np.array([])
+        self.current_index: int = 0
+        self.is_3d: bool = False
         
-    def update_trajectory(self, new_trajectory: List[List[float]]):
+    def update_trajectory(self, new_trajectory: np.ndarray):
+        """
+        Args:
+            new_trajectory: np.ndarray shape (num_steps, 3) for 2D or (num_steps, 4) for 3D
+        """
         self.trajectory = new_trajectory
         self.current_index = 0
+        # 自动检测轨迹维度
+        self.is_3d = new_trajectory.shape[1] == 4 if len(new_trajectory) > 0 else False
         
-    def get_current_waypoint(self) -> List[float]:
+    def get_current_waypoint(self) -> Union[np.ndarray, None]:
+        """
+        Returns:
+            np.ndarray: [x, y, yaw] for 2D or [x, y, z, yaw] for 3D, or None if trajectory is empty
+        """
         if self.current_index < len(self.trajectory):
             waypoint = self.trajectory[self.current_index]
             self.current_index += 1
@@ -78,4 +96,15 @@ class TrajectoryBuffer:
             
     def is_empty(self) -> bool:
         return len(self.trajectory) == 0 or self.current_index >= len(self.trajectory)
+        
+    def get_trajectory_info(self) -> dict:
+        """
+        获取轨迹信息用于调试
+        """
+        return {
+            'is_3d': self.is_3d,
+            'total_points': len(self.trajectory) if len(self.trajectory) > 0 else 0,
+            'current_index': self.current_index,
+            'remaining_points': max(0, len(self.trajectory) - self.current_index) if len(self.trajectory) > 0 else 0
+        }
 

@@ -9,7 +9,7 @@ training:
   save_freq: 200000
   log_dir: "log"
   log_freq: 20000
-  resume_path: "log/AUVTracking_v0/LQR/SAC/07-30_23/best_model.zip"
+  resume_path: "log/AUVTracking_v0/LQR/SAC/08-27_16/best_model.zip"
 
 policy:
   net_arch:

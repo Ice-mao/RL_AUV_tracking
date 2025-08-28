@@ -17,6 +17,7 @@ import holoocean
 from auv_control import scenario
 from auv_control.control import CmdVel
 from auv_control.estimation import KFbelief, UKFbelief
+from auv_control.planning.local_planner import TrajectoryPlanner, TrajectoryBuffer
 
 from auv_env.maps import map_utils
 import auv_env.util as util
@@ -67,28 +68,68 @@ class WorldBase3D:
         self.obstacles = Obstacle3D(self.ocean, self.fix_depth, self.config)
         if self.config['agent']['controller'] == 'LQR':
             self.controller = 'LQR'
+            self.ticks_per_rl_step = int(1/(self.config['agent']['controller_config']['LQR']['control_frequency'] * self.sampling_period))
+            self.trajectory_planner = TrajectoryPlanner(
+                control_dt=self.sampling_period,
+                planning_duration=self.ticks_per_rl_step * self.sampling_period
+            )
+            self.trajectory_buffer = TrajectoryBuffer()
         elif self.config['agent']['controller'] == 'PID':
             self.controller = 'PID'
+            self.ticks_per_rl_step = int(1/(self.config['agent']['controller_config']['PID']['control_frequency'] * self.sampling_period))
         elif self.config['agent']['controller'] == 'KEYBOARD':
             self.controller = 'KEYBOARD'
-        self.ticks_per_rl_step = 1/(self.config['agent']['controller_config'][self.controller]['control_frequency'] * self.sampling_period)
+            self.ticks_per_rl_step = int(1/(self.config['agent']['controller_config']['KEYBOARD']['control_frequency'] * self.sampling_period))
+
         self.sensors = {}
         self.set_limits()
 
     def step(self, action):
         if self.controller == 'LQR':
-            # waypoint for LQR
-            global_waypoint = np.zeros(4) # [x, y, z, yaw]
-            observed = []
+            # 从RL action生成3D目标knot (使用NumPy数组提高性能)
             r = action[0] * self.action_range_scale[0]
             theta = action[1] * self.action_range_scale[1]
             depth = action[2] * self.action_range_scale[2]
-            yaw = action[3] * self.action_range_scale[3]
-            global_waypoint[:2] = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
-                                                            np.radians(self.agent.est_state.vec[8]))
-            global_waypoint[2] = self.agent.est_state.vec[2] + depth
-            global_waypoint[3] = self.agent.est_state.vec[8] + np.rad2deg(yaw)
-            self.action = global_waypoint
+            angle = action[3] * self.action_range_scale[3]
+            
+            target_pos = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
+                                                   np.radians(self.agent.est_state.vec[8]))
+            target_depth = self.agent.est_state.vec[2] + depth
+            target_yaw = self.agent.est_state.vec[8] + np.rad2deg(angle)
+            
+            # 3D目标knot: [x, y, z, yaw_radians] - 使用NumPy数组
+            self.target_knot = np.array([target_pos[0], target_pos[1], target_depth, np.radians(target_yaw)])
+            
+            # 3D当前状态 - 使用NumPy数组
+            current_state = np.array([
+                self.agent.est_state.vec[0],  # x
+                self.agent.est_state.vec[1],  # y
+                self.agent.est_state.vec[2],  # z
+                np.radians(self.agent.est_state.vec[8])  # yaw in radians
+            ])
+            
+            smooth_trajectory = self.trajectory_planner.generate_trajectory_to_knot(
+                current_state, self.target_knot
+            )
+
+            # visualization
+            if self.config['draw_traj']:
+                # 绘制3D平滑轨迹上的每个点
+                for i, waypoint in enumerate(smooth_trajectory):
+                    self.ocean.draw_point(
+                        loc=[float(waypoint[0]), float(waypoint[1]), float(waypoint[2])],  # 3D位置
+                        color=[0, 255, 0],  # 绿色
+                        thickness=5.0,
+                        lifetime=1.0
+                    )
+                # 绘制3D目标knot (用红色标出最终目标)
+                self.ocean.draw_point(
+                    loc=[float(self.target_knot[0]), float(self.target_knot[1]), float(self.target_knot[2])],
+                    color=[255, 0, 0],  # 红色
+                    thickness=8.0,
+                    lifetime=1.0
+                )
+            self.trajectory_buffer.update_trajectory(smooth_trajectory)
 
         elif self.controller == 'PID':
             # cmd_vel for PID
@@ -100,11 +141,36 @@ class WorldBase3D:
         else:
             self.action = np.empty(self.action_dim)
 
-        for _ in range(int(self.ticks_per_rl_step)):
+        for tick_idx in range(int(self.ticks_per_rl_step)):
+            # target
             for i in range(self.num_targets):
                 target = 'target'+str(i)
-                self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
-                self.ocean.act(target, self.target_u)
+                if self.has_discovered[i]:
+                    self.target_u = self.targets[i].update(self.sensors[target], self.sensors['t'])
+                    self.ocean.act(target, self.target_u)
+                else:
+                    self.target_u = np.zeros(8)
+                    self.ocean.act(target, self.target_u)
+            
+            # agent
+            if self.controller == 'LQR':
+                desired_waypoint = self.trajectory_buffer.get_current_waypoint()
+                if desired_waypoint is not None:
+                    self.action = np.array([
+                        desired_waypoint[0],  # target x
+                        desired_waypoint[1],  # target y
+                        desired_waypoint[2],  # target z
+                        np.rad2deg(desired_waypoint[3])  # target yaw in degrees
+                    ])
+                else:
+                    self.action = np.array([
+                        self.target_knot[0], 
+                        self.target_knot[1],
+                        self.target_knot[2], 
+                        np.rad2deg(self.target_knot[3])
+                    ])
+            
+            # 更新agent (3D控制)
             self.u = self.agent.update(self.action, depth=None, sensors=self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()

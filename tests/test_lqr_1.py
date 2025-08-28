@@ -81,5 +81,5 @@ for i in range(20000):
     elif 6 <= t < 9:
         pos = [5, -3, -8]
         yaw = -90
-    des_state = State(np.array([pos[0], pos[1], pos[2], 0.00, 0.00, 0.00, 0.0, 0.00, yaw, - 0.00, - 0.00, 0.00]))
+    des_state = State(np.array([pos[0], pos[1], pos[2], 0.00, 0.00, 0.00, 0.0, 90.00, yaw, - 0.00, - 0.00, 0.00]))
     u = controller.u(true_state, des_state)
