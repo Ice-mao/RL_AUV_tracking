@@ -2,9 +2,9 @@
 # Can be merged with a main environment config
 
 training:
-  device: "cuda"
+  device: "cuda:3"
   seed: 41
-  nb_envs: 2
+  nb_envs: 8
   timesteps: 2000000
   save_freq: 200000
   log_dir: "log"
@@ -18,11 +18,11 @@ policy:
 
 policy_hparams:
   policy: "SAC"
-  lr: 0.0003
+  lr: 0.0001
   buffer_size: 100000
-  batch_size: 128
+  batch_size: 256
   gamma: 0.99
-  tau: 0.005
+  tau: 0.004
   noise_std: 0.12
   start_timesteps: 10000
   
@@ -30,6 +30,14 @@ policy_hparams:
   auto_alpha: true
   alpha: 0.2
   alpha_lr: 0.0003
+
+  # Replay Buffer Configuration
+  replay_buffer:
+    type: "ReplayBuffer"  # Options: "ReplayBuffer", "HerReplayBuffer"
+    # HER specific parameters (only used if type is "HerReplayBuffer")
+    her_kwargs:
+      n_sampled_goal: 4  # 每个真实转换生成多少个虚拟转换
+      goal_selection_strategy: "future"  # 目标选择策略: "future", "final", "episode", "random"
 
   # Collect settings
   step_per_collect: 5

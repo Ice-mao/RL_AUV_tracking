@@ -9,7 +9,7 @@ import auv_env
 import csv
 import importlib
 
-from stable_baselines3 import PPO, SAC
+from stable_baselines3 import PPO, SAC, HerReplayBuffer
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecEnv, DummyVecEnv
 from stable_baselines3.common.noise import NormalActionNoise
@@ -99,6 +99,7 @@ def learn(env, log_dir, env_config, alg_config):
     training_params = alg_config['training']
 
     if policy_params['policy'] == 'SAC':
+        # policy network
         features_extractor_class, fe_kwargs = get_features_extractor(alg_config)
         policy_kwargs = dict(
             net_arch=alg_config['policy']['net_arch'],
@@ -109,7 +110,19 @@ def learn(env, log_dir, env_config, alg_config):
             policy_type = 'MultiInputPolicy'
         else:
             policy_type = 'MlpPolicy'
+
+        # action noise 
         action_noise = create_action_noise(env_config)
+        
+        # replay buffer
+        if policy_params['replay_buffer']['type'] == 'HerReplayBuffer':
+            buffer_kwargs = dict(
+                n_sampled_goal=policy_params['replay_buffer']['her_kwargs']['n_sampled_goal'],
+                goal_selection_strategy=policy_params['replay_buffer']['her_kwargs']['goal_selection_strategy']
+            )
+        else:
+            buffer_kwargs = None
+
         model = SAC(policy_type, env, verbose=1,
                     learning_rate=policy_params['lr'],
                     buffer_size=policy_params['buffer_size'],
@@ -122,9 +135,12 @@ def learn(env, log_dir, env_config, alg_config):
                     action_noise=action_noise,
                     target_update_interval=10,
                     policy_kwargs=policy_kwargs,
+                    replay_buffer_class=policy_params['replay_buffer']['type'],
+                    replay_buffer_kwargs=buffer_kwargs,
                     tensorboard_log=log_dir,
                     device=training_params['device']
                     )
+        
         model.learn(total_timesteps=training_params['timesteps'], tb_log_name="first_run", log_interval=5, callback=callback)
         model.save(os.path.join(log_dir, 'final_model'))
         

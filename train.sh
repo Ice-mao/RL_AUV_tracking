@@ -24,7 +24,7 @@ CHOICE="0"
 
 # 4. Param
 EVAL="0"
-SHOW_VIEWPORT="1"
+SHOW_VIEWPORT="0"
 
 echo "================================================="
 echo "Running experiment with the following settings:"
