@@ -116,14 +116,12 @@ def learn(env, log_dir, env_config, alg_config):
         
         # replay buffer
         if policy_params['replay_buffer']['type'] == 'HerReplayBuffer':
+            buffer_type = "HerReplayBuffer"
             buffer_kwargs = dict(
                 n_sampled_goal=policy_params['replay_buffer']['her_kwargs']['n_sampled_goal'],
                 goal_selection_strategy=policy_params['replay_buffer']['her_kwargs']['goal_selection_strategy']
             )
-        else:
-            buffer_kwargs = None
-
-        model = SAC(policy_type, env, verbose=1,
+            model = SAC(policy_type, env, verbose=1,
                     learning_rate=policy_params['lr'],
                     buffer_size=policy_params['buffer_size'],
                     learning_starts=policy_params['start_timesteps'],
@@ -135,11 +133,29 @@ def learn(env, log_dir, env_config, alg_config):
                     action_noise=action_noise,
                     target_update_interval=10,
                     policy_kwargs=policy_kwargs,
-                    replay_buffer_class=policy_params['replay_buffer']['type'],
+                    replay_buffer_class=buffer_type,
                     replay_buffer_kwargs=buffer_kwargs,
                     tensorboard_log=log_dir,
                     device=training_params['device']
                     )
+        else:
+            model = SAC(policy_type, env, verbose=1,
+                        learning_rate=policy_params['lr'],
+                        buffer_size=policy_params['buffer_size'],
+                        learning_starts=policy_params['start_timesteps'],
+                        batch_size=policy_params['batch_size'],
+                        tau=policy_params['tau'],
+                        gamma=policy_params['gamma'],
+                        train_freq=1,
+                        gradient_steps=1,
+                        action_noise=action_noise,
+                        target_update_interval=10,
+                        policy_kwargs=policy_kwargs,
+                        # replay_buffer_class=policy_params['replay_buffer']['type'],
+                        # replay_buffer_kwargs=buffer_kwargs,
+                        tensorboard_log=log_dir,
+                        device=training_params['device']
+                        )
         
         model.learn(total_timesteps=training_params['timesteps'], tb_log_name="first_run", log_interval=5, callback=callback)
         model.save(os.path.join(log_dir, 'final_model'))
