@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import bezier
 
 class RRT_3d(BasePlanner):
-    def __init__(self, num_seconds=10, speed=None, obstacles=None, margin=None,
+    def __init__(self, num_seconds=10, speed=0.3, obstacles=None, margin=None,
                  bottom_corner=None, size=None,
                  render=True, draw_flag=True):
         """
@@ -158,7 +158,7 @@ class RRT_3d(BasePlanner):
                     self.curves.append(bezier.Curve(nodes, degree=tmp_num + 1))
 
         # 在曲线上采样点
-        num_sample_points = 2 * num_point
+        num_sample_points = 3 * num_point
         num_curve = len(self.curves)
         pick_point = int(num_sample_points / num_curve) + 1
         point_on_curves = None

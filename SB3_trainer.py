@@ -50,7 +50,7 @@ def make_env(
     # train_envs = SubprocVecEnv([lambda: gym.make(task, config=config) for _ in range(num_train_envs)], )
     train_envs = SubprocVecEnv([lambda: auv_env.make(env_config['name'],
                                 config=env_config,
-                                eval=args.eval, t_steps=200,
+                                eval=args.eval, t_steps=env_config.get('t_steps', 200),
                                 show_viewport=args.show_viewport) for _ in range(num_train_envs)], )
     env = VecMonitor(train_envs, monitor_dir)
     # env = auv_env.make("AUVTracking_v0",

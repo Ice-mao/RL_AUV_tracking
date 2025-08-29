@@ -5,6 +5,7 @@ draw_traj: true
 eval_fixed: false
 map: 'SimpleUnderwater-Bluerov2'
 debug: false
+t_steps: 1000
 
 env:
   task_random: false
@@ -64,8 +65,8 @@ target:
       l_p: [10, [10, 20, 30, 50, 75, 100, 200]]
       l_v: 0.01
       l_r: [0.01, 0.01, 0.005]
-      r_f: 0.05
-      r_t: 1.0
+      r_f: 0.15
+      r_t: 1.5
     Manual:
       force: 10
   measurement_disfactor: 0.9
@@ -82,7 +83,7 @@ policy: 'CNN'
 # action is defined by the controller
 action_range_high: [[1, 1, 1, 1], [1, 1, 1]]
 action_range_low: [[0, -1, -1, -1], [0, -1, -1]]
-action_range_scale: [[0.5, 3.14159/2, 0.3, 3.14159/16], [1.0, 0.3, 0.3]]
+action_range_scale: [[0.5, 3.14159/2, 0.3, 3.14159/20], [1.0, 0.3, 0.3]]
 
 reward_param:
   c_mean: 0.2
