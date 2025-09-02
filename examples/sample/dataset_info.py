@@ -10,11 +10,11 @@ os.chdir(ROOT_DIR)
 
 def test_simple_collection():
 
-    print("\n2. 测试数据集加载...")
+    print("\n测试数据集加载...")
     from auv_track_launcher.dataset.auv_tracking_dataset import AUVTrackingDataset
     
     dataset = AUVTrackingDataset(
-        data_path='/home/dell-t3660tow/data/RL/RL_AUV_tracking/RL_AUV_tracking/log/sample/auv_data/auv_data_final.zarr',
+        data_path='log/sample/simple/auv_data_partial_20.zarr',
         key=['action', 'camera_image', 'state'],
         horizon=4,
         pad_before=1,

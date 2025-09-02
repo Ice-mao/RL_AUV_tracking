@@ -8,3 +8,5 @@ global*
 *.pyc
 **/__pycache__/**
 *data/
+
+*.mp4

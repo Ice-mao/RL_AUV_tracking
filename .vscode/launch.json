@@ -5,6 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "evaluate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/benchmark/evaluate.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode", "greedy"
+            ],
+            "env": {
+                "PYTHONPATH": "/data/RL/RL_AUV_tracking/RL_AUV_tracking/"
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Train",
             "type": "debugpy",
             "request": "launch",

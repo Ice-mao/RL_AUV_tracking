@@ -129,8 +129,13 @@ class KFbelief(object):
             innov[1] = wrap_around(innov[1])
 
         # Kalman filter update step
-        R = np.matmul(np.matmul(Hmat, self.cov), Hmat.T) \
-            + self.obs_noise_func((z_t))
+        if self.dim == 6:
+            R = np.matmul(np.matmul(Hmat, self.cov), Hmat.T) \
+                + self.obs_noise_func((r_pred, theta_pred, gamma_pred))
+        else:
+            R = np.matmul(np.matmul(Hmat, self.cov), Hmat.T) \
+                + self.obs_noise_func((r_pred, alpha_pred))
+        
         K = np.matmul(np.matmul(self.cov, Hmat.T), LA.inv(R))
         C = np.eye(self.dim) - np.matmul(K, Hmat)  # 简易更新协方差矩阵：P_hat = (I- K_k*H_k)*P_check
 
@@ -200,9 +205,9 @@ class KFbelief(object):
             innov[1] = wrap_around(innov[1])  # wrap azimuth
             innov[2] = wrap_around(innov[2])  # wrap elevation
             
-            # 3D noise calculation
+            # 3D noise calculation - 使用预测值而不是观测值，保持与update方法一致
             R = np.matmul(np.matmul(Hmat, self.cov), Hmat.T) \
-                + self.obs_noise_func(z_t)
+                + self.obs_noise_func((r_pred, theta_pred, gamma_pred))
             
         else:
             # 2D polar coordinate observation (existing code)

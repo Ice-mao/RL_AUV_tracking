@@ -5,7 +5,7 @@ from scipy.linalg import solve_continuous_are
 class LQR:
     """Linear Quadratic Regulator controller for AUV trajectory tracking."""
 
-    def __init__(self, l_p=50, l_v=0.01, l_r=[0.01, 0.01, 0.01], r_f=0.05, r_t=1, robo_type="HoveringAUV"):
+    def __init__(self, l_p=50, l_v=0.01, l_r=[0.01, 0.01, 0.01], r_f=0.05, r_t=1.0, robo_type="HoveringAUV"):
         """
         Initialize LQR controller.
         

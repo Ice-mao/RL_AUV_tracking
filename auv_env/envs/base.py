@@ -171,9 +171,7 @@ class WorldBase:
             cmd_vel.angular.z = action[1] * self.action_range_scale[1]
             self.action = cmd_vel
 
-        # 执行仿真循环，在LQR模式下每个tick使用不同的路径点
         for tick_idx in range(int(self.ticks_per_rl_step)):
-            # 处理目标运动
             for i in range(self.num_targets):
                 target = 'target'+str(i)
                 if self.has_discovered[i]:

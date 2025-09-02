@@ -7,7 +7,7 @@ import time
 
 
 class AUVCollector:
-    def __init__(self, save_dir="./simple_auv_data", exist_replay_path=None):
+    def __init__(self, save_dir="log/sample/auv_data", exist_replay_path=None):
         self.save_dir = save_dir
         os.makedirs(save_dir, exist_ok=True)
         self.keys = ['camera_image', 'state', 'action']

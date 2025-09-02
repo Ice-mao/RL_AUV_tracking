@@ -1,10 +1,3 @@
-import sys
-import os
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(ROOT_DIR)
-os.chdir(ROOT_DIR)
-
 import holoocean
 import numpy as np
 from numpy import linalg as LA
@@ -24,16 +17,18 @@ import logging
 import copy
 from collections import deque
 
-class WorldAuv3DV0(WorldBase3D):
+class WorldAuv3DV1(WorldBase3D):
     """
-    3D AUV tracking environment with spherical observations
+        different from world:target is also an auv
     """
     def __init__(self, config, map, show):
         self.obs = {}
         self.reward_queue = deque(maxlen=100)
+        self.image_buffer = CameraBuffer(5, (3, 224, 224), time_gap=0.1)
         super().__init__(config, map, show)
 
     def reset(self, seed=None, **kwargs):
+        self.image_buffer.reset()
         self.reward_queue.clear()
         return super().reset(seed=seed, **kwargs)
 
@@ -57,24 +52,30 @@ class WorldAuv3DV0(WorldBase3D):
                             high=np.float32(self.config['action_range_high'][1]),
                             dtype=np.float32)
             self.action_range_scale = self.config['action_range_scale'][1]
-            # raise ValueError("Unknown controller type: {}".format(self.config['agent']['controller']))
         
-        # target_limit for kf belief (3D case)
-        # 6D state: [x, y, z, vx, vy, vz]
+        # target_limit for kf belief
         self.target_limit = [np.concatenate((self.bottom_corner, np.array([-1, -1, -1]))),
-                                np.concatenate((self.top_corner, np.array([1, 1, 1])))]
-        
-        # 3D observation: [r, theta, gamma, log_det_cov, observed] * nb_targets, [o_r, o_theta, o_gamma]
+                                        np.concatenate((self.top_corner, np.array([1, 1, 1])))]
+        # observation_space:
+        # target distance、angle、协方差行列式值、bool; agent 自身定位;
         state_lower_bound = np.concatenate(([0.0, -np.pi, -np.pi/2, -50.0, 0.0] * self.num_targets,
                                             [0.0, -np.pi, -np.pi/2]))
         state_upper_bound = np.concatenate(([600.0, np.pi, np.pi/2, 50.0, 2.0] * self.num_targets,
                                             [self.config['agent']['sensor_r'], np.pi, np.pi/2]))
-
-        self.observation_space = spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32)
+        
+        self.observation_space = spaces.Dict({
+            "images": spaces.Box(low=0, high=255, shape=(5, 3, 224, 224), dtype=np.float32),
+            "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
+        })
 
     def update_every_tick(self, sensors):
-        # update extra sensors buffer
-        pass
+        # update
+        if 'LeftCamera' in sensors['auv0']:
+            if self.config['render']:
+                import cv2
+                cv2.imshow("Camera Output", sensors['auv0']['LeftCamera'][:, :, 0:3])
+                cv2.waitKey(1)
+            self.image_buffer.add_image(sensors['auv0']['LeftCamera'], sensors['t'])
 
     def get_reward(self, is_col, action):
         reward_param = self.config['reward_param']
@@ -103,16 +104,14 @@ class WorldAuv3DV0(WorldBase3D):
     def state_func(self, observed, action):
         '''
         在父类的step中调用该函数对self.state进行更新
-        For 3D: RL state: [r, theta, gamma, log det(Sigma), observed] * nb_targets, [o_r, o_theta, o_gamma]
-        For 2D: RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
+        RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
-        # 3D case: use spherical coordinates for obstacles
         if self.agent.rangefinder.min_distance < self.config['agent']['sensor_r']:
-            # In 3D, we need to extend this to include elevation angle
-            # For now, assume obstacle is at same height (gamma=0)
-            obstacles_pt = (self.agent.rangefinder.min_distance, 
-                            np.radians(self.agent.rangefinder.min_angle), 
-                            0.0)  # elevation = 0 for ground obstacles
+                    # In 3D, we need to extend this to include elevation angle
+                    # For now, assume obstacle is at same height (gamma=0)
+                    obstacles_pt = (self.agent.rangefinder.min_distance, 
+                                    np.radians(self.agent.rangefinder.min_angle), 
+                                    0.0)  # elevation = 0 for ground obstacles
         else:
             obstacles_pt = (self.config['agent']['sensor_r'], 0.0, 0.0)
 
@@ -125,42 +124,26 @@ class WorldAuv3DV0(WorldBase3D):
                     xyz_base=self.agent.est_state.vec[:3],
                     theta_base=np.radians(self.agent.est_state.vec[8]))
                 state_observation.extend([r_b, theta_b, gamma_b,
-                                          np.log(LA.det(self.belief_targets[i].cov)),
-                                          float(observed[i])])
+                                    np.log(LA.det(self.belief_targets[i].cov)),
+                                        float(observed[i])])
         
         state_observation.extend(obstacles_pt)
         state_observation = np.array(state_observation)
-        
-        self.obs = state_observation
-        return copy.deepcopy(state_observation)
-    
-    def get_info(self, action, done) -> dict:
-        """
-        重写父类的get_info方法，收集每一步的详细数据用于记录和分析
-        
-        Parameters:
-        -----------
-        action : np.array
-            当前步的动作
-        done : bool
-            回合是否结束
-            
-        Returns:
-        --------
-        info : dict
-            包含详细步骤信息的字典
-        """
-        info = {
-            'action': action.tolist(),
-            'is_collision': self.is_col,
-            'done': done,
-            # 智能体信息
-            'agent_pos': self.agent.est_state.vec[:3].tolist(),
-            # 目标信息
-            'targets': self.targets[0].state.vec[:3].tolist(),
-            # Belief信息
-            'belief_targets': self.belief_targets[0].state[:3].tolist(),
-        }
-        return info
 
+        # images = np.stack(self.image_buffer.get_buffer()[-1])
+        images = self.image_buffer.get_buffer()
+        self.obs = {'images': images, 'state': state_observation}
+        return copy.deepcopy({'images': images, 'state': state_observation})
+        # Update the visit map for the evaluation purpose.
+        # if self.MAP.visit_map is not None:
+        #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
+
+    def state_func_images(self):
+        return self.obs['images']
+
+    def state_func_state(self):
+        return self.obs['state']
+
+if __name__ == '__main__':
+    pass
 

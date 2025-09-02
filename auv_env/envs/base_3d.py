@@ -48,9 +48,6 @@ class WorldBase3D:
             self.has_discovered = [1] * self.num_targets  # Set to 0 values for your evaluation purpose.
         else:
             self.has_discovered = [0] * self.num_targets  # Set to 0 values for your evaluation purpose.
-        # for record
-        self.record_cov_posterior = []
-        self.record_observed = []
 
         # Setup environment
         margin = 0.25
@@ -195,11 +192,12 @@ class WorldBase3D:
 
         # Compute the RL state.
         state = self.state_func(observed, action)
-        self.record_observed = observed
         if self.config['render']:
             print(is_col, observed[0], reward)
         self.is_col = is_col
-        return state, reward, done, 0, {'mean_nlogdetcov': mean_nlogdetcov, 'std_nlogdetcov': std_nlogdetcov}
+
+        info = self.get_info(action=action, done=done)
+        return state, reward, done, 0, info
 
     def build_models(self, sampling_period, agent_init_state, target_init_state, time):
         """
@@ -581,7 +579,6 @@ class WorldBase3D:
 
     def observe_and_update_belief(self):
         observed = []
-        self.record_cov_posterior = []
         for i in range(self.num_targets):
             observation = self.observation(self.targets[i])
             observed.append(observation[0])
@@ -592,7 +589,6 @@ class WorldBase3D:
                                                             [np.radians(self.agent.est_state.vec[8])]]))
                 if not (self.has_discovered[i]):
                     self.has_discovered[i] = 1
-            self.record_cov_posterior.append(self.belief_targets[i].cov)
         return observed
 
 
@@ -625,6 +621,17 @@ class WorldBase3D:
         :param action: may be used for reward calculation
         :return:
         """
+
+    @abstractmethod
+    def get_info(self, action, done) -> dict:
+        """
+        return the info you want to record
+        :return:
+        """
+        info = {
+            'is_col': self.is_col,
+        }
+        return info
 
     from typing import Union
     @abstractmethod
