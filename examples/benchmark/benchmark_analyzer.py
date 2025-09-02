@@ -1,9 +1,3 @@
-
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
-
 import json
 import numpy as np
 import os
@@ -53,11 +47,11 @@ class BenchmarkAnalyzer:
             except Exception as e:
                 print(f"加载文件 {json_file.name} 时出错: {e}")
     
-    def calculate_success_rate(self, success_threshold: float = 0.8) -> float:
+    def calculate_success_rate(self, success_threshold: float = 0.5) -> float:
         """
         计算成功率 (SR)
-        成功定义：运行了总步长的80%以上且没有碰撞
-        
+        成功定义：运行了总步长的50%以上且没有碰撞
+
         Parameters:
         -----------
         success_threshold : float
@@ -335,7 +329,12 @@ def main():
         analyzer.plot_metrics(save_dir=args.save_plots)
 
 if __name__ == "__main__":
-    current_dir = "log/benchmark/greedy"
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+    current_dir = "log/benchmark/RL/0902_16/"
+    # current_dir = "log/benchmark/greedy/0902_16/"
     analyzer = BenchmarkAnalyzer(current_dir)
     report = analyzer.generate_report()
     # 默认保存图表到数据目录

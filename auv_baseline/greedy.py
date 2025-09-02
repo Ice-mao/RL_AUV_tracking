@@ -12,10 +12,10 @@ class Greedy:
     支持2D和3D环境
     """
 
-    def __init__(self, world):
+    def __init__(self, world, N=100):
         self.world = world
         self.action_space = world.action_space
-        self.N_nbv = 100  # select the num of sample points.
+        self.N_nbv = N  # select the num of sample points.
         
         # 判断是否为3D环境
         self.is_3d = world.config['target']['target_dim'] == 6

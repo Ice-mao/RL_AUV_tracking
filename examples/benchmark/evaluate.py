@@ -11,17 +11,10 @@ from stable_baselines3 import SAC, PPO
 import auv_env
 from config_loader import load_config
 
-def evaluate_rl_and_save(model_path, env_config_path, alg_config_path, num_episodes=5, save_prefix="rl"):
+def evaluate_rl_and_save(env, model_path, alg_config, num_episodes=5, save_prefix="rl"):
     """
     运行强化学习算法评估并保存每一步的info
     """
-    # 加载配置和模型
-    env_config = load_config(env_config_path)
-    alg_config = load_config(alg_config_path)
-    
-    env = auv_env.make(env_config['name'], config=env_config, eval=True, 
-                       t_steps=env_config.get('t_steps', 1000), show_viewport=True)
-    
     policy_name = alg_config['policy_hparams']['policy']
     if policy_name == 'SAC':
         model = SAC.load(model_path, device='cuda', env=env)
@@ -31,6 +24,7 @@ def evaluate_rl_and_save(model_path, env_config_path, alg_config_path, num_episo
         raise ValueError(f"不支持的策略: {policy_name}")
     
     print(f"开始RL算法评估 {num_episodes} 个回合...")
+    timestamp = datetime.now().strftime("%m%d_%H")
     
     for episode in range(num_episodes):
         print(f"RL回合 {episode + 1}")
@@ -53,10 +47,10 @@ def evaluate_rl_and_save(model_path, env_config_path, alg_config_path, num_episo
             
             if terminated or truncated:
                 break
-        
-        # episode结束，保存所有info到文件
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{save_prefix}_episode_{episode+1}_data_{timestamp}.json"
+
+        save_dir = f"log/benchmark/RL/{timestamp}"
+        os.makedirs(save_dir, exist_ok=True)
+        filename = f"{save_dir}/{save_prefix}_episode_{episode}.json"
         
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(episode_infos, f, indent=2, ensure_ascii=False)
@@ -66,25 +60,20 @@ def evaluate_rl_and_save(model_path, env_config_path, alg_config_path, num_episo
     env.close()
     print("RL算法评估完成!")
 
-def evaluate_greedy_and_save(env_config_path, num_episodes=5, save_prefix="greedy"):
+def evaluate_greedy_and_save(env, num_episodes=5, save_prefix="greedy"):
     """
     运行Greedy算法评估并保存每一步的info
     """
-    # 加载配置
-    env_config = load_config(env_config_path)
-    
-    env = auv_env.make(env_config['name'], config=env_config, eval=True, 
-                       t_steps=env_config.get('t_steps', 1000), show_viewport=True)
-    
+
     try:
         from auv_baseline.greedy import Greedy
-        greedy = Greedy(env.unwrapped.world)
+        greedy = Greedy(env.unwrapped.world, N=100)
     except ImportError:
         print("无法导入Greedy算法，请确保auv_baseline.greedy模块存在")
         return
     
     print(f"开始Greedy算法评估 {num_episodes} 个回合...")
-    
+    timestamp = datetime.now().strftime("%m%d_%H")
     for episode in range(num_episodes):
         print(f"Greedy回合 {episode + 1}")
         
@@ -114,9 +103,9 @@ def evaluate_greedy_and_save(env_config_path, num_episodes=5, save_prefix="greed
             if terminated or truncated:
                 break
         
-        # episode结束，保存所有info到文件
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"log/json/greedy/{save_prefix}_episode_{episode+1}_data_{timestamp}.json"
+        save_dir = f"log/benchmark/greedy/{timestamp}"
+        os.makedirs(save_dir, exist_ok=True)
+        filename = f"{save_dir}/{save_prefix}_episode_{episode}.json"
         
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(episode_infos, f, indent=2, ensure_ascii=False)
@@ -179,7 +168,9 @@ def evaluate_diffusion_and_save(model_path, env_config_path, num_episodes=5, sav
         
         # episode结束，保存所有info到文件
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{save_prefix}_episode_{episode+1}_data_{timestamp}.json"
+        save_dir = f"log/json/diffusion/{timestamp}"
+        os.makedirs(save_dir, exist_ok=True)
+        filename = f"{save_dir}/{save_prefix}_episode_{episode+1}_data.json"
         
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(episode_infos, f, indent=2, ensure_ascii=False)
@@ -197,7 +188,7 @@ if __name__ == "__main__":
     # python evaluate.py --mode diffusion --diffusion_model_path your_diffusion_model.pth"
     parser = argparse.ArgumentParser(description='评估不同算法的性能')
     parser.add_argument('--mode', type=str, choices=['rl', 'greedy', 'diffusion'], default='rl')
-    parser.add_argument('--rl_model_path', type=str,)
+    parser.add_argument('--rl_model_path', type=str, default='log/AUVTracking3D_v0/LQR/SAC/08-31_18/rl_model_1800000_steps.zip')
     parser.add_argument('--diffusion_model_path', type=str, 
                        default="path/to/diffusion/model.pth")
     parser.add_argument('--env_config', type=str, 
@@ -210,12 +201,18 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
+    env_config = load_config(args.env_config)
+    alg_config = load_config(args.alg_config)
+    
+    env = auv_env.make(env_config['name'], config=env_config, eval=False, 
+                       t_steps=env_config.get('t_steps', 1000), show_viewport=False)
+    
     if args.mode == 'rl':
         print("评估强化学习算法...")
-        evaluate_rl_and_save(args.rl_model_path, args.env_config, args.alg_config, args.num_episodes)
+        evaluate_rl_and_save(env, args.rl_model_path, alg_config, args.num_episodes)
     elif args.mode == 'greedy':
         print("评估Greedy算法...")
-        evaluate_greedy_and_save(args.env_config, args.num_episodes)
+        evaluate_greedy_and_save(env, args.num_episodes)
     elif args.mode == 'diffusion':
         print("评估Diffusion Policy算法...")
-        evaluate_diffusion_and_save(args.diffusion_model_path, args.env_config, args.num_episodes)
+        evaluate_diffusion_and_save(env, args.diffusion_model_path, args.num_episodes)
