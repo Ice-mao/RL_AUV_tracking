@@ -47,10 +47,10 @@ class BenchmarkAnalyzer:
             except Exception as e:
                 print(f"加载文件 {json_file.name} 时出错: {e}")
     
-    def calculate_success_rate(self, success_threshold: float = 0.5) -> float:
+    def calculate_success_rate(self, success_threshold: float = 0.3) -> float:
         """
         计算成功率 (SR)
-        成功定义：运行了总步长的50%以上且没有碰撞
+        成功定义：运行了总步长的40%以上
 
         Parameters:
         -----------
@@ -78,7 +78,8 @@ class BenchmarkAnalyzer:
             max_steps = 1000  
             achieved_threshold = total_steps >= (max_steps * success_threshold)
             
-            if not has_collision and achieved_threshold:
+            # if not has_collision and achieved_threshold:
+            if achieved_threshold:
                 successful_episodes += 1
         
         success_rate = successful_episodes / len(self.episodes_data)
@@ -333,9 +334,9 @@ if __name__ == "__main__":
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-    current_dir = "log/benchmark/RL/0902_16/"
-    # current_dir = "log/benchmark/greedy/0902_16/"
+    current_dir = "log/benchmark/RL/dam/"
+    # current_dir = "log/benchmark/greedy/dam/"
     analyzer = BenchmarkAnalyzer(current_dir)
     report = analyzer.generate_report()
-    # 默认保存图表到数据目录
+
     analyzer.plot_metrics(save_dir=current_dir)

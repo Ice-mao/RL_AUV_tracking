@@ -84,6 +84,4 @@ reward_param:
   c_mean: 0.2
   c_std: 0.0
   c_penalty: 5.0
-  k_3: 0.0
-  k_4: 0.0
-  k_5: 0.0
+  c_smooth: 1.0

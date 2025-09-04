@@ -22,7 +22,7 @@ from auv_control.planning.local_planner import TrajectoryPlanner, TrajectoryBuff
 from auv_env.maps import map_utils
 import auv_env.util as util
 from auv_env.envs.obstacle_3d import Obstacle3D
-from auv_env.envs.agent import AgentAuv, AgentAuvTarget3D, AgentAuvManual
+from auv_env.envs.agent import AgentAuv, AgentAuvTarget3D, AgentAuvManual, AgentAuvTarget3DRangeFinder
 from auv_env.envs.base import WorldBase
 
 class WorldBase3D:
@@ -214,6 +214,11 @@ class WorldBase3D:
                     sensor=target_init_state,
                     scene=self.ocean, config=self.config)
                 for _ in range(self.num_targets)]
+        elif self.config['target']['controller'] == 'Auto':
+            self.targets = [AgentAuvTarget3DRangeFinder(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i,
+                        size=self.size,
+                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean, scenario=self.map, config=self.config)
+                for i in range(self.num_targets)]
         else:
             self.targets = [AgentAuvTarget3D(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i,
                         obstacles=self.obstacles, size=self.size,
@@ -270,10 +275,10 @@ class WorldBase3D:
             = self.get_init_pose_random()
 
         if self.config['eval_fixed']:
-            self.agent_init_pos = np.array([-12.05380736, -17.06450028, -5.])
-            self.agent_init_yaw = -0.9176929024434316
-            self.target_init_pos = np.array([-8.92739928, -17.99615254, -5.])
-            self.target_init_yaw = -0.28961582668513486
+            self.agent_init_pos = np.array(self.config['eval_fixed_pos'][0][0:3])
+            self.agent_init_yaw = self.config['eval_fixed_pos'][0][3]
+            self.target_init_pos = np.array(self.config['eval_fixed_pos'][1][0:3])
+            self.target_init_yaw = self.config['eval_fixed_pos'][1][3]
 
         print(self.agent_init_pos, self.agent_init_yaw)
         print(self.target_init_pos, self.target_init_yaw)

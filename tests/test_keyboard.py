@@ -64,7 +64,9 @@ from torchvision import transforms
 from auv_control import scenario
 
 # scenario = "SimpleUnderwater-Bluerov2" # "AUV_RGB"
-with holoocean.make(scenario_cfg=scenario) as env:
+scenario = "OpenWater-Bluerov2_RGB"  #
+# with holoocean.make(scenario_cfg=scenario) as env:
+with holoocean.make(scenario) as env:
     kb = KeyBoardCmd(force=25)
     from auv_control import State
     for _ in range(20000):
@@ -73,13 +75,18 @@ with holoocean.make(scenario_cfg=scenario) as env:
         command = kb.parse_keys()
 
         # send to holoocean
-        env.act("auv0", command)
+        # env.act("auv0", command)
+        env.act("target0", command)
         state = env.tick()
-        state = state["auv0"]
+        state = state["target0"]
         true_state = State(state)
+        print(true_state.vec[:3])
+        # if ("rangefinder1" in state):
+        #     print("rangefinder1:", state["rangefinder1"])
+        # true_state = State(state)
         # print(true_state.vec)
         # print(state['VelocitySensor'])
-        state["PoseSensor"][:3, 3]
+        # state["PoseSensor"][:3, 3]
         # t = np.diag([1, -1, -1])
         # print(state["PoseSensorNED"][:3, :3] @ t)
         # if "LeftCamera" in state:

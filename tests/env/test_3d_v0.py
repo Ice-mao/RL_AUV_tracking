@@ -13,7 +13,8 @@ import numpy as np
 
 def main():
     # 加载配置文件
-    config_path = os.path.join('configs', 'envs', '3d_v0_config.yml')
+    # 3d_v0_config_dam 3d_v0_config_openwater
+    config_path = os.path.join('configs', 'envs', '3d_v0_config_openwater.yml')
     config = load_config(config_path)
     
     # 使用加载的配置创建环境

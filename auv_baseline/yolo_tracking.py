@@ -22,7 +22,7 @@ class YOLOTracker:
 
     def __init__(self):
         # 加载YOLO模型
-        self.model = YOLO("/best.pt")
+        self.model = YOLO("auv_baselin/best.pt")
         self.last_detection = None
         self.action = CmdVel()
 

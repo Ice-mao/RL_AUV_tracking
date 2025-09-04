@@ -192,7 +192,7 @@ if __name__ == "__main__":
     parser.add_argument('--diffusion_model_path', type=str, 
                        default="path/to/diffusion/model.pth")
     parser.add_argument('--env_config', type=str, 
-                       default="configs/envs/3d_v0_config.yml")
+                       default="configs/envs/3d_v0_config_openwater.yml")
     parser.add_argument('--alg_config', type=str,
                        default="configs/algorithm/sac_3d_v0.yml")
     
