@@ -10,7 +10,7 @@ shape_meta: ${task.shape_meta}
 exp_name: "default"
 
 horizon: 16
-n_obs_steps: 4
+n_obs_steps: 2
 n_action_steps: 8 # 1s
 n_latency_steps: 0
 dataset_obs_steps: ${n_obs_steps}
@@ -48,7 +48,7 @@ policy:
       #   weights: IMAGENET1K_V1
     resize_shape: 
       _target_: builtins.dict
-      camera_image: [128, 128]
+      camera_image: [64, 64]
       # sonar_image: [128, 128]
     crop_shape: null
     # constant center crop
@@ -82,14 +82,14 @@ ema:
 
 dataloader:
   batch_size: 64
-  num_workers: 4
+  num_workers: 8
   shuffle: True
   pin_memory: True
   persistent_workers: False
 
 val_dataloader:
   batch_size: 32
-  num_workers: 4
+  num_workers: 8
   shuffle: False
   pin_memory: True
   persistent_workers: False
@@ -102,14 +102,14 @@ optimizer:
   weight_decay: 1.0e-6
 
 training:
-  device: "cuda:0"
-  seed: 41
+  device: "cuda:5"
+  seed: 42
   debug: False
   resume: False
   # optimization
   lr_scheduler: cosine
   lr_warmup_steps: 500
-  num_epochs: 3000
+  num_epochs: 100
   gradient_accumulate_every: 1
   # EMA destroys performance when used with BatchNorm
   # replace BatchNorm with GroupNorm.

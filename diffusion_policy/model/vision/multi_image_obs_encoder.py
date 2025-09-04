@@ -137,19 +137,45 @@ class MultiImageObsEncoder(ModuleAttrMixin):
                     batch_size = img.shape[0]
                 else:
                     assert batch_size == img.shape[0]
-                assert img.shape[1:] == self.key_shape_map[key]
-                img = self.key_transform_map[key](img)
+                
+                # Handle temporal dimension if present
+                if len(img.shape) == 5 and len(self.key_shape_map[key]) == 4:
+                    # Input: (B, T, C, H, W), Expected shape: (T, C, H, W)
+                    assert img.shape[1:] == self.key_shape_map[key]
+                    # Reshape to (B*T, C, H, W) for processing
+                    B, T, C, H, W = img.shape
+                    img = img.reshape(B * T, C, H, W)
+                    # Apply transforms
+                    img = self.key_transform_map[key](img)
+                    # Reshape back to (B, T, C, H, W) after transforms
+                    img = img.reshape(B, T, *img.shape[1:])
+                    # Flatten temporal dimension for model processing: (B*T, C, H, W)
+                    img = img.reshape(B * T, *img.shape[2:])
+                else:
+                    assert img.shape[1:] == self.key_shape_map[key]
+                    img = self.key_transform_map[key](img)
                 imgs.append(img)
-            # (N*B,C,H,W)
+            # (N*B*T,C,H,W)
             imgs = torch.cat(imgs, dim=0)
-            # (N*B,D)
+            # (N*B*T,D)
             feature = self.key_model_map['rgb'](imgs)
-            # (N,B,D)
-            feature = feature.reshape(-1,batch_size,*feature.shape[1:])
-            # (B,N,D)
-            feature = torch.moveaxis(feature,0,1)
-            # (B,N*D)
-            feature = feature.reshape(batch_size,-1)
+            # Handle temporal dimension in features
+            if len(obs_dict[self.rgb_keys[0]].shape) == 5:
+                T = self.key_shape_map[self.rgb_keys[0]][0]  # temporal dimension
+                # (N*B*T,D) -> (N,B*T,D) -> (N,B,T,D)
+                feature = feature.reshape(-1, batch_size * T, *feature.shape[1:])
+                feature = feature.reshape(-1, batch_size, T, *feature.shape[2:])
+                # (B,N,T,D)
+                feature = torch.moveaxis(feature, 0, 1)
+                # (B,N*T*D)
+                feature = feature.reshape(batch_size, -1)
+            else:
+                # (N,B,D)
+                feature = feature.reshape(-1,batch_size,*feature.shape[1:])
+                # (B,N,D)
+                feature = torch.moveaxis(feature,0,1)
+                # (B,N*D)
+                feature = feature.reshape(batch_size,-1)
             features.append(feature)
         else:
             # run each rgb obs to independent models
@@ -159,9 +185,25 @@ class MultiImageObsEncoder(ModuleAttrMixin):
                     batch_size = img.shape[0]
                 else:
                     assert batch_size == img.shape[0]
-                assert img.shape[1:] == self.key_shape_map[key]
-                img = self.key_transform_map[key](img)
-                feature = self.key_model_map[key](img)
+                
+                # Handle temporal dimension: (B, T1, T2, C, H, W) -> (B*T1*T2, C, H, W)
+                if len(img.shape) == 6:  # [B, horizon, temporal, C, H, W]
+                    B, T1, T2, C, H, W = img.shape
+                    img = img.reshape(B * T1 * T2, C, H, W)
+                    img = self.key_transform_map[key](img)
+                    feature = self.key_model_map[key](img)
+                    # Reshape back: (B*T1*T2, D) -> (B, T1*T2*D)
+                    feature = feature.reshape(B, -1)
+                elif len(img.shape) == 5:  # [B, T, C, H, W]
+                    B, T, C, H, W = img.shape
+                    img = img.reshape(B * T, C, H, W)
+                    img = self.key_transform_map[key](img)
+                    feature = self.key_model_map[key](img)
+                    # Reshape back: (B*T, D) -> (B, T*D)
+                    feature = feature.reshape(B, -1)
+                else:
+                    img = self.key_transform_map[key](img)
+                    feature = self.key_model_map[key](img)
                 features.append(feature)
         
         # process lowdim input
