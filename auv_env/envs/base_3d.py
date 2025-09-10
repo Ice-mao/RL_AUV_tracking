@@ -619,7 +619,7 @@ class WorldBase3D:
 
     from typing import Dict
     @abstractmethod
-    def get_reward(self, is_col: bool, action: np.ndarray | CmdVel ):
+    def get_reward(self, is_col, action):
         """
         calulate the reward should return
         :param is_col:
@@ -628,7 +628,7 @@ class WorldBase3D:
         """
 
     @abstractmethod
-    def get_info(self, action, done) -> dict:
+    def get_info(self, action, done):
         """
         return the info you want to record
         :return:

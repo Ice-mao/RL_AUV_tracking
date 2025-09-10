@@ -299,10 +299,10 @@ class WorldBase:
             = self.get_init_pose_random()
 
         if self.config['eval_fixed']:
-            self.agent_init_pos = np.array([-12.05380736, -17.06450028, -5.])
-            self.agent_init_yaw = -0.9176929024434316
-            self.target_init_pos = np.array([-8.92739928, -17.99615254, -5.])
-            self.target_init_yaw = -0.28961582668513486
+            self.agent_init_pos = np.array([35, 35, -15.])
+            self.agent_init_yaw = 0
+            self.target_init_pos = np.array([36.5, 35, -15.])
+            self.target_init_yaw = 0
 
         print(self.agent_init_pos, self.agent_init_yaw)
         print(self.target_init_pos, self.target_init_yaw)
@@ -546,7 +546,7 @@ class WorldBase:
 
     from typing import Dict
     @abstractmethod
-    def get_reward(self, is_col: bool, action: np.ndarray | CmdVel ):
+    def get_reward(self, is_col, action ):
         """
         calulate the reward should return
         :param is_col:
@@ -556,7 +556,7 @@ class WorldBase:
 
     from typing import Union
     @abstractmethod
-    def state_func(self, observed, action) -> Union[np.ndarray, dict]:
+    def state_func(self, observed, action):
         """
             should define your own state_func when you inherit the child class due to the observation.
             just an example below

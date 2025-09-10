@@ -74,6 +74,10 @@ class WorldAuv3DV0(WorldBase3D):
 
     def update_every_tick(self, sensors):
         # update extra sensors buffer
+        if 'LeftCamera' in sensors['auv0']:
+            import cv2
+            cv2.imshow("Camera Output", sensors['auv0']['LeftCamera'][:, :, 0:3])
+            cv2.waitKey(1)
         pass
 
     def get_reward(self, is_col, action):

@@ -116,7 +116,7 @@ class Display2D(Wrapper):
             ax.plot(est_state[0], est_state[1], marker=(4, 0, state[8]),
                     markersize=10, linestyle='None', markerfacecolor='b',
                     markeredgecolor='b', alpha=0.2)
-            # ax.plot(self.traj[0], self.traj[1], 'b.', markersize=2)
+            ax.plot(self.traj[0], self.traj[1], 'b.', markersize=2)
 
             # show the agent's orientation
             if 'agent' in self.config and 'sensor_r' in self.config['agent']:

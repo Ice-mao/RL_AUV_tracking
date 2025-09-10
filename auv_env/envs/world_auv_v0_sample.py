@@ -19,7 +19,7 @@ import copy
 import os
 import cv2
 
-class WorldAuvV1Sample(WorldBase):
+class WorldAuvV0Sample(WorldBase):
     """
         different from world:target is also an auv
     """
@@ -64,13 +64,19 @@ class WorldAuvV1Sample(WorldBase):
         
         # observation_space:
         # target distance、angle、协方差行列式值、bool; agent 自身定位;
-        state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
-                                                            # [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
+        # state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
+        #                                                     # [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
+        #                                     [0.0, -np.pi]))
+        # state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
+        #                                                     # [self.top_corner[0], self.top_corner[1], np.pi])),
+        #                                     [self.config['agent']['sensor_r'], np.pi]))
+        
+        state_lower_bound = np.concatenate((np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
+                                                            [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
                                             [0.0, -np.pi]))
-        state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
-                                                            # [self.top_corner[0], self.top_corner[1], np.pi])),
+        state_upper_bound = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
+                                                            [self.top_corner[0], self.top_corner[1], np.pi])),
                                             [self.config['agent']['sensor_r'], np.pi]))
-
         # target distance、angle、协方差行列式值、bool;agent 自身定位;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
@@ -85,12 +91,12 @@ class WorldAuvV1Sample(WorldBase):
             if self.config['render']:
                 cv2.imshow("Camera Output", sensors['auv0']['LeftCamera'][:, :, 0:3])
                 cv2.waitKey(1)
-            self.image_buffer.add_image(sensors['auv0']['LeftCamera'], sensors['t'])
-            bgr_image = sensors['auv0']['LeftCamera'][:, :, :3]
-            # rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
-            cv2.imwrite(os.path.join(self.frame_save_dir, f"frame_{self.frame_count:06d}.png"), bgr_image)
-            self.frame_count += 1
-            print(f"Saved frame {self.frame_count} to {self.frame_save_dir}")
+            # self.image_buffer.add_image(sensors['auv0']['LeftCamera'], sensors['t'])
+            # bgr_image = sensors['auv0']['LeftCamera'][:, :, :3]
+            # # rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+            # cv2.imwrite(os.path.join(self.frame_save_dir, f"frame_{self.frame_count:06d}.png"), bgr_image)
+            # self.frame_count += 1
+            # print(f"Saved frame {self.frame_count} to {self.frame_save_dir}")
         
     def get_reward(self, is_col, action):
         reward_param = self.config['reward_param']
@@ -125,8 +131,8 @@ class WorldAuvV1Sample(WorldBase):
             state_observation.extend([r_b, alpha_b,
                                       np.log(LA.det(self.belief_targets[i].cov)),
                                       float(observed[i])])  # dim:4
-        # state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
-        #                           np.radians(self.agent.state.vec[8])])  # dim:3
+        state_observation.extend([self.agent.state.vec[0], self.agent.state.vec[1],
+                                  np.radians(self.agent.state.vec[8])])  # dim:3
         state_observation.extend(obstacles_pt)
         # state_observation.extend(action.tolist())  # dim:3
         state_observation = np.array(state_observation)

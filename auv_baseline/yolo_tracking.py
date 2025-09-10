@@ -22,7 +22,7 @@ class YOLOTracker:
 
     def __init__(self):
         # 加载YOLO模型
-        self.model = YOLO("auv_baselin/best.pt")
+        self.model = YOLO("auv_baseline/best.pt")
         self.last_detection = None
         self.action = CmdVel()
 
@@ -157,13 +157,13 @@ if __name__ == "__main__":
 
     # Set everything up
     tracker = YOLOTracker()
-    controller = PID()
+    controller = PID(robo_type='BlueROV2')
     controller.set_depth_target(-5.0)
     # Run simulation!
     u = np.zeros(8)
-    env = holoocean.make("AUV_RGB_Dam_test")
+    env = holoocean.make("SimpleUnderwater-Bluerov2_RGB")
     env.agents['auv0'].teleport(location=[0, 0, -5], rotation=[0.0, 0.0, 0])
-    env.spawn_prop('sphere', [5, 0, -5], [0, 0, 0])
+    # env.spawn_prop('sphere', [5, 0, -5], [0, 0, 0])
     cmd_vel = CmdVel()
     from auv_env.envs.tools import KeyBoardCmd
     kb_cmd = KeyBoardCmd(force=10)

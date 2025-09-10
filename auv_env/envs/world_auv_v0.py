@@ -68,6 +68,11 @@ class WorldAuvV0(WorldBase):
 
     def update_every_tick(self, sensors):
         # update extra sensors buffer
+        if 'LeftCamera' in sensors['auv0']:
+            import cv2
+            cv2.imshow("Camera Output", sensors['auv0']['LeftCamera'][:, :, 0:3])
+            cv2.waitKey(1)
+            # self.image_buffer.add_image(sensors['auv0']['LeftCamera'], sensors['t'])
         pass
 
     def get_reward(self, is_col, action):
@@ -78,9 +83,9 @@ class WorldAuvV0(WorldBase):
         r_detcov_std = - np.std(np.log(detcov))
 
         r_action_smooth = 0.0
-        if len(self.action_queue) >= 2:
-            action_diff = np.linalg.norm(np.array(action) - np.array(self.action_queue[-2]))
-            r_action_smooth = -np.exp(action_diff)
+        # if len(self.action_queue) >= 2:
+        #     action_diff = np.linalg.norm(np.array(action) - np.array(self.action_queue[-2]))
+        #     r_action_smooth = np.exp(-action_diff)
 
         reward = reward_param["c_mean"] * r_detcov_mean + \
                 reward_param["c_std"] * r_detcov_std + \

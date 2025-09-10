@@ -77,12 +77,15 @@ class Obstacle:
         self.config = config
         self.num_obstacles = 4
         self.res = 0.2  # m remeber to * with scale
+        self.bias = [self.config['scenario']['bottom_corner'][0]+20, self.config['scenario']['bottom_corner'][1]+20]
         self.sub_center = [25 * self.res, 25 * self.res]  # m sub obstacle rotate center
-        self.sub_coordinates = [np.array([20, 25]) * self.res, np.array([-70, 25]) * self.res,
-                                np.array([-70, -65]) * self.res, np.array([20, -65]) * self.res]  # m
+        self.sub_coordinates = [np.array([20, 25]) * self.res + np.array(self.bias), 
+                                np.array([-70, 25]) * self.res + np.array(self.bias),
+                                np.array([-70, -65]) * self.res + np.array(self.bias), 
+                                np.array([20, -65]) * self.res + np.array(self.bias)]  # m
         np.random.seed()
         self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=True)
-        print(self.chosen_idx)
+        print(f"Chosen obstacle indices: {self.chosen_idx}")
         self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         self.polygons = []  # ready for collision detection
 
@@ -92,7 +95,7 @@ class Obstacle:
             self.chosen_idx = np.random.choice(len(obstacles), self.num_obstacles, replace=False)
             self.rot_angs = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         else:
-            self.chosen_idx = np.array([4, 5, 0, 7])
+            self.chosen_idx = np.array([1 ,3 ,3, 6])
             self.rot_angs = np.array([36.0, -72.0, -144.0, 125.99999999999999])
         # DEBUG
         # self.chosen_idx = np.array([1,2,3,4])

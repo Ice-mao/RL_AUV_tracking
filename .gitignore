@@ -3,6 +3,7 @@ build/
 install/
 examples/imitation/test
 tests/
+auv_baseline/SeqTrackv2/**
 
 global*
 *.pyc

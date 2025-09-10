@@ -35,6 +35,7 @@ class KeyBoardCmd:
 
     def parse_keys(self):
         command = np.zeros(8)
+        command1 = np.zeros(8)
         if 'i' in self.pressed_keys:
             command[0:4] += self.force
         if 'k' in self.pressed_keys:
@@ -56,15 +57,30 @@ class KeyBoardCmd:
         if 'd' in self.pressed_keys:
             command[[4, 6]] -= self.force
             command[[5, 7]] += self.force
-        return command
+
+        if '8' in self.pressed_keys:
+            command1[0:4] += self.force
+        if '2' in self.pressed_keys:
+            command1[0:4] -= self.force
+        if '4' in self.pressed_keys:
+            command1[[4, 7]] += self.force
+            command1[[5, 6]] -= self.force
+        if '6' in self.pressed_keys:
+            command1[[4, 7]] -= self.force
+            command1[[5, 6]] += self.force
+
+        if '5' in self.pressed_keys:
+            command1[4:8] += self.force
+
+        return command, command1
 
 
 from PIL import Image
 from torchvision import transforms
 from auv_control import scenario
 
-# scenario = "SimpleUnderwater-Bluerov2" # "AUV_RGB"
-scenario = "OpenWater-Bluerov2_RGB"  #
+scenario = "SimpleUnderwater-Bluerov2" # "AUV_RGB"
+# scenario = "Dam-Bluerov2_RGB"  #
 # with holoocean.make(scenario_cfg=scenario) as env:
 with holoocean.make(scenario) as env:
     kb = KeyBoardCmd(force=25)
@@ -72,11 +88,11 @@ with holoocean.make(scenario) as env:
     for _ in range(20000):
         if 'q' in kb.pressed_keys:
             break
-        command = kb.parse_keys()
+        command, command1 = kb.parse_keys()
 
         # send to holoocean
-        # env.act("auv0", command)
-        env.act("target0", command)
+        env.act("auv0", command)
+        env.act("target0", command1)
         state = env.tick()
         state = state["target0"]
         true_state = State(state)

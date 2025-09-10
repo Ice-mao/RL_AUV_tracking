@@ -118,17 +118,39 @@ def evaluate_greedy_and_save(env, num_episodes=5, save_prefix="greedy"):
 def evaluate_diffusion_and_save(model_path, env_config_path, num_episodes=5, save_prefix="diffusion"):
     """
     运行Diffusion Policy算法评估并保存每一步的info
-    注意：这是一个模板实现，具体的动作执行流程需要根据实际的diffusion policy模型调整
     """
+    import torch
+    import dill
+    import hydra
+    from diffusion_policy.workspace.base_workspace import BaseWorkspace
+    
     # 加载配置
     env_config = load_config(env_config_path)
     
-    env = auv_env.make(env_config['name'], config=env_config, eval=True, 
-                       t_steps=env_config.get('t_steps', 1000), show_viewport=True)
+    # env = auv_env.make(env_config['name'], config=env_config, eval=True, 
+    #                    t_steps=env_config.get('t_steps', 1000), show_viewport=True)
     
-    # TODO: 加载Diffusion Policy模型
-    # 这里需要根据实际的diffusion policy实现来调整
-    print("注意：Diffusion Policy评估当前使用随机动作，需要根据实际模型调整")
+    # 加载Diffusion Policy模型
+    print(f"正在加载Diffusion Policy模型: {model_path}")
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    
+    # 加载checkpoint
+    payload = torch.load(open(model_path, 'rb'), pickle_module=dill)
+    cfg = payload['cfg']
+    cls = hydra.utils.get_class(cfg._target_)
+    workspace = cls(cfg)
+    workspace: BaseWorkspace
+    workspace.load_payload(payload, exclude_keys=None, include_keys=None)
+    
+    # 获取policy
+    policy = workspace.model
+    if cfg.training.use_ema:
+        policy = workspace.ema_model
+    
+    policy.to(device)
+    policy.eval()
+    print(f"✓ Diffusion Policy模型加载成功! 设备: {device}")
+        
     
     print(f"开始Diffusion Policy算法评估 {num_episodes} 个回合...")
     
@@ -139,15 +161,30 @@ def evaluate_diffusion_and_save(model_path, env_config_path, num_episodes=5, sav
         episode_infos = []
         
         obs, info = env.reset()
+        if policy is not None:
+            policy.reset()  # 重置policy状态
         step = 0
-        
+        obs_dict = {}
+
         while True:
-            # TODO: 使用Diffusion Policy模型获取动作
-            # 目前使用随机动作作为占位符
-            action = env.action_space.sample()
+            # 准备观测数据
+            obs_dict = {}
             
-            # 如果有实际的diffusion policy模型，替换上面的代码：
-            # action = diffusion_model.predict(obs)
+            # 处理图像观测
+            if 'images' in obs:
+                images = np.array(obs['images'])  # 应该是 [5, 3, 224, 224]
+                obs_dict['camera_image'] = torch.from_numpy(images).float().to(device)
+                # 添加batch维度，和T维度，如果观测步长不等于0，需要传入对应长度的obs
+                obs_dict['camera_image'] = obs_dict['camera_image'].unsqueeze(0).unsqueeze(0)
+
+            # 运行推理
+            with torch.no_grad():
+                action_dict = policy.predict_action(obs_dict)
+            
+            # 提取动作
+            action = action_dict['action'].detach().cpu().numpy()
+            action = action[0, 0, :]  # 移除batch维度，取第一个时间步
+                
             
             obs, reward, terminated, truncated, info = env.step(action)
             step += 1
@@ -157,9 +194,6 @@ def evaluate_diffusion_and_save(model_path, env_config_path, num_episodes=5, sav
             info['episode'] = episode + 1
             info['algorithm'] = 'Diffusion'
             info['reward'] = float(reward)
-            
-            # 添加Diffusion特有的信息（如果有的话）
-            info['diffusion_note'] = 'Using random actions - replace with actual diffusion policy'
             
             episode_infos.append(info)
             
@@ -190,9 +224,9 @@ if __name__ == "__main__":
     parser.add_argument('--mode', type=str, choices=['rl', 'greedy', 'diffusion'], default='rl')
     parser.add_argument('--rl_model_path', type=str, default='log/AUVTracking3D_v0/LQR/SAC/08-31_18/rl_model_1800000_steps.zip')
     parser.add_argument('--diffusion_model_path', type=str, 
-                       default="path/to/diffusion/model.pth")
+                       default="data/outputs/19.53.52_train_diffusion_unet_image_track_image/checkpoints/epoch=0050-val_loss=0.228.ckpt")
     parser.add_argument('--env_config', type=str, 
-                       default="configs/envs/3d_v0_config_openwater.yml")
+                       default="configs/envs/3d_v1_config.yml") # 3d_v0_config_openwater
     parser.add_argument('--alg_config', type=str,
                        default="configs/algorithm/sac_3d_v0.yml")
     
@@ -215,4 +249,4 @@ if __name__ == "__main__":
         evaluate_greedy_and_save(env, args.num_episodes)
     elif args.mode == 'diffusion':
         print("评估Diffusion Policy算法...")
-        evaluate_diffusion_and_save(env, args.diffusion_model_path, args.num_episodes)
+        evaluate_diffusion_and_save(args.diffusion_model_path, args.env_config, args.num_episodes)
