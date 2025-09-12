@@ -231,12 +231,18 @@ def evaluate(model_name: str, env_config: dict, alg_config: dict):
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     else:
         raise ValueError(f"Unknown policy {policy_name}")
-
+    
+    import json
+    collected_obs = [] 
     obs, _ = env.reset()
     for _ in range(50000):
         action, _ = model.predict(obs, deterministic=True)
         print(action)
         obs, reward, done, _, inf = env.step(action)
+        collected_obs.append({'obs':obs})
+        if len(collected_obs) == 1000:
+            with open("observations.json", "w") as f:
+                json.dump(collected_obs, f, indent=2)
 
 
 def eval_greedy(model_dir, config: dict):

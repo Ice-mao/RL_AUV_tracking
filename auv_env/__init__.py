@@ -6,6 +6,7 @@ from .envs.world_auv_v2 import WorldAuvV2
 from .envs.world_auv_v0_3d import WorldAuv3DV0
 from .envs.world_auv_v1_3d import WorldAuv3DV1
 from .envs.world_auv_v0_sample import WorldAuvV0Sample
+from .envs.world_auv_v0_3d_test import WorldAuv3DV0Test
 
 def make(env_name, config=None, eval:bool=False, t_steps=100, show_viewport=True, **kwargs):
     """
@@ -33,6 +34,7 @@ def make(env_name, config=None, eval:bool=False, t_steps=100, show_viewport=True
         'AUVTracking3D_v0': (WorldAuv3DV0, "SimpleUnderwater-Bluerov2", "../configs/envs/3d_v0_config.yml"),
         'AUVTracking3D_v1': (WorldAuv3DV1, "SimpleUnderwater-Bluerov2_RGB", "../configs/envs/3d_v1_config.yml"),
         'AUVTracking_v0_sample': (WorldAuvV0Sample, "SimpleUnderwater-Bluerov2_RGB", "../configs/envs/v0_sample_config.yml"),
+        'AUVTracking3D_v0_test': (WorldAuv3DV0Test, "SimpleUnderwater-Bluerov2", "../configs/envs/3d_v0_config.yml"),
     }
 
     if env_name not in world_map:
