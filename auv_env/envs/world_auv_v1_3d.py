@@ -64,7 +64,8 @@ class WorldAuv3DV1(WorldBase3D):
                                             [self.config['agent']['sensor_r'], np.pi, np.pi/2]))
         
         self.observation_space = spaces.Dict({
-            "images": spaces.Box(low=0, high=255, shape=(5, 3, 224, 224), dtype=np.float32),
+            # "images": spaces.Box(low=0, high=255, shape=(5, 3, 224, 224), dtype=np.float32),
+            "images": spaces.Box(low=0, high=1, shape=(3, 224, 224), dtype=np.float32),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
@@ -131,7 +132,9 @@ class WorldAuv3DV1(WorldBase3D):
         state_observation = np.array(state_observation)
 
         # images = np.stack(self.image_buffer.get_buffer()[-1])
-        images = self.image_buffer.get_buffer()
+        images = np.array(self.image_buffer.get_buffer()[-1])
+        if images.dtype == np.uint8:
+            images = images.astype(np.float32) / 255.0  # 转换为0-1范围
         self.obs = {'images': images, 'state': state_observation}
         return copy.deepcopy({'images': images, 'state': state_observation})
         # Update the visit map for the evaluation purpose.

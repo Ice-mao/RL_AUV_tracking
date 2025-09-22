@@ -41,8 +41,8 @@
             "program": "${workspaceFolder}/SB3_trainer.py",
             "console": "integratedTerminal",
             "args": [
-                "--env_config", "configs/envs/v1_config.yml",
-                "--alg_config", "configs/algorithm/ppo_v1.yml",
+                "--env_config", "configs/envs/3d_v1_config.yml",
+                "--alg_config", "configs/algorithm/sac_3d_v1.yml",
                 "--choice", "0"
             ],
             "env": {

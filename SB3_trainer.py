@@ -235,11 +235,11 @@ def evaluate(model_name: str, env_config: dict, alg_config: dict):
     import json
     collected_obs = [] 
     obs, _ = env.reset()
-    for _ in range(50000):
+    for _ in range(2000):
         action, _ = model.predict(obs, deterministic=True)
         print(action)
         obs, reward, done, _, inf = env.step(action)
-        collected_obs.append({'obs':obs})
+        collected_obs.append({'obs':obs.tolist()})
         if len(collected_obs) == 1000:
             with open("observations.json", "w") as f:
                 json.dump(collected_obs, f, indent=2)
@@ -303,8 +303,14 @@ def eval_greedy(model_dir, config: dict):
 def get_features_extractor(config):
     if 'features_extractor' in config['policy']:
         fe_config = config['policy']['features_extractor']
-        module = importlib.import_module(fe_config['module_path'])
-        fe_class = getattr(module, fe_config['class_name'])
+        
+        extractor_path = fe_config['type']
+        parts = extractor_path.split('.')
+        class_name = parts[-1]
+        module_path = '.'.join(parts[:-1])
+        
+        module = importlib.import_module(module_path)
+        fe_class = getattr(module, class_name)
         return fe_class, fe_config.get('kwargs', {})
     return None, {}
 

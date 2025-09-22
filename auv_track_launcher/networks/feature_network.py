@@ -30,19 +30,14 @@ class Encoder(BaseFeaturesExtractor):
         self.apply(utils.weight_init)
 
         # Update the features dim manually
-        self._features_dim = features_dim + observation_space['state'].shape[0]
+        self._features_dim = features_dim
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         images = observations['images']
-        # 输入 images: [batch_size, num_images, 3, H, W]
+        # 输入 images: [batch_size, 3, H, W]
         batch_size, C, H, W = images.size()
-
         feature = self.resnet(images)  # 提取特征: [batch_size, resnet_output_dim]
-
         output = self.trunk(feature)
-        # 添加状态信息
-        state = observations['state']
-        output = torch.cat((output, state), dim=1) 
         return output
 
 

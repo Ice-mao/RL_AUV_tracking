@@ -1,0 +1,49 @@
+# Algorithm specific parameters for SAC
+# Can be merged with a main environment config
+
+training:
+  device: "cuda:0"
+  seed: 42
+  nb_envs: 1
+  timesteps: 5000000
+  save_freq: 500000
+  log_dir: "log"
+  log_freq: 1000
+  resume_path: "log/AUVTracking3D_v0/LQR/SAC/08-21_19/best_model.zip"
+
+policy:
+  net_arch:
+    pi: [512, 256, 256]
+    qf: [512, 256]
+  
+  features_extractor:
+    type: "auv_track_launcher.networks.feature_network.Encoder"
+    kwargs:
+      features_dim: 512
+      resnet_output_dim: 64
+
+policy_hparams:
+  policy: "SAC"
+  lr: 0.0002
+  buffer_size: 10000
+  batch_size: 256
+  gamma: 0.99
+  tau: 0.005
+  noise_std: 0.12
+  start_timesteps: 1000
+  
+  # SAC specific
+  auto_alpha: true
+  alpha: 0.2
+  alpha_lr: 0.0003
+
+  replay_buffer:
+    type: "ReplayBuffer"  # Options: "ReplayBuffer", "HerReplayBuffer"
+    # her_kwargs:
+    #   n_sampled_goal: 4
+    #   goal_selection_strategy: "future"
+
+  # Collect settings
+  step_per_collect: 5
+  update_per_step: 0.2
+  n_step: 2

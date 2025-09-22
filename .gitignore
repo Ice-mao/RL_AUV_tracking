@@ -4,6 +4,7 @@ install/
 examples/imitation/test
 tests/
 auv_baseline/SeqTrackv2/**
+.vscode/
 
 global*
 *.pyc
@@ -11,3 +12,5 @@ global*
 *data/
 
 *.mp4
+
+observations.json
