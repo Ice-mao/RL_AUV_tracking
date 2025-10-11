@@ -6,7 +6,7 @@ from inekf import SE3
 class State:
     """A uniform representation of our state from various sources.
 
-    Be careful!!!: PoseSensor、VelocitySensor must be in IMUSocket for NED coordinate system.
+    Be careful!!!: PoseSensor and VelocitySensor must be in IMUSocket for NED coordinate system.
     Can come from a dictionary (HoloOcean), SE[2,6] object (InEKF library), or from a simple
     numpy array.     
 
@@ -58,14 +58,14 @@ class State:
 
     @property
     def body_velocity(self):
-        """获取机体坐标系下的线速度 [vx_body, vy_body, vz_body]"""
+        """Get linear velocity in body coordinate system [vx_body, vy_body, vz_body]"""
         rotation_matrix = self.mat[:3, :3]
         world_vel = self.vec[3:6]
         return rotation_matrix.T @ world_vel
     
     @property
     def body_angular_velocity(self):
-        """获取机体坐标系下的角速度 [wx_body, wy_body, wz_body]"""
+        """Get angular velocity in body coordinate system [wx_body, wy_body, wz_body]"""
         rotation_matrix = self.mat[:3, :3]
         world_ang_vel = self.vec[9:12]
         return rotation_matrix.T @ world_ang_vel

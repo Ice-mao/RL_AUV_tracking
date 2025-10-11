@@ -12,7 +12,7 @@ def image_preprocess(image: np.ndarray) -> np.ndarray:
         In HoloOcean, we get the image in OpenCV format, which is BGR format.
     """
     # for key in images:
-    #     rgb_image = images[key][:, :, :3]  # 取前 3 个通道 (H, W, 3)
+    #     rgb_image = images[key][:, :, :3]  # Take the first 3 channels (H, W, 3)
     #     pil_image = Image.fromarray(rgb_image)
     #     preprocess = transforms.Compose([
     #         transforms.Resize(256),
@@ -23,7 +23,7 @@ def image_preprocess(image: np.ndarray) -> np.ndarray:
     #     tensor_image = preprocess(pil_image)
     #     image = tensor_image.numpy()
     #     images[key] = image
-    bgr_image = image[:, :, :3]  # 取前 3 个通道 (H, W, 3)
+    bgr_image = image[:, :, :3]  # Take the first 3 channels (H, W, 3)
     rgb_image = bgr_image[:, :, ::-1] 
     pil_image = Image.fromarray(rgb_image)
     preprocess = transforms.Compose([
@@ -49,7 +49,7 @@ def wrap_around(x):
 
 def cartesian2polar(xy):
     """
-    笛卡尔坐标系坐标转极坐标系坐标
+    Cartesian coordinate system to polar coordinate system conversion
     """
     r = np.sqrt(np.sum(xy ** 2))
     alpha = np.arctan2(xy[1], xy[0])
@@ -58,7 +58,7 @@ def cartesian2polar(xy):
 
 def cartesian2polar_dot(x, y, x_dot, y_dot):
     """
-    笛卡尔坐标系速度转极坐标系径向速度和角速度
+    Cartesian coordinate system velocity to polar coordinate system radial velocity and angular velocity
     """
     r2 = x * x + y * y
     if r2 == 0.0:
@@ -75,7 +75,7 @@ def transform_2d(vec, theta_base, xy_base=[0.0, 0.0]):
     frame_xy with ang.
     R^T * (vec - frame_xy).
     R is a rotation matrix of the frame w.r.t the global frame.
-    这是一个向量从世界坐标系到agent坐标系的坐标变换函数
+    This is a coordinate transformation function from world coordinate system to agent coordinate system
     """
     assert (len(vec) == 2)
     return np.matmul([[np.cos(theta_base), np.sin(theta_base)],
@@ -90,7 +90,7 @@ def transform_2d_inv(vec, theta_base, xy_base):
     frame_xy with ang.
     R^T * (vec - frame_xy).
     R is a rotation matrix of the frame w.r.t the global frame.
-    这是一个向量经过旋转角度和平移之后得到新向量的坐标逆变换函数
+    This is an inverse coordinate transformation function that obtains a new vector after rotation and translation
     """
     assert (len(vec) == 2)
     return np.matmul([[np.cos(theta_base), -np.sin(theta_base)],
@@ -101,8 +101,8 @@ def transform_2d_inv(vec, theta_base, xy_base):
 def rotation_2d_dot(xy_target, xy_dot_target, theta_base, theta_dot_base):
     """
     Cartesian velocity in a rotating frame.
-    函数根据旋转坐标系的角度和角速度，计算了目标点在旋转坐标系中的速度。
-    环境中的应用：将目标的全局坐标速度带入到agent的旋转坐标系中计算目标在旋转坐标系中的速度
+    The function calculates the velocity of target point in the rotating coordinate system based on the angle and angular velocity of the rotating coordinate system.
+    Environment application: Convert the target's global coordinate velocity into the agent's rotating coordinate system to calculate the target's velocity in the rotating coordinate system
     """
     s_b = np.sin(theta_base)
     c_b = np.cos(theta_base)
@@ -116,7 +116,7 @@ def rotation_2d_dot(xy_target, xy_dot_target, theta_base, theta_dot_base):
 def transform_2d_dot(xy_target, xy_dot_target, theta_base, theta_dot_base, xy_base, xy_dot_base):
     """
     Cartesian velocity in a rotating and translating frame.
-    函数返回旋转坐标系中的速度
+    The function returns velocity in the rotating coordinate system
     """
     rotated_xy_dot_target_bframe = rotation_2d_dot(xy_target, xy_dot_target, theta_base, theta_dot_base)
     rotated_xy_dot_base_bframe = rotation_2d_dot(xy_base, xy_dot_base, theta_base, theta_dot_base)
@@ -129,7 +129,7 @@ def relative_distance_polar(xy_target, xy_base, theta_base):
 
 
 def polar_distance_global(polar_vec, xy_base, theta_base):
-    # 将极坐标转换为笛卡尔坐标
+    # Convert polar coordinates to Cartesian coordinates
     xy_target = np.array([polar_vec[0] * np.cos(polar_vec[1]), polar_vec[0] * np.sin(polar_vec[1])])
     xy_target_global = transform_2d_inv(xy_target, theta_base, xy_base)
     return xy_target_global
@@ -285,32 +285,32 @@ def get_nlogdetcov_bounds_step(P0, A, W, TH):
 
 def cartesian2spherical(xyz):
     """
-    笛卡尔坐标系坐标转球坐标系坐标
+    Cartesian coordinate system to spherical coordinate system conversion
     
     Parameters
     ----------
     xyz : array_like, shape (3,)
-        笛卡尔坐标 [x, y, z]
+        Cartesian coordinates [x, y, z]
     
     Returns
     -------
     r : float
-        径向距离
+        Radial distance
     theta : float  
-        方位角 (azimuth) - 从x轴到xy平面投影的角度 [-π, π]
+        Azimuth angle - angle from x-axis to xy plane projection [-π, π]
     gamma : float
-        俯仰角 (elevation) - 从xy平面到z轴的角度 [-π/2, π/2]
+        Elevation angle - angle from xy plane to z-axis [-π/2, π/2]
     """
     x, y, z = xyz[0], xyz[1], xyz[2]
     
-    # 径向距离
+    # Radial distance
     r = np.sqrt(x*x + y*y + z*z)
     
-    # 方位角 (azimuth) - 水平角度
+    # Azimuth angle - horizontal angle
     theta = np.arctan2(y, x)
     
-    # 俯仰角 (elevation) - 垂直角度
-    if r > 1e-8:  # 避免除零
+    # Elevation angle - vertical angle
+    if r > 1e-8:  # Avoid division by zero
         gamma = np.arcsin(z / r)
     else:
         gamma = 0.0
@@ -320,29 +320,29 @@ def cartesian2spherical(xyz):
 
 def transform_3d(vec, theta_base, xyz_base=[0.0, 0.0, 0.0]):
     """
-    3D坐标变换：从世界坐标系到智能体坐标系
-    只考虑绕z轴的旋转(yaw)，保持x-forward, y-left, z-up的约定
+    3D coordinate transformation: from world coordinate system to agent coordinate system
+    Only considers rotation around z-axis (yaw), maintaining x-forward, y-left, z-up convention
     
     Parameters
     ----------
     vec : array_like, shape (3,)
-        世界坐标系下的3D向量
+        3D vector in world coordinate system
     theta_base : float
-        智能体相对于世界坐标系的yaw角 (绕z轴旋转)
+        Agent's yaw angle relative to world coordinate system (rotation around z-axis)
     xyz_base : array_like, shape (3,)
-        智能体在世界坐标系中的位置
+        Agent's position in world coordinate system
     
     Returns
     -------
     vec_transformed : array_like, shape (3,)
-        智能体坐标系下的3D向量
+        3D vector in agent coordinate system
     """
     assert len(vec) == 3
     
-    # 平移
+    # Translation
     vec_translated = vec - np.array(xyz_base)
     
-    # 绕z轴旋转 (yaw rotation)
+    # Rotation around z-axis (yaw rotation)
     cos_theta = np.cos(theta_base)
     sin_theta = np.sin(theta_base)
     
@@ -357,70 +357,70 @@ def transform_3d(vec, theta_base, xyz_base=[0.0, 0.0, 0.0]):
 
 def relative_distance_spherical(xyz_target, xyz_base, theta_base):
     """
-    计算目标相对于智能体的3D球坐标
+    Calculate target's 3D spherical coordinates relative to the agent
     
     Parameters
     ----------
     xyz_target : array_like, shape (3,)
-        目标在世界坐标系中的位置 [x, y, z]
+        Target's position in world coordinate system [x, y, z]
     xyz_base : array_like, shape (3,)  
-        智能体在世界坐标系中的位置 [x, y, z]
+        Agent's position in world coordinate system [x, y, z]
     theta_base : float
-        智能体的yaw角 (绕z轴旋转角度)
+        Agent's yaw angle (rotation angle around z-axis)
     
     Returns
     -------
     r : float
-        目标到智能体的直线距离
+        Straight-line distance from target to agent
     theta : float
-        方位角 - 目标相对于智能体前向方向的水平角度 [-π, π]
-        正值表示目标在智能体右侧，负值表示在左侧
+        Azimuth angle - horizontal angle of target relative to agent's forward direction [-π, π]
+        Positive values indicate target is on agent's right side, negative values indicate left side
     gamma : float  
-        俯仰角 - 目标相对于智能体水平面的垂直角度 [-π/2, π/2]
-        正值表示目标在智能体上方，负值表示在下方
+        Elevation angle - vertical angle of target relative to agent's horizontal plane [-π/2, π/2]
+        Positive values indicate target is above agent, negative values indicate below
     """
-    # 将目标坐标转换到智能体坐标系
+    # Convert target coordinates to agent coordinate system
     xyz_target_relative = transform_3d(xyz_target, theta_base, xyz_base)
     
-    # 转换为球坐标
+    # Convert to spherical coordinates
     return cartesian2spherical(xyz_target_relative)
 
 
 if __name__ == "__main__":
-    print('=== 3D球坐标转换函数测试 ===')
+    print('=== 3D Spherical Coordinate Conversion Function Test ===')
 
-    # 测试1: 正前方目标
+    # Test 1: Front target
     agent_pos = np.array([0, 0, 0])
-    target_pos = np.array([10, 0, 0])  # 正前方10米
+    target_pos = np.array([10, 0, 0])  # 10 meters directly ahead
     agent_yaw = 0.0
 
     r, theta, gamma = relative_distance_spherical(target_pos, agent_pos, agent_yaw)
-    print(f'测试1 - 正前方目标:')
-    print(f'  距离: {r:.2f}m')
-    print(f'  方位角: {np.rad2deg(theta):.1f}° (应该约为0°)')
-    print(f'  俯仰角: {np.rad2deg(gamma):.1f}° (应该约为0°)')
+    print(f'Test 1 - Front target:')
+    print(f'  Distance: {r:.2f}m')
+    print(f'  Azimuth: {np.rad2deg(theta):.1f}° (should be around 0°)')
+    print(f'  Elevation: {np.rad2deg(gamma):.1f}° (should be around 0°)')
 
-    # 测试2: 右侧目标
-    target_pos = np.array([0, -10, 0])  # 右侧10米
+    # Test 2: Right side target
+    target_pos = np.array([0, -10, 0])  # 10 meters to the right
     r, theta, gamma = relative_distance_spherical(target_pos, agent_pos, agent_yaw)
-    print(f'\n测试2 - 右侧目标:')
-    print(f'  距离: {r:.2f}m')
-    print(f'  方位角: {np.rad2deg(theta):.1f}° (应该约为-90°)')
-    print(f'  俯仰角: {np.rad2deg(gamma):.1f}° (应该约为0°)')
+    print(f'\nTest 2 - Right side target:')
+    print(f'  Distance: {r:.2f}m')
+    print(f'  Azimuth: {np.rad2deg(theta):.1f}° (should be around -90°)')
+    print(f'  Elevation: {np.rad2deg(gamma):.1f}° (should be around 0°)')
 
-    # 测试3: 上方目标
-    target_pos = np.array([7, 0, 7])  # 前方7米，上方7米
+    # Test 3: Above target
+    target_pos = np.array([7, 0, 7])  # 7 meters forward, 7 meters above
     r, theta, gamma = relative_distance_spherical(target_pos, agent_pos, agent_yaw)
-    print(f'\n测试3 - 上方目标:')
-    print(f'  距离: {r:.2f}m (应该约为{np.sqrt(7*7+7*7):.2f}m)')
-    print(f'  方位角: {np.rad2deg(theta):.1f}° (应该约为0°)')
-    print(f'  俯仰角: {np.rad2deg(gamma):.1f}° (应该约为45°)')
+    print(f'\nTest 3 - Above target:')
+    print(f'  Distance: {r:.2f}m (should be around {np.sqrt(7*7+7*7):.2f}m)')
+    print(f'  Azimuth: {np.rad2deg(theta):.1f}° (should be around 0°)')
+    print(f'  Elevation: {np.rad2deg(gamma):.1f}° (should be around 45°)')
 
-    # 测试4: 智能体旋转情况
-    agent_yaw = np.pi/2  # 智能体向左转90度
-    target_pos = np.array([10, 0, 5])  # 世界坐标系中的位置
+    # Test 4: Agent rotation case
+    agent_yaw = np.pi/2  # Agent turns left 90 degrees
+    target_pos = np.array([10, 0, 5])  # Position in world coordinate system
     r, theta, gamma = relative_distance_spherical(target_pos, agent_pos, agent_yaw)
-    print(f'\n测试4 - 智能体旋转90°:')
-    print(f'  距离: {r:.2f}m')
-    print(f'  方位角: {np.rad2deg(theta):.1f}°')
-    print(f'  俯仰角: {np.rad2deg(gamma):.1f}°')
+    print(f'\nTest 4 - Agent rotated 90°:')
+    print(f'  Distance: {r:.2f}m')
+    print(f'  Azimuth: {np.rad2deg(theta):.1f}°')
+    print(f'  Elevation: {np.rad2deg(gamma):.1f}°')

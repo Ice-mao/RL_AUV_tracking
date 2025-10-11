@@ -2,7 +2,7 @@ version: v0
 name: AUVTracking3D_v0
 render: false # print
 draw_traj: false
-eval_fixed: True
+eval_fixed: false
 eval_fixed_pos: [[484, 257, -291, 0],[486, 257,-291,0]]
 map: 'OpenWater-Bluerov2_RGB'
 debug: false

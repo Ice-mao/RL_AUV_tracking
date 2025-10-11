@@ -48,10 +48,9 @@ def collect_auv_data(collect, n_episodes=50):
             collector.save_data(f"auv_data_partial_{episode + 1}.zarr")
 
     collector.save_data("auv_data_final.zarr")
-    print("数据采集完成！")
 
 
 if __name__ == '__main__':
     # collector = AUVCollector(save_dir="log/sample/simple", exist_replay_path="log/sample/auv_data/auv_data_final.zarr")
     collector = AUVCollector(save_dir="log/sample/simple", exist_replay_path=None)
-    collect_auv_data(collector, n_episodes=100)  # 采集3个episodes作为测试
+    collect_auv_data(collector, n_episodes=100)

@@ -1,27 +1,16 @@
 import torch
 import os
-from auv_track_launcher.networks.unet_1d_condition import UNet1DConditionModel
+from diffusion_policy.model.diffusion.conditional_unet1d import ConditionalUnet1D
 from torch import nn
 from auv_track_launcher.networks.diffusion_vision_encoder import Encoder
 from diffusers import DDPMScheduler, DDPMPipeline
 import torchvision.transforms.functional as F
 
-# 1. 创建模型架构（与训练时相同）
 def create_model():
     vision_encoder = Encoder(num_channels=[512, 256])
-    model = UNet1DConditionModel(
+    model = ConditionalUnet1D(
         input_dim=3,
-        local_cond_dim=None,
         global_cond_dim=256*5,
-        cross_attention_dim=512,
-        time_embedding_type="fourier",
-        flip_sin_to_cos=True,
-        freq_shift=0,
-        block_out_channels=[256,512,1024],
-        kernel_size=3,
-        n_groups=8,
-        act_fn="mish",
-        cond_predict_scale=False,
     )
     nets = nn.ModuleDict({
         'vision_encoder': vision_encoder,
@@ -29,55 +18,45 @@ def create_model():
     })
     return nets
 
-# 2. 加载训练好的权重
 def load_model(model_path, pt_file):
     nets = create_model()
     state_dict = torch.load(os.path.join(model_path, pt_file))
     nets.load_state_dict(state_dict)
     return nets
 
-# 3. 创建推理pipeline
 def create_pipeline(nets, device="cuda"):
     nets = nets.to(device)
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000)
     
-    # 创建自定义推理函数
     def inference_fn(image_input, num_inference_steps=50):
         """
         从图像输入生成动作序列
         
         Args:
-            image_input: 形状为[B, C, H, W]的图像张量
-            num_inference_steps: 扩散推理步数
+            image_input
+            num_inference_steps
             
         Returns:
-            预测的动作序列
+            predicted_actions
         """
         nets.eval()
         with torch.no_grad():
-            # 编码图像
             image_features = nets['vision_encoder'](image_input)
             
-            # 初始化随机噪声作为起点
             batch_size = image_input.shape[0]
-            # 假设动作维度为3，序列长度为16
             action_shape = (batch_size, 16, 3)
             noisy_action = torch.randn(action_shape).to(device)
             
-            # 创建采样器
             scheduler = DDPMScheduler(num_train_timesteps=1000)
             scheduler.set_timesteps(num_inference_steps)
             
-            # 执行逆向扩散过程
             for t in scheduler.timesteps:
-                # 模型预测噪声
                 model_output = nets['model'](
                     noisy_action, 
                     timestep=t, 
                     encoder_hidden_states=image_features
                 ).sample
                 
-                # 执行去噪步骤
                 noisy_action = scheduler.step(model_output, t, noisy_action).prev_sample
             
             return noisy_action
@@ -128,7 +107,6 @@ def main():
             
         input[:, :, 0] = 0.5 * input[:, :, 0] + 0.5
         action = input[0, 0, :].detach().cpu().numpy()
-        # print(input)
         obs, reward, dones, _, inf = env.step(action)
 
 if __name__ == "__main__":

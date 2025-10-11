@@ -6,34 +6,28 @@ from pathlib import Path
 from typing import List, Dict, Tuple
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')  # 使用非交互式后端
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 
-class BenchmarkAnalyzer:
-    """基准分析器"""
-    
+class BenchmarkAnalyzer: 
     def __init__(self, data_dir: str):
-        """
-        初始化分析器
-        
+        """      
         Parameters:
         -----------
         data_dir : str
-            包含JSON文件的目录路径
         """
         self.data_dir = Path(data_dir)
         self.episodes_data = []
         self.load_data()
     
     def load_data(self):
-        """加载所有JSON文件"""
         json_files = list(self.data_dir.glob("*.json"))
         
         if not json_files:
-            print(f"在目录 {self.data_dir} 中没有找到JSON文件")
+            print(f"No JSON files found in directory {self.data_dir}")
             return
         
-        print(f"找到 {len(json_files)} 个JSON文件")
+        print(f"Found {len(json_files)} JSON files")
         
         for json_file in json_files:
             try:
@@ -43,23 +37,20 @@ class BenchmarkAnalyzer:
                         'file': json_file.name,
                         'data': episode_data
                     })
-                print(f"已加载: {json_file.name} ({len(episode_data)} 步)")
+                print(f"Loaded: {json_file.name} ({len(episode_data)} steps)")
             except Exception as e:
-                print(f"加载文件 {json_file.name} 时出错: {e}")
+                print(f"Error loading file {json_file.name}: {e}")
     
     def calculate_success_rate(self, success_threshold: float = 0.3) -> float:
         """
-        计算成功率 (SR)
-        成功定义：运行了总步长的40%以上
-
         Parameters:
         -----------
         success_threshold : float
-            成功的步数阈值比例
+            Success threshold ratio for number of steps
             
         Returns:
         --------
-        float : 成功率
+        float : sucess rate
         """
         if not self.episodes_data:
             return 0.0
@@ -70,11 +61,11 @@ class BenchmarkAnalyzer:
             data = episode['data']
             total_steps = len(data)
             
-            # 检查是否有碰撞
+            # Check for collisions
             has_collision = any(step.get('is_collision', False) for step in data)
             
-            # 检查是否达到步数阈值
-            # 假设最大步数为1000步（可以从配置中获取）
+            # Check if step threshold is reached
+            # Assume maximum steps is 1000 (can be obtained from config)
             max_steps = 1000  
             achieved_threshold = total_steps >= (max_steps * success_threshold)
             
@@ -87,11 +78,11 @@ class BenchmarkAnalyzer:
     
     def calculate_mtbe(self) -> Tuple[float, List[float]]:
         """
-        计算平均跟踪信念误差 (MTBE)
+        Calculate Mean Tracking Belief Error (MTBE)
         
         Returns:
         --------
-        Tuple[float, List[float]] : (总体MTBE, 每个episode的MTBE)
+        Tuple[float, List[float]] : (Overall MTBE, MTBE per episode)
         """
         all_errors = []
         episode_errors = []
@@ -105,13 +96,13 @@ class BenchmarkAnalyzer:
                     target_pos = np.array(step['targets'])
                     belief_pos = np.array(step['belief_targets'])
                     
-                    # 计算欧几里得距离
+                    # Calculate Euclidean distance
                     error = np.linalg.norm(target_pos - belief_pos)
                     episode_error_list.append(error)
                     all_errors.append(error)
                     
                 except (KeyError, ValueError) as e:
-                    print(f"计算误差时出错: {e}")
+                    print(f"Error calculating error: {e}")
                     continue
             
             if episode_error_list:
@@ -123,12 +114,12 @@ class BenchmarkAnalyzer:
     
     def calculate_action_smoothness(self) -> Tuple[float, List[float]]:
         """
-        计算动作平滑度 (AS)
-        使用连续动作间的差异来衡量平滑度
+        Calculate Action Smoothness (AS)
+        Use differences between consecutive actions to measure smoothness
         
         Returns:
         --------
-        Tuple[float, List[float]] : (总体AS, 每个episode的AS)
+        Tuple[float, List[float]] : (Overall AS, AS per episode)
         """
         all_smoothness = []
         episode_smoothness = []
@@ -142,18 +133,18 @@ class BenchmarkAnalyzer:
                     prev_action = np.array(data[i-1]['action'])
                     curr_action = np.array(data[i]['action'])
                     
-                    # 计算动作差异的L2范数
+                    # Calculate L2 norm of action difference
                     action_diff = np.linalg.norm(curr_action - prev_action)
                     action_differences.append(action_diff)
                     all_smoothness.append(action_diff)
                     
                 except (KeyError, ValueError) as e:
-                    print(f"计算动作平滑度时出错: {e}")
+                    print(f"Error calculating action smoothness: {e}")
                     continue
             
             if action_differences:
-                # 动作平滑度 = 1 / (1 + 平均动作差异)
-                # 值越高表示越平滑
+                # Action smoothness = 1 / (1 + average action difference)
+                # Higher values indicate smoother actions
                 episode_as = 1.0 / (1.0 + np.mean(action_differences))
                 episode_smoothness.append(episode_as)
         
@@ -162,31 +153,31 @@ class BenchmarkAnalyzer:
     
     def generate_report(self, save_path: str = None) -> Dict:
         """
-        生成完整的基准分析报告
+        Generate complete benchmark analysis report
         
         Parameters:
         -----------
         save_path : str, optional
-            报告保存路径
+            Report save path
             
         Returns:
         --------
-        Dict : 分析结果字典
+        Dict : Analysis results dictionary
         """
-        print("=== 基准分析报告 ===")
-        print(f"分析目录: {self.data_dir}")
-        print(f"Episodes数量: {len(self.episodes_data)}")
+        print("=== Benchmark Analysis Report ===")
+        print(f"Analysis directory: {self.data_dir}")
+        print(f"Number of episodes: {len(self.episodes_data)}")
         
         if not self.episodes_data:
-            print("没有可分析的数据")
+            print("No data available for analysis")
             return {}
         
-        # 计算指标
+        # Calculate metrics
         sr = self.calculate_success_rate()
         mtbe_overall, mtbe_episodes = self.calculate_mtbe()
         as_overall, as_episodes = self.calculate_action_smoothness()
         
-        # 统计信息
+        # Statistical information
         total_steps = sum(len(ep['data']) for ep in self.episodes_data)
         avg_steps_per_episode = total_steps / len(self.episodes_data)
         
@@ -207,67 +198,67 @@ class BenchmarkAnalyzer:
             }
         }
         
-        # 打印报告
-        print(f"\n--- 基本统计 ---")
-        print(f"总Episodes: {report['summary']['total_episodes']}")
-        print(f"总步数: {report['summary']['total_steps']}")
-        print(f"平均步数/Episode: {report['summary']['avg_steps_per_episode']:.1f}")
+        # Print report
+        print(f"\n--- Basic Statistics ---")
+        print(f"Total Episodes: {report['summary']['total_episodes']}")
+        print(f"Total Steps: {report['summary']['total_steps']}")
+        print(f"Average Steps/Episode: {report['summary']['avg_steps_per_episode']:.1f}")
         
-        print(f"\n--- 关键指标 ---")
+        print(f"\n--- Key Metrics ---")
         print(f"Success Rate (SR): {sr:.3f} ({sr*100:.1f}%)")
         print(f"Mean Track Belief Error (MTBE): {mtbe_overall:.4f}")
         print(f"Action Smoothness (AS): {as_overall:.4f}")
         
         if len(mtbe_episodes) > 1:
-            print(f"\n--- 每Episode详情 ---")
-            print(f"MTBE 标准差: {np.std(mtbe_episodes):.4f}")
-            print(f"AS 标准差: {np.std(as_episodes):.4f}")
-            print(f"最好MTBE: {np.min(mtbe_episodes):.4f}")
-            print(f"最差MTBE: {np.max(mtbe_episodes):.4f}")
+            print(f"\n--- Episode Details ---")
+            print(f"MTBE Standard Deviation: {np.std(mtbe_episodes):.4f}")
+            print(f"AS Standard Deviation: {np.std(as_episodes):.4f}")
+            print(f"Best MTBE: {np.min(mtbe_episodes):.4f}")
+            print(f"Worst MTBE: {np.max(mtbe_episodes):.4f}")
         
-        # 保存报告
+        # Save report
         if save_path:
             with open(save_path, 'w', encoding='utf-8') as f:
                 json.dump(report, f, indent=2, ensure_ascii=False)
-            print(f"\n报告已保存到: {save_path}")
+            print(f"\nReport saved to: {save_path}")
         
         return report
     
     def plot_metrics(self, save_dir: str = None):
         """
-        绘制指标可视化图表
+        Plot metric visualization charts
         
         Parameters:
         -----------
         save_dir : str, optional
-            图表保存目录
+            Chart save directory
         """
         if not self.episodes_data:
-            print("没有数据可绘制")
+            print("No data available for plotting")
             return
         
-        # 计算指标
+        # Calculate metrics
         _, mtbe_episodes = self.calculate_mtbe()
         _, as_episodes = self.calculate_action_smoothness()
         
-        # 创建图表
+        # Create charts
         fig, axes = plt.subplots(2, 2, figsize=(12, 10))
         
-        # 1. MTBE随episode变化
+        # 1. MTBE per episode
         axes[0, 0].plot(range(1, len(mtbe_episodes)+1), mtbe_episodes, 'b-o')
         axes[0, 0].set_title('Mean Track Belief Error per Episode')
         axes[0, 0].set_xlabel('Episode')
         axes[0, 0].set_ylabel('MTBE')
         axes[0, 0].grid(True)
         
-        # 2. Action Smoothness随episode变化
+        # 2. Action Smoothness per episode
         axes[0, 1].plot(range(1, len(as_episodes)+1), as_episodes, 'r-o')
         axes[0, 1].set_title('Action Smoothness per Episode')
         axes[0, 1].set_xlabel('Episode')
         axes[0, 1].set_ylabel('Action Smoothness')
         axes[0, 1].grid(True)
         
-        # 3. 误差分布直方图
+        # 3. Error distribution histogram
         all_errors = []
         for episode in self.episodes_data:
             for step in episode['data']:
@@ -285,7 +276,7 @@ class BenchmarkAnalyzer:
         axes[1, 0].set_ylabel('Frequency')
         axes[1, 0].grid(True)
         
-        # 4. 步数分布
+        # 4. Steps distribution
         steps_per_episode = [len(ep['data']) for ep in self.episodes_data]
         axes[1, 1].bar(range(1, len(steps_per_episode)+1), steps_per_episode, alpha=0.7, color='orange')
         axes[1, 1].set_title('Steps per Episode')
@@ -298,31 +289,31 @@ class BenchmarkAnalyzer:
         if save_dir:
             save_path = Path(save_dir) / "benchmark_metrics.png"
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"图表已保存到: {save_path}")
+            print(f"Chart saved to: {save_path}")
         else:
-            # 如果没有指定保存目录，保存到当前目录
+            # If no save directory specified, save to current directory
             save_path = Path(self.data_dir) / "benchmark_metrics.png"
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"图表已保存到: {save_path}")
+            print(f"Chart saved to: {save_path}")
         
-        # 不显示图表，因为可能在无图形界面环境中运行
+        # Don't display charts as might be running in headless environment
         # plt.show()
 
 def main():
-    """主函数 - 使用示例"""
+    """Main function - usage example"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='基准分析工具')
+    parser = argparse.ArgumentParser(description='Benchmark analysis tool')
     parser.add_argument('--data_dir', type=str, required=True,
-                       help='包含JSON文件的目录路径')
+                       help='Directory path containing JSON files')
     parser.add_argument('--save_report', type=str, default=None,
-                       help='报告保存路径')
+                       help='Report save path')
     parser.add_argument('--save_plots', type=str, default=None,
-                       help='图表保存目录')
+                       help='Chart save directory')
     
     args = parser.parse_args()
     
-    # 创建分析器并运行分析
+    # Create analyzer and run analysis
     analyzer = BenchmarkAnalyzer(args.data_dir)
     report = analyzer.generate_report(save_path=args.save_report)
     

@@ -11,8 +11,8 @@ class TrajectoryPlanner:
     def __init__(self, control_dt: float = 0.02, planning_duration: float = 0.25):
         """
         Args:
-            control_dt: 控制频率对应的时间步长 (50Hz = 0.02s)
-            planning_duration: 每个RL step的执行时间 (0.25s)
+            control_dt: Time step corresponding to control frequency (50Hz = 0.02s)
+            planning_duration: Execution time for each RL step (0.25s)
         """
         self.control_dt = control_dt
         self.planning_duration = planning_duration
@@ -20,7 +20,7 @@ class TrajectoryPlanner:
         
     def generate_trajectory_to_knot(self, current_state: np.ndarray, target_knot: np.ndarray) -> np.ndarray:
         """
-        从当前状态生成到目标knot的平滑轨迹 (支持2D和3D)
+        Generate smooth trajectory from current state to target knot (supports 2D and 3D)
         
         Args:
             current_state: np.array([x, y, yaw]) for 2D or np.array([x, y, z, yaw]) for 3D
@@ -30,32 +30,32 @@ class TrajectoryPlanner:
             np.ndarray: shape (num_steps, 3) for 2D or (num_steps, 4) for 3D
                        [[x, y, yaw], ...] or [[x, y, z, yaw], ...]
         """
-        # 自动检测是2D还是3D
+        # Automatically detect 2D or 3D
         is_3d = len(current_state) == 4 and len(target_knot) == 4
         state_dim = 4 if is_3d else 3
         
         trajectory = np.zeros((self.num_steps, state_dim))
         
         for i in range(self.num_steps):
-            t = i / max(1, self.num_steps - 1)  # 从0到1的插值参数
+            t = i / max(1, self.num_steps - 1)  # Interpolation parameter from 0 to 1
             
             if is_3d:
-                # 3D版本：位置线性插值 (x, y, z)
+                # 3D version: Linear interpolation for position (x, y, z)
                 trajectory[i, :3] = current_state[:3] + t * (target_knot[:3] - current_state[:3])
-                # 角度插值（处理角度连续性）
+                # Angle interpolation (handle angle continuity)
                 yaw_diff = self._wrap_angle(target_knot[3] - current_state[3])
                 trajectory[i, 3] = self._wrap_angle(current_state[3] + t * yaw_diff)
             else:
-                # 2D版本：位置线性插值 (x, y)
+                # 2D version: Linear interpolation for position (x, y)
                 trajectory[i, :2] = current_state[:2] + t * (target_knot[:2] - current_state[:2])
-                # 角度插值（处理角度连续性）
+                # Angle interpolation (handle angle continuity)
                 yaw_diff = self._wrap_angle(target_knot[2] - current_state[2])
                 trajectory[i, 2] = self._wrap_angle(current_state[2] + t * yaw_diff)
             
         return trajectory
     
     def _wrap_angle(self, angle: float) -> float:
-        """将角度包装到[-π, π]范围内"""
+        """Wrap angle to [-π, π] range"""
         while angle > np.pi:
             angle -= 2 * np.pi
         while angle < -np.pi:
@@ -76,7 +76,7 @@ class TrajectoryBuffer:
         """
         self.trajectory = new_trajectory
         self.current_index = 0
-        # 自动检测轨迹维度
+        # Automatically detect trajectory dimensions
         self.is_3d = new_trajectory.shape[1] == 4 if len(new_trajectory) > 0 else False
         
     def get_current_waypoint(self) -> Union[np.ndarray, None]:
@@ -89,7 +89,7 @@ class TrajectoryBuffer:
             self.current_index += 1
             return waypoint
         elif len(self.trajectory) > 0:
-            # 轨迹结束，返回最后一个点
+            # Trajectory finished, return the last point
             return self.trajectory[-1]
         else:
             return None
@@ -99,7 +99,7 @@ class TrajectoryBuffer:
         
     def get_trajectory_info(self) -> dict:
         """
-        获取轨迹信息用于调试
+        Get trajectory information for debugging
         """
         return {
             'is_3d': self.is_3d,

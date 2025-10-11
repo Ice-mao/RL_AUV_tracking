@@ -49,18 +49,16 @@ class RandomShiftsAug(nn.Module):
 class EncoderResNet(nn.Module):
     def __init__(self, encoder_dim=64):
         super(EncoderResNet, self).__init__()
-        # 加载预训练的 ResNet-50 模型
         resnet = models.resnet50('IMAGENET1K_V1')
-        # 去掉最后的全连接层，保留到倒数第二层
         self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1]) # 去掉 fc 层
         self.fc = nn.Linear(in_features=2048, out_features=encoder_dim, bias=True)
 
     def forward(self, x):
-        # 输入 x: [batch_size, 3, H, W]
-        features = self.feature_extractor(x)  # 输出: [batch_size, 512, 1, 1]
+        # x: [batch_size, 3, H, W]
+        features = self.feature_extractor(x)  # [batch_size, 512, 1, 1]
         features_fc_input = features.view(features.size(0), -1)
         output = self.fc(features_fc_input)
-        return output  # 展平: [batch_size, 128]
+        return output  # [batch_size, 128]
 
 
 class EncoderTCN(nn.Module):
@@ -76,11 +74,10 @@ class EncoderTCN(nn.Module):
         self.fc = nn.Linear(hidden_dim, output_dim).to(device)
 
     def forward(self, x):
-        # 输入 x: [batch_size, seq_len, input_dim] -> 转换为 [batch_size, input_dim, seq_len]
-        x = x.permute(0, 2, 1)
-        x = self.tcn(x)  # 输出: [batch_size, hidden_dim, seq_len]
-        x = torch.mean(x, dim=-1)  # 对时间步求平均: [batch_size, hidden_dim]
-        return self.fc(x)  # 输出: [batch_size, output_dim]
+        x = x.permute(0, 2, 1) # [batch_size, seq_len, input_dim] -> [batch_size, input_dim, seq_len]
+        x = self.tcn(x)  # [batch_size, hidden_dim, seq_len]
+        x = torch.mean(x, dim=-1)  # [batch_size, hidden_dim]
+        return self.fc(x)  # [batch_size, output_dim]
 
 
 class Encoder(nn.Module):
@@ -101,34 +98,28 @@ class Encoder(nn.Module):
         batch_size, num_images, C, H, W = images.size()
         assert num_images == self.num_images, "Input number of images must match num_images."
 
-        # 提取每张图像的特征
         features = []
         for i in range(num_images):
-            img = images[:, i, :, :, :]  # 取出第 i 张图像: [batch_size, 3, H, W]
-            feature = self.resnets[i](img)  # 提取特征: [batch_size, resnet_output_dim]
+            img = images[:, i, :, :, :]  # i-th image : [batch_size, 3, H, W]
+            feature = self.resnets[i](img)  # [batch_size, resnet_output_dim]
             features.append(feature)
 
-        # 拼接特征: [batch_size, N, resnet_output_dim]
+        # [batch_size, N, resnet_output_dim]
         features = torch.stack(features, dim=1)
         features = features.permute(0, 2, 1)
 
-        # 输入 TCN 进行时序建模
-        encoding = self.tcn(features)  # 输出: [batch_size, tcn_output_dim]
+        encoding = self.tcn(features)  # [batch_size, tcn_output_dim]
         encoding = encoding.mean(dim=-1)
         output = self.linear(encoding)
         return output
 
 if __name__ == "__main__":
-    # 参数设置
     batch_size = 4
-    num_images = 5  # n+1 张图片
-    image_size = (3, 224, 224)  # 符合 ResNet 的输入要求
+    num_images = 5
+    image_size = (3, 224, 224)
 
-    # 随机生成输入数据
     images = torch.rand(batch_size, num_images, *image_size, device='cuda')  # [batch_size, num_images, 3, 224, 224]
-
-    # 初始化网络
     model = Encoder(N=num_images)
-    output = model(images)  # 输出编码结果
+    output = model(images)
 
-    print("输出编码结果的形状:", output.shape)  # [batch_size, tcn_output_dim]
+    print("output.shape:", output.shape)  # [batch_size, tcn_output_dim]

@@ -77,57 +77,57 @@ class HoloOceanImageDataset(torch.utils.data.Dataset):
         """
         torch_data['obs'] = F.resize(torch_data['obs'], (128, 128))
         
-        # 随机数据增强 - 每次选择一种方法应用
+        # Random data augmentation - apply one method per time
         aug_choice = torch.rand(1).item()
         
-        # 1. 随机水平翻转 (5%概率)
+        # 1. Random horizontal flip (5% probability)
         if aug_choice < 0.05:
             torch_data['obs'] = F.hflip(torch_data['obs'])
         
-        # 2. 随机平移 (5%概率)
+        # 2. Random translation (5% probability)
         elif aug_choice < 0.1:
-            # 随机生成平移量，最大为图像尺寸的10%
+            # Randomly generate translation amounts, max 10% of image size
             max_dx = int(128 * 0.1)
             max_dy = int(128 * 0.1)
             dx = torch.randint(-max_dx, max_dx+1, (1,)).item()
             dy = torch.randint(-max_dy, max_dy+1, (1,)).item()
             
-            # 使用仿射变换实现平移
+            # Use affine transformation for translation
             torch_data['obs'] = F.affine(
                 torch_data['obs'], 
-                angle=0.0,  # 不旋转
-                translate=[dx, dy],  # 平移量
-                scale=1.0,  # 不缩放
-                shear=0.0,  # 不剪切
+                angle=0.0,  # No rotation
+                translate=[dx, dy],  # Translation amount
+                scale=1.0,  # No scaling
+                shear=0.0,  # No shearing
                 interpolation=F.InterpolationMode.BILINEAR
             )
         
-        # 3. 随机旋转 (5%概率)
+        # 3. Random rotation (5% probability)
         elif aug_choice < 0.15:
-            # 随机旋转±15度
+            # Random rotation ±15 degrees
             angle = torch.FloatTensor(1).uniform_(-15, 15).item()
             torch_data['obs'] = F.rotate(
                 torch_data['obs'], 
                 angle,
                 interpolation=F.InterpolationMode.BILINEAR,
-                fill=0  # 边缘填充黑色
+                fill=0  # Fill edges with black
             )
         
-        # 4. 随机亮度和对比度 (5%概率)
+        # 4. Random brightness and contrast (5% probability)
         elif aug_choice < 0.2:
-            # 亮度调整因子
+            # Brightness adjustment factor
             brightness_factor = torch.FloatTensor(1).uniform_(0.8, 1.2).item()
             torch_data['obs'] = F.adjust_brightness(torch_data['obs'], brightness_factor)
             
-            # 对比度调整因子
+            # Contrast adjustment factor
             contrast_factor = torch.FloatTensor(1).uniform_(0.8, 1.2).item()
             torch_data['obs'] = F.adjust_contrast(torch_data['obs'], contrast_factor)
             
-        # 按照您要求的参数进行归一化: 均值0.5, 标准差sqrt(1/12)≈0.289
+        # Normalize according to your requirements: mean 0.5, std sqrt(1/12) ≈ 0.289
         torch_data['obs'] = F.normalize(
             torch_data['obs'], 
-            mean=[0.485, 0.456, 0.406],  # ImageNet标准均值
-            std=[0.229, 0.224, 0.225]    # ImageNet标准差
+            mean=[0.485, 0.456, 0.406],  # ImageNet standard mean
+            std=[0.229, 0.224, 0.225]    # ImageNet standard deviation
         )
 
         torch_data['action'][:, 0] = 2.0 * torch_data['action'][:, 0] - 1.0
@@ -138,7 +138,7 @@ class HoloOceanImageDataset(torch.utils.data.Dataset):
         sample = self._sample_to_horizon(sample)
         sample = self._sample_to_data(sample)
         torch_data = dict_apply(sample, torch.from_numpy)
-        # 标准化动作第一列
+        # Normalize first column of actions
         torch_data = self._custom_transform(torch_data)
         return torch_data
     

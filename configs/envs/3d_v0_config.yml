@@ -2,17 +2,11 @@ version: v0
 name: AUVTracking3D_v0
 render: false # print
 draw_traj: false
-eval_fixed: true
+eval_fixed: false
 eval_fixed_pos: [[11, -12, -12, 0],[12, -12, -12, 0]]
 map: 'SimpleUnderwater-Bluerov2_RGB'
 debug: false
 t_steps: 1000
-
-# 可视化数据保存配置
-visualization:
-  save_enabled: false  # 是否保存可视化数据（训练时建议关闭，评估时开启）
-  save_dir: "./log/visualization"  # 保存目录
-  skip_frames: 1  # 渲染间隔（1表示每帧都渲染和保存）
 
 env:
   task_random: false

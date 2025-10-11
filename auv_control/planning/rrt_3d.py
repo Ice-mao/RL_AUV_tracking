@@ -10,43 +10,43 @@ class RRT_3d(BasePlanner):
                  bottom_corner=None, size=None,
                  render=True, draw_flag=True):
         """
-        3D RRT路径规划器
+        3D RRT path planner
         
         Parameters:
         -----------
         num_seconds : float
-            路径执行时间
+            Path execution time
         start : array_like, shape (3,)
-            起始点 [x, y, z]
+            Starting point [x, y, z]
         end : array_like, shape (3,)
-            目标点 [x, y, z]
+            Target point [x, y, z]
         speed : float
-            移动速度
+            Movement speed
         obstacles : object
-            障碍物检测对象，需要有check_obstacle_block和check_obstacle_collision方法
+            Obstacle detection object, requires check_obstacle_block and check_obstacle_collision methods
         margin : float
-            安全边距
+            Safety margin
         bottom_corner : array_like, shape (3,)
-            搜索空间的底部角点
+            Bottom corner of search space
         size : array_like, shape (3,)
-            搜索空间的尺寸
+            Size of search space
         """
         self.num_seconds = num_seconds
         self.speed = speed
         self.obstacles = obstacles
-        self.margin = margin + 1.0 if margin is not None else 2.0  # 足够的安全空间
+        self.margin = margin + 1.0 if margin is not None else 2.0  # Sufficient safety space
         self.bottom_corner = bottom_corner if bottom_corner is not None else np.array([-30, -30, -10])
         self.size = size if size is not None else np.array([60, 60, 8])
         self.render = render
         self.draw_flag = draw_flag
 
-        # 设置RRT参数
+        # Set RRT parameters
         self.count = 0
         self.desire_path_num = 0
-        self.step_size = 2.0  # 增大步长以提高搜索效率
-        self.max_iterations = 5000  # 减少最大迭代次数，更合理
+        self.step_size = 2.0  # Increase step size to improve search efficiency
+        self.max_iterations = 5000  # Reduce max iterations for more reasonable performance
         
-        # 初始化RRT树
+        # Initialize RRT tree
         self.dist = [0]
         self.parent = [0]
         self.finish = [False]
@@ -74,50 +74,50 @@ class RRT_3d(BasePlanner):
         return self._run_rrt()
 
     def _run_rrt(self):
-        """运行RRT算法"""       
+        """Run RRT algorithm"""       
         count = 0
         while np.sum(self.finish) < 3:
             self._add_node()
             count += 1
             
             if count > self.max_iterations:
-                print(f'3D RRT 规划失败: 超过最大迭代次数 {self.max_iterations}')
-                print(f'当前树节点数: {len(self.tree)}')
-                print(f'当前到达终点的路径数: {np.sum(self.finish)}')
+                print(f'3D RRT planning failed: Exceeded maximum iterations {self.max_iterations}')
+                print(f'Current tree nodes: {len(self.tree)}')
+                print(f'Current paths to goal: {np.sum(self.finish)}')
                 return False
             
-            # 每1000次迭代输出进度
+            # Output progress every 1000 iterations
             if count % 1000 == 0:
-                print(f'RRT进度: {count}/{self.max_iterations} 迭代, 树节点数: {len(self.tree)}, 到达终点路径数: {np.sum(self.finish)}')
+                print(f'RRT progress: {count}/{self.max_iterations} iterations, tree nodes: {len(self.tree)}, paths to goal: {np.sum(self.finish)}')
 
-        # 找到连接到终点的节点
+        # Find nodes connected to the goal
         connecting_nodes = np.argwhere(np.array(self.finish) != 0).astype('int')
 
-        # 找到最小代价的路径
+        # Find the minimum cost path
         if len(connecting_nodes) == 1:
             idx = connecting_nodes.item(0)
         else:
             idx = connecting_nodes[np.argmin(np.array(self.dist)[connecting_nodes])].item(0)
 
-        # 构建路径
+        # Build path
         path_indices = [idx]
         parent = np.inf
         while parent != 0:
             parent = int(self.parent[path_indices[-1]])
             path_indices.append(parent)
 
-        # 获取实际路径位置
+        # Get actual path positions
         self.path = self.tree[path_indices[::-1]]
         self.path = np.vstack((self.path, self.end))
         
-        # print(f"RRT规划成功! 路径长度: {len(self.path)} 点")
+        # print(f"RRT planning successful! Path length: {len(self.path)} points")
         
-        # 使用贝塞尔曲线平滑路径
+        # Smooth path with Bezier curves
         self._smooth_path_with_bezier()
         return True
 
     def _smooth_path_with_bezier(self):
-        """使用贝塞尔曲线平滑3D路径"""
+        """Smooth 3D path using Bezier curves"""
         if len(self.path) < 3:
             return
         
@@ -128,25 +128,25 @@ class RRT_3d(BasePlanner):
         self.curves = []
         
         if num_point < 6:
-            # 如果点数少于6，创建单一曲线
+            # If points are less than 6, create a single curve
             self.curves.append(bezier.Curve(path, degree=num_point - 1))
         else:
-            # 分段创建贝塞尔曲线
-            # 第一段曲线
+            # Create segmented Bezier curves
+            # First segment curve
             count = 6
             nodes = path[:, :count]
             self.curves.append(bezier.Curve(nodes, degree=5))
             
             while count < num_point:
-                # 选择上一条曲线的最后一个节点
+                # Select the last node of the previous curve
                 q0 = path[:, count - 1]
-                # 创建新的辅助节点以保证连续性
+                # Create new auxiliary node to ensure continuity
                 q1 = q0 + (q0 - path[:, count - 2]) / 2
                 tmp = np.stack((q0, q1), axis=-1)
                 
                 if num_point - count >= 4:
                     count += 4
-                    # 选择新节点
+                    # Select new nodes
                     nodes = path[:, count - 4:count]
                     nodes = np.hstack((tmp, nodes))
                     self.curves.append(bezier.Curve(nodes, degree=5))
@@ -157,7 +157,7 @@ class RRT_3d(BasePlanner):
                     count = num_point
                     self.curves.append(bezier.Curve(nodes, degree=tmp_num + 1))
 
-        # 在曲线上采样点
+        # Sample points on curves
         num_sample_points = 3 * num_point
         num_curve = len(self.curves)
         pick_point = int(num_sample_points / num_curve) + 1
@@ -171,39 +171,39 @@ class RRT_3d(BasePlanner):
             else:
                 point_on_curves = np.hstack((point_on_curves, point_on_curve))
         
-        # 保存控制点和更新路径
+        # Save control points and update path
         self.control_points = path
         self.path = np.hstack((point_on_curves, path[:, -1].reshape(-1, 1)))
         
-        # print(f"贝塞尔曲线平滑完成! 平滑后路径点数: {len(self.path[1])}")
+        # print(f"Bezier curve smoothing completed! Smoothed path points: {len(self.path[1])}")
 
     def _add_node(self):
-        # 在空间中随机采样
+        # Random sampling in space
         min_xyz = self.bottom_corner
         max_xyz = self.bottom_corner + self.size
         
-        # 30%的概率直接朝向目标点采样（引导搜索）
+        # 30% probability of sampling directly towards the goal (guided search)
         if np.random.random() < 0.3:
-            pose = self.end + np.random.normal(0, 1.0, 3)  # 在目标点附近添加噪声
-            pose = np.clip(pose, min_xyz, max_xyz)  # 确保在搜索空间内
+            pose = self.end + np.random.normal(0, 1.0, 3)  # Add noise around goal point
+            pose = np.clip(pose, min_xyz, max_xyz)  # Ensure within search space
         else:
             pose = np.random.uniform(min_xyz, max_xyz)
 
-        # 找到最近的树节点
+        # Find nearest tree node
         dist = np.linalg.norm(self.tree - pose, axis=1)
         close_idx = np.argmin(dist)
         close_pose = self.tree[close_idx]
         close_dist = self.dist[close_idx]
 
-        # 将采样点移动到步长范围内
+        # Move sampling point to within step size range
         direction = (pose - close_pose) / np.linalg.norm(pose - close_pose)
         pose = close_pose + direction * self.step_size
 
-        # 检查碰撞
+        # Check collision
         if self._check_collision_3d(close_pose, pose):
-            return  # 有碰撞，跳过
+            return  # Collision detected, skip
 
-        # 添加到树中
+        # Add to tree
         self.tree = np.vstack((self.tree, pose))
         self.dist.append(close_dist + np.linalg.norm(pose - close_pose))
         self.parent.append(close_idx)
@@ -223,14 +223,14 @@ class RRT_3d(BasePlanner):
             return self.end
         dis = np.linalg.norm(self.path[:, self.desire_path_num] - true_state[:3])
         
-        # 如果到达当前目标点
-        if dis < 0.5:  # 3D中可以稍微宽松一些
+        # If reached current target point
+        if dis < 0.5:  # Can be slightly more lenient in 3D
             self.count = 0
             self.desire_path_num += 1
             if self.render:
                 print(self.desire_path_num)
 
-        # 检查是否完成路径
+        # Check if path is complete
         if self.desire_path_num == len(self.path.T):
             self.finish_flag = 1
             self.desire_path_num -= 1
@@ -241,16 +241,16 @@ class RRT_3d(BasePlanner):
 
     @property
     def center(self):
-        """获取搜索空间中心"""
+        """Get search space center"""
         return self.bottom_corner + self.size / 2
 
     @property
     def top_corner(self):
-        """获取搜索空间顶部角点"""
+        """Get search space top corner"""
         return self.bottom_corner + self.size
 
     def draw_traj(self, env, t):
-        """绘制3D轨迹"""
+        """Draw 3D trajectory"""
         if self.path is None:
             return
 
@@ -260,25 +260,25 @@ class RRT_3d(BasePlanner):
         self.fig.clf()
         ax = self.fig.add_subplot(111, projection='3d')
         
-        # 绘制路径
+        # Draw path
         if len(self.path.T) > 0:
             ax.plot(self.path[0, :], self.path[1, :], self.path[2, :], 
                     'b-', linewidth=2, label='3D Path')
             ax.scatter(self.path[0, :], self.path[1, :], self.path[2, :], 
                         c='red', s=50, label='Path Points')
         
-        # 绘制起点和终点
+        # Draw start and end points
         ax.scatter(*self.start, c='green', s=100, marker='o', label='Start')
         ax.scatter(*self.end, c='red', s=100, marker='s', label='Goal')
         
-        # 设置坐标轴
+        # Set axes
         ax.set_xlabel('X (m)')
         ax.set_ylabel('Y (m)')
         ax.set_zlabel('Z (m)')
         ax.set_title('3D RRT Path Planning')
         ax.legend()
         
-        # 设置坐标轴范围
+        # Set axis ranges
         ax.set_xlim(self.bottom_corner[0], self.top_corner[0])
         ax.set_ylim(self.bottom_corner[1], self.top_corner[1])
         ax.set_zlim(self.bottom_corner[2], self.top_corner[2])

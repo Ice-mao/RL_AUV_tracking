@@ -21,22 +21,22 @@ class Obstacle3D:
     
     def __init__(self, env, fix_depth, config):
         """
-        初始化3D障碍物
+        Initialize 3D obstacles
         
         Parameters:
         -----------
-        env : holoocean环境
+        env : holoocean environment
         depths : list of float, shape (2,)
-            两个深度层，默认为[-3, -7]
+            Two depth layers, default [-3, -7]
         config : dict
-            配置参数
+            Configuration parameters
         """
         self.env = env
         self.fix_depths = fix_depth if fix_depth is not None else [-3, -7]
         self.config = config
         self.num_obstacles = 4
         self.res = 0.2  # m
-        self.sub_center = [25 * self.res, 25 * self.res]  # m，子障碍物旋转中心
+        self.sub_center = [25 * self.res, 25 * self.res]  # m, sub-obstacle rotation center
         self.sub_coordinates = [np.array([20, 25]) * self.res, np.array([-70, 25]) * self.res,
                                 np.array([-70, -65]) * self.res, np.array([20, -65]) * self.res]  # m
         np.random.seed()
@@ -45,16 +45,16 @@ class Obstacle3D:
         self.rot_angs_layer1 = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         self.rot_angs_layer2 = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         
-        self.polygons_layer1 = []  # 第一层障碍物多边形
-        self.polygons_layer2 = []  # 第二层障碍物多边形
-        self.obstacle_boxes_3d = []  # 3D边界框，用于3D碰撞检测
+        self.polygons_layer1 = []  # First layer obstacle polygons
+        self.polygons_layer2 = []  # Second layer obstacle polygons
+        self.obstacle_boxes_3d = []  # 3D bounding boxes for 3D collision detection
         
         if FCL_AVAILABLE:
-            self.obstacle_objects_fcl = []  # 存储FCL几何对象
+            self.obstacle_objects_fcl = []  # Store FCL geometry objects
             self.collision_manager_fcl = fcl.DynamicAABBTreeCollisionManager()
 
     def reset(self):
-        """重置障碍物配置"""
+        """Reset obstacle configuration"""
         np.random.seed()
         if not self.config['eval_fixed']:
             self.chosen_idx_layer1 = np.random.choice(len(obstacles), self.num_obstacles, replace=False)
@@ -102,12 +102,12 @@ class Obstacle3D:
                 
                 polygons_list.append(Polygon(points))
                 
-                # 计算3D障碍物位置
+                # Calculate 3D obstacle position
                 loc_center = rotate_point(obstacle['center'][j], self.sub_center, rot_angs[i])
                 loc = loc_center + np.array(self.sub_coordinates[i])
                 loc = np.append(loc, depth)
                 
-                # 计算3D障碍物尺寸
+                # Calculate 3D obstacle size
                 _scale = [obstacle['scale'][j][0] * self.res, 
                          obstacle['scale'][j][1] * self.res,
                          obstacle['scale'][j][2] * 2]
@@ -119,35 +119,35 @@ class Obstacle3D:
                                     rotation=[np.tan(np.radians(rot_angs[i])), 1, 0],
                                     material=material)
                 
-                # 保存3D边界框用于3D碰撞检测
+                # Save 3D bounding box for 3D collision detection
                 bbox_3d = {
                     'center': loc,
                     'size': np.array(_scale),
                     'rotation': rot_angs[i],
                     'depth': depth,
                     'layer': layer_idx,
-                    'points_2d': points  # 保存2D投影点
+                    'points_2d': points  # Save 2D projection points
                 }
                 self.obstacle_boxes_3d.append(bbox_3d)
                 
-                # 创建3D几何体用于碰撞检测
+                # Create 3D geometry for collision detection
                 if FCL_AVAILABLE:
-                    # 使用FCL创建盒子几何体
+                    # Create box geometry using FCL
                     box_geom = fcl.Box(_scale[0], _scale[1], _scale[2])
                     
-                    # 绕Z轴旋转的四元数，rot_angs[i]是度数
+                    # Quaternion for rotation around Z-axis, rot_angs[i] is in degrees
                     angle_rad = np.radians(rot_angs[i])
                     quat = np.array([np.cos(angle_rad/2), 0, 0, np.sin(angle_rad/2)])
                     translation = np.array(loc)
                     
-                    # 创建变换矩阵（直接在构造函数中传入四元数和平移）
+                    # Create transformation matrix (pass quaternion and translation directly in constructor)
                     transform = fcl.Transform(quat, translation)
                     
-                    # 创建碰撞对象
+                    # Create collision object
                     collision_object = fcl.CollisionObject(box_geom, transform)
                     self.obstacle_objects_fcl.append(collision_object)
                     
-                    # 添加到碰撞管理器
+                    # Add to collision manager
                     self.collision_manager_fcl.registerObject(collision_object)
 
     def check_obstacle_collision(self, point, margin):
@@ -157,28 +157,28 @@ class Obstacle3D:
             return self._check_collision_with_fcl(point, margin)
     
     def _check_collision_with_fcl(self, point, margin):
-        """使用FCL进行高性能3D碰撞检测"""
-        # 创建以point为中心、边长为2*margin的立方体
+        """Use FCL for high-performance 3D collision detection"""
+        # Create a cube centered at point with side length 2*margin
         safety_box = fcl.Box(margin, margin, margin)
         
-        # 设置立方体的位置（无旋转）
+        # Set cube position (no rotation)
         translation = np.array(point)
         transform = fcl.Transform(translation)
         
-        # 创建查询对象
+        # Create query object
         query_object = fcl.CollisionObject(safety_box, transform)
         
-        # 创建碰撞请求
+        # Create collision request
         request = fcl.CollisionRequest()
         result = fcl.CollisionResult()
         
-        # 检查与所有障碍物的碰撞
+        # Check collision with all obstacles
         # for obstacle_obj in self.obstacle_objects_fcl:
         #     ret = fcl.collide(query_object, obstacle_obj, request, result)
         #     if ret:
         #         return False
         # or
-        # 使用碰撞管理器进行高效检测
+        # Use collision manager for efficient detection
         req = fcl.CollisionRequest(num_max_contacts=100, enable_contact=True)
         rdata = fcl.CollisionData(request=req)
         self.collision_manager_fcl.collide(query_object, rdata, fcl.defaultCollisionCallback)
@@ -188,32 +188,32 @@ class Obstacle3D:
 
     def check_obstacle_block(self, point1, point2, margin=1):
         """
-        检查3D路径是否被障碍物阻挡
+        Check if 3D path is blocked by obstacles
         
         Parameters:
         -----------
         point1 : array_like, shape (3,)
-            起始点 [x, y, z]
+            Start point [x, y, z]
         point2 : array_like, shape (3,)
-            结束点 [x, y, z]
+            End point [x, y, z]
         margin : float
-            安全边距
+            Safety margin
         """
         point1 = np.array(point1)
         point2 = np.array(point2)
         
-        # 沿路径采样检查碰撞
+        # Sample along path to check for collisions
         num_samples = 10
         for i in range(num_samples + 1):
             t = i / num_samples
             sample_point = point1 + t * (point2 - point1)
             
-            # 添加一些随机扰动来检查边距
-            for _ in range(5):  # 减少随机检查次数以提高性能
+            # Add some random perturbations to check margins
+            for _ in range(5):  # Reduce random checks to improve performance
                 theta = np.random.uniform(0, 2 * np.pi)
                 phi = np.random.uniform(0, np.pi)
                 
-                # 3D球面随机偏移
+                # 3D spherical random offset
                 offset = margin * np.array([
                     np.sin(phi) * np.cos(theta),
                     np.sin(phi) * np.sin(theta),
@@ -232,50 +232,50 @@ if __name__ == "__main__":
     import numpy as np
     import time
 
-    print("=== 3D障碍物测试 ===")
+    print("=== 3D Obstacle Testing ===")
     
-    # 测试3D障碍物
+    # Test 3D obstacles
     with holoocean.make("SimpleUnderwater-Bluerov2") as env:
-        # 创建3D障碍物，在-3m和-7m深度生成两层
+        # Create 3D obstacles, generate two layers at -3m and -7m depths
         obstacle_3d = Obstacle3D(env, fix_depth=[-3, -7], 
                                config={'eval_fixed': False, 'render': True, 'debug': True})
         obstacle_3d.reset()
         obstacle_3d.draw_obstacle()
         
-        # 获取障碍物信息
+        # Get obstacle information
         
-        # 测试碰撞检测
-        print("\n=== 碰撞检测测试 ===")
+        # Test collision detection
+        print("\n=== Collision Detection Test ===")
         test_points = [
-            [0, 0, -3],    # 可能与第一层碰撞
-            [0, 0, -7],    # 可能与第二层碰撞
-            [0, 0, -5],    # 两层之间
-            [100, 100, -5] # 远离障碍物
+            [0, 0, -3],    # May collide with first layer
+            [0, 0, -7],    # May collide with second layer
+            [0, 0, -5],    # Between two layers
+            [100, 100, -5] # Far from obstacles
         ]
         
         for point in test_points:
             safe = obstacle_3d.check_obstacle_collision(point, 1.0)
-            print(f"点 {point}: {'安全' if safe else '碰撞'}")
+            print(f"Point {point}: {'Safe' if safe else 'Collision'}")
         
-        # 测试路径阻挡检测
-        print("\n=== 路径阻挡测试 ===")
+        # Test path blocking detection
+        print("\n=== Path Blocking Test ===")
         path_tests = [
-            ([0, 0, -3], [15, 15, -3]),    # 第一层内路径
-            ([0, 0, -7], [15, 15, -7]),    # 第二层内路径
-            ([0, 0, -3], [0, 0, -7]),      # 垂直路径
-            ([100, 100, -3], [100, 100, -7])  # 远离障碍物的路径
+            ([0, 0, -3], [15, 15, -3]),    # Path within first layer
+            ([0, 0, -7], [15, 15, -7]),    # Path within second layer
+            ([0, 0, -3], [0, 0, -7]),      # Vertical path
+            ([100, 100, -3], [100, 100, -7])  # Path far from obstacles
         ]
         env.draw_line([0, 0, -3], [15, 15, -3], thickness=5.0, lifetime=0.0)
         env.draw_line([0, 0, -7], [15, 15, -7], thickness=5.0, lifetime=0.0)
         env.draw_line([0, 0, -3], [0, 0, -7], thickness=5.0, lifetime=0.0)
         for start, end in path_tests:
             clear = obstacle_3d.check_obstacle_block(start, end, 1.0)
-            print(f"路径 {start} -> {end}: {'畅通' if clear else '被阻挡'}")
+            print(f"Path {start} -> {end}: {'Clear' if clear else 'Blocked'}")
         
-        print("\n持续运行环境，按Ctrl+C退出...")
+        print("\nRunning environment continuously, press Ctrl+C to exit...")
         try:
             while True:
                 env.tick()
                 time.sleep(0.1)
         except KeyboardInterrupt:
-            print("测试结束")
+            print("Test ended")

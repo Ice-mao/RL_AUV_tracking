@@ -50,7 +50,7 @@ class AUVCollector:
         # episode_data['sonar_data'] = np.array(sonar_images, dtype=np.float32)
         episode_data['state'] = np.array(state, dtype=np.float32)
         self.replay_buffer.add_episode(episode_data)
-        print(f"Episode完成, 共{len(self.current_episode['obs'])}步")
+        print(f"Episode completed, total {len(self.current_episode['obs'])} steps")
 
     def save_data(self, filename=None):       
         if filename is None:
@@ -60,6 +60,6 @@ class AUVCollector:
         filepath = os.path.join(self.save_dir, filename)
         self.replay_buffer.save_to_path(filepath)
         
-        print(f"数据已保存到: {filepath}")
+        print(f"Data saved to: {filepath}")
         print(f"Episodes: {self.replay_buffer.n_episodes}")
 

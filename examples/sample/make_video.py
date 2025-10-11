@@ -12,7 +12,6 @@ def make_video_from_frames(frame_dir, output_path, fps=10):
     if not frame_files:
         print("No frames found!")
         return
-    # 读取第一帧确定尺寸
     first_frame = cv2.imread(os.path.join(frame_dir, frame_files[0]))
     h, w, _ = first_frame.shape
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')

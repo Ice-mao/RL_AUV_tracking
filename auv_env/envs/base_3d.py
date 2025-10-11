@@ -19,7 +19,6 @@ from auv_control.control import CmdVel
 from auv_control.estimation import KFbelief, UKFbelief
 from auv_control.planning.local_planner import TrajectoryPlanner, TrajectoryBuffer
 
-from auv_env.maps import map_utils
 import auv_env.util as util
 from auv_env.envs.obstacle_3d import Obstacle3D
 from auv_env.envs.agent import AgentAuv, AgentAuvTarget3D, AgentAuvManual, AgentAuvTarget3DRangeFinder
@@ -83,7 +82,7 @@ class WorldBase3D:
 
     def step(self, action):
         if self.controller == 'LQR':
-            # 从RL action生成3D目标knot (使用NumPy数组提高性能)
+            # Generate 3D target knot from RL action (using NumPy arrays for performance)
             r = action[0] * self.action_range_scale[0]
             theta = action[1] * self.action_range_scale[1]
             depth = action[2] * self.action_range_scale[2]
@@ -94,10 +93,10 @@ class WorldBase3D:
             target_depth = self.agent.est_state.vec[2] + depth
             target_yaw = self.agent.est_state.vec[8] + np.rad2deg(angle)
             
-            # 3D目标knot: [x, y, z, yaw_radians] - 使用NumPy数组
+            # 3D target knot: [x, y, z, yaw_radians] - using NumPy arrays
             self.target_knot = np.array([target_pos[0], target_pos[1], target_depth, np.radians(target_yaw)])
             
-            # 3D当前状态 - 使用NumPy数组
+            # 3D current state - using NumPy arrays
             current_state = np.array([
                 self.agent.est_state.vec[0],  # x
                 self.agent.est_state.vec[1],  # y
@@ -111,18 +110,18 @@ class WorldBase3D:
 
             # visualization
             if self.config['draw_traj']:
-                # 绘制3D平滑轨迹上的每个点
+                # Draw each point on the 3D smooth trajectory
                 for i, waypoint in enumerate(smooth_trajectory):
                     self.ocean.draw_point(
-                        loc=[float(waypoint[0]), float(waypoint[1]), float(waypoint[2])],  # 3D位置
-                        color=[0, 255, 0],  # 绿色
+                        loc=[float(waypoint[0]), float(waypoint[1]), float(waypoint[2])],  # 3D position
+                        color=[0, 255, 0],  # Green
                         thickness=5.0,
                         lifetime=1.0
                     )
-                # 绘制3D目标knot (用红色标出最终目标)
+                # Draw 3D target knot (mark final target in red)
                 self.ocean.draw_point(
                     loc=[float(self.target_knot[0]), float(self.target_knot[1]), float(self.target_knot[2])],
-                    color=[255, 0, 0],  # 红色
+                    color=[255, 0, 0],  # Red
                     thickness=8.0,
                     lifetime=1.0
                 )
@@ -167,7 +166,7 @@ class WorldBase3D:
                         np.rad2deg(self.target_knot[3])
                     ])
             
-            # 更新agent (3D控制)
+            # Update agent (3D control)
             self.u = self.agent.update(self.action, depth=None, sensors=self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()
@@ -555,7 +554,7 @@ class WorldBase3D:
         return is_valid, rand_xyz_global, util.wrap_around(rand_ang + frame_theta)
 
     def observation_noise(self, z):
-        # 测量噪声矩阵3D，假设独立
+        # 3D measurement noise matrix, assuming independence
         obs_noise_cov = np.array([
             [self.config['agent']['sensor_r_sd'] ** 2, 0.0, 0.0],
             [0.0, self.config['agent']['sensor_b_sd'] ** 2, 0.0],
@@ -565,12 +564,12 @@ class WorldBase3D:
 
     def observation(self, target):
         """
-        返回是否观测到目标，以及测量值
+        Returns whether the target is observed and the measurement values
         """
         # get the target coordinate in spherical coordinate
         r, alpha, gamma = util.relative_distance_spherical(target.state.vec[:3], self.agent.state.vec[:3],
                                                 np.radians(self.agent.state.vec[8]))
-        # 判断是否观察到目标
+        # Determine if the target is observed
         observed = (r <= self.config['agent']['sensor_r']) \
                    & (abs(alpha) <= self.config['agent']['fov'] / 2 / 180 * np.pi) \
                    & (abs(gamma) <= self.config['agent']['h_fov'] / 2 / 180 * np.pi) \
@@ -579,7 +578,7 @@ class WorldBase3D:
         z = None
         if observed:
             z = np.array([r, alpha, gamma])
-            z += np.random.multivariate_normal(np.zeros(3, ), self.observation_noise(z))  # 加入噪声
+            z += np.random.multivariate_normal(np.zeros(3, ), self.observation_noise(z))  # Add noise
         return observed, z
 
     def observe_and_update_belief(self):

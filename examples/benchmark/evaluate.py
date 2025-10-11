@@ -13,7 +13,7 @@ from config_loader import load_config
 
 def evaluate_rl_and_save(env, model_path, alg_config, num_episodes=5, save_prefix="rl"):
     """
-    运行强化学习算法评估并保存每一步的info
+    Run reinforcement learning algorithm evaluation and save info for each step
     """
     policy_name = alg_config['policy_hparams']['policy']
     if policy_name == 'SAC':
@@ -21,15 +21,15 @@ def evaluate_rl_and_save(env, model_path, alg_config, num_episodes=5, save_prefi
     elif policy_name == 'PPO':
         model = PPO.load(model_path, device='cuda', env=env)
     else:
-        raise ValueError(f"不支持的策略: {policy_name}")
+        raise ValueError(f"Unsupported policy: {policy_name}")
     
-    print(f"开始RL算法评估 {num_episodes} 个回合...")
+    print(f"Starting RL algorithm evaluation for {num_episodes} episodes...")
     timestamp = datetime.now().strftime("%m%d_%H")
     
     for episode in range(num_episodes):
-        print(f"RL回合 {episode + 1}")
+        print(f"RL Episode {episode + 1}")
         
-        # 存储这个episode的所有info
+        # Store all info for this episode
         episode_infos = []
         
         obs, info = env.reset()
@@ -40,7 +40,7 @@ def evaluate_rl_and_save(env, model_path, alg_config, num_episodes=5, save_prefi
             obs, reward, terminated, truncated, info = env.step(action)
             step += 1
             
-            # 添加步骤信息
+            # Add step information
             info['step'] = step
             info['reward'] = float(reward)
             episode_infos.append(info)
@@ -55,45 +55,45 @@ def evaluate_rl_and_save(env, model_path, alg_config, num_episodes=5, save_prefi
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(episode_infos, f, indent=2, ensure_ascii=False)
         
-        print(f"  已保存 {len(episode_infos)} 步数据到 {filename}")
+        print(f"  Saved {len(episode_infos)} steps of data to {filename}")
     
     env.close()
-    print("RL算法评估完成!")
+    print("RL algorithm evaluation completed!")
 
 def evaluate_greedy_and_save(env, num_episodes=5, save_prefix="greedy"):
     """
-    运行Greedy算法评估并保存每一步的info
+    Run Greedy algorithm evaluation and save info for each step
     """
 
     try:
         from auv_baseline.greedy import Greedy
         greedy = Greedy(env.unwrapped.world, N=100)
     except ImportError:
-        print("无法导入Greedy算法，请确保auv_baseline.greedy模块存在")
+        print("Cannot import Greedy algorithm, please ensure auv_baseline.greedy module exists")
         return
     
-    print(f"开始Greedy算法评估 {num_episodes} 个回合...")
+    print(f"Starting Greedy algorithm evaluation for {num_episodes} episodes...")
     timestamp = datetime.now().strftime("%m%d_%H")
     for episode in range(num_episodes):
-        print(f"Greedy回合 {episode + 1}")
+        print(f"Greedy Episode {episode + 1}")
         
-        # 存储这个episode的所有info
+        # Store all info for this episode
         episode_infos = []
         
         obs, info = env.reset()
         step = 0
         
         while True:
-            # 使用Greedy算法获取动作
+            # Use Greedy algorithm to get action
             action = greedy.get_action(obs)
             obs, reward, terminated, truncated, info = env.step(action)
             step += 1
             
-            # 添加步骤信息
+            # Add step information
             info['step'] = step
             info['reward'] = float(reward)
             
-            # 添加Greedy特有的信息
+            # Add Greedy-specific information
             if hasattr(greedy.world, 'belief_targets') and len(greedy.world.belief_targets) > 0:
                 info['greedy_cov_det'] = float(np.linalg.det(greedy.world.belief_targets[0].cov))
                 info['greedy_cov_trace'] = float(np.trace(greedy.world.belief_targets[0].cov))
@@ -110,31 +110,31 @@ def evaluate_greedy_and_save(env, num_episodes=5, save_prefix="greedy"):
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(episode_infos, f, indent=2, ensure_ascii=False)
         
-        print(f"  已保存 {len(episode_infos)} 步数据到 {filename}")
+        print(f"  Saved {len(episode_infos)} steps of data to {filename}")
     
     env.close()
-    print("Greedy算法评估完成!")
+    print("Greedy algorithm evaluation completed!")
 
 def evaluate_diffusion_and_save(model_path, env_config_path, num_episodes=5, save_prefix="diffusion"):
     """
-    运行Diffusion Policy算法评估并保存每一步的info
+    Run Diffusion Policy algorithm evaluation and save info for each step
     """
     import torch
     import dill
     import hydra
     from diffusion_policy.workspace.base_workspace import BaseWorkspace
     
-    # 加载配置
+    # Load configuration
     env_config = load_config(env_config_path)
     
     # env = auv_env.make(env_config['name'], config=env_config, eval=True, 
     #                    t_steps=env_config.get('t_steps', 1000), show_viewport=True)
     
-    # 加载Diffusion Policy模型
-    print(f"正在加载Diffusion Policy模型: {model_path}")
+    # Load Diffusion Policy model
+    print(f"Loading Diffusion Policy model: {model_path}")
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     
-    # 加载checkpoint
+    # Load checkpoint
     payload = torch.load(open(model_path, 'rb'), pickle_module=dill)
     cfg = payload['cfg']
     cls = hydra.utils.get_class(cfg._target_)
@@ -142,54 +142,54 @@ def evaluate_diffusion_and_save(model_path, env_config_path, num_episodes=5, sav
     workspace: BaseWorkspace
     workspace.load_payload(payload, exclude_keys=None, include_keys=None)
     
-    # 获取policy
+    # Get policy
     policy = workspace.model
     if cfg.training.use_ema:
         policy = workspace.ema_model
     
     policy.to(device)
     policy.eval()
-    print(f"✓ Diffusion Policy模型加载成功! 设备: {device}")
+    print(f"✓ Diffusion Policy model loaded successfully! Device: {device}")
         
     
-    print(f"开始Diffusion Policy算法评估 {num_episodes} 个回合...")
+    print(f"Starting Diffusion Policy algorithm evaluation for {num_episodes} episodes...")
     
     for episode in range(num_episodes):
-        print(f"Diffusion回合 {episode + 1}")
+        print(f"Diffusion Episode {episode + 1}")
         
-        # 存储这个episode的所有info
+        # Store all info for this episode
         episode_infos = []
         
         obs, info = env.reset()
         if policy is not None:
-            policy.reset()  # 重置policy状态
+            policy.reset()  # Reset policy state
         step = 0
         obs_dict = {}
 
         while True:
-            # 准备观测数据
+            # Prepare observation data
             obs_dict = {}
             
-            # 处理图像观测
+            # Process image observations
             if 'images' in obs:
-                images = np.array(obs['images'])  # 应该是 [5, 3, 224, 224]
+                images = np.array(obs['images'])  # Should be [5, 3, 224, 224]
                 obs_dict['camera_image'] = torch.from_numpy(images).float().to(device)
-                # 添加batch维度，和T维度，如果观测步长不等于0，需要传入对应长度的obs
+                # Add batch dimension and T dimension, if observation step length is not 0, need to pass in corresponding length obs
                 obs_dict['camera_image'] = obs_dict['camera_image'].unsqueeze(0).unsqueeze(0)
 
-            # 运行推理
+            # Run inference
             with torch.no_grad():
                 action_dict = policy.predict_action(obs_dict)
             
-            # 提取动作
+            # Extract action
             action = action_dict['action'].detach().cpu().numpy()
-            action = action[0, 0, :]  # 移除batch维度，取第一个时间步
+            action = action[0, 0, :]  # Remove batch dimension, take first time step
                 
             
             obs, reward, terminated, truncated, info = env.step(action)
             step += 1
             
-            # 添加步骤信息
+            # Add step information
             info['step'] = step
             info['episode'] = episode + 1
             info['algorithm'] = 'Diffusion'
@@ -200,7 +200,7 @@ def evaluate_diffusion_and_save(model_path, env_config_path, num_episodes=5, sav
             if terminated or truncated:
                 break
         
-        # episode结束，保存所有info到文件
+        # Episode ended, save all info to file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         save_dir = f"log/json/diffusion/{timestamp}"
         os.makedirs(save_dir, exist_ok=True)
@@ -209,10 +209,10 @@ def evaluate_diffusion_and_save(model_path, env_config_path, num_episodes=5, sav
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(episode_infos, f, indent=2, ensure_ascii=False)
         
-        print(f"  已保存 {len(episode_infos)} 步数据到 {filename}")
+        print(f"  Saved {len(episode_infos)} steps of data to {filename}")
     
     env.close()
-    print("Diffusion Policy算法评估完成!")
+    print("Diffusion Policy algorithm evaluation completed!")
 
 
 if __name__ == "__main__":
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     # python evaluate.py --mode rl --rl_model_path your_model.zip
     # python evaluate.py --mode greedy
     # python evaluate.py --mode diffusion --diffusion_model_path your_diffusion_model.pth"
-    parser = argparse.ArgumentParser(description='评估不同算法的性能')
+    parser = argparse.ArgumentParser(description='Evaluate performance of different algorithms')
     parser.add_argument('--mode', type=str, choices=['rl', 'greedy', 'diffusion'], default='rl')
     parser.add_argument('--rl_model_path', type=str, default='log/AUVTracking3D_v0/LQR/SAC/08-31_18/rl_model_1800000_steps.zip')
     parser.add_argument('--diffusion_model_path', type=str, 
@@ -231,7 +231,7 @@ if __name__ == "__main__":
                        default="configs/algorithm/sac_3d_v0.yml")
     
     parser.add_argument('--num_episodes', type=int, default=3,
-                       help='评估回合数')
+                       help='Number of evaluation episodes')
     
     args = parser.parse_args()
     
@@ -242,11 +242,11 @@ if __name__ == "__main__":
                        t_steps=env_config.get('t_steps', 1000), show_viewport=False)
     
     if args.mode == 'rl':
-        print("评估强化学习算法...")
+        print("Evaluating reinforcement learning algorithm...")
         evaluate_rl_and_save(env, args.rl_model_path, alg_config, args.num_episodes)
     elif args.mode == 'greedy':
-        print("评估Greedy算法...")
+        print("Evaluating Greedy algorithm...")
         evaluate_greedy_and_save(env, args.num_episodes)
     elif args.mode == 'diffusion':
-        print("评估Diffusion Policy算法...")
+        print("Evaluating Diffusion Policy algorithm...")
         evaluate_diffusion_and_save(args.diffusion_model_path, args.env_config, args.num_episodes)

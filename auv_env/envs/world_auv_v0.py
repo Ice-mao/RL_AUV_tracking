@@ -59,7 +59,7 @@ class WorldAuvV0(WorldBase):
             raise ValueError("Unknown target dimension: {}".format(self.config['target']['target_dim']))
         
         # observation_space:
-        # target distance、angle、协方差行列式值、bool; 最近障碍物距离、角度;
+        # target distance, angle, covariance determinant value, bool; nearest obstacle distance, angle;
         state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
                                             [0.0, -np.pi]))
         state_upper_bound = np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
@@ -108,7 +108,7 @@ class WorldAuvV0(WorldBase):
 
     def state_func(self, observed, action):
         '''
-        在父类的step中调用该函数对self.state进行更新
+        Called in the parent class's step method to update self.state
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         # Find the closest obstacle coordinate.

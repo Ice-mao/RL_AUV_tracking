@@ -1,9 +1,9 @@
 """
-AUV跟踪任务的数据集实现
+AUV tracking task dataset implementation
 
-这个文件展示了如何为AUV跟踪任务创建专门的数据集类
-包含了传感器数据（声纳、相机）和控制动作的处理
-使用zarr格式存储数据
+This file demonstrates how to create specialized dataset classes for AUV tracking tasks
+Contains processing of sensor data (sonar, camera) and control actions
+Uses zarr format for data storage
 """
 
 from typing import Dict, List, Optional
@@ -34,12 +34,12 @@ class AUVTrackingDataset(BaseImageDataset):
             val_ratio: float = 0.1,
             max_train_episodes: Optional[int] = None,
             image_size: tuple = (224, 224),
-            sonar_range: float = 50.0,  # 声纳最大探测距离
+            sonar_range: float = 50.0,  # Maximum sonar detection range
             ):
         
         super().__init__()
         
-        # 保存配置
+        # Save configuration
         self.horizon = horizon
         self.pad_before = pad_before
         self.pad_after = pad_after
@@ -48,10 +48,10 @@ class AUVTrackingDataset(BaseImageDataset):
         
         self.data_keys = key
         
-        # 加载数据
+        # Load data
         self.replay_buffer = self._load_auv_data(data_path)
         
-        # 创建训练/验证划分
+        # Create train/validation split
         val_mask = get_val_mask(
             n_episodes=self.replay_buffer.n_episodes, 
             val_ratio=val_ratio,
@@ -62,7 +62,7 @@ class AUVTrackingDataset(BaseImageDataset):
             max_n=max_train_episodes, 
             seed=seed)
 
-        # 创建采样器
+        # Create sampler
         self.sampler = SequenceSampler(
             replay_buffer=self.replay_buffer, 
             sequence_length=horizon,
@@ -73,14 +73,14 @@ class AUVTrackingDataset(BaseImageDataset):
         self.train_mask = train_mask
 
     def _load_auv_data(self, data_path: str) -> ReplayBuffer:
-        """加载AUV数据（zarr格式）"""
+        """Load AUV data (zarr format)"""
         if not data_path.endswith('.zarr'):
-            raise ValueError(f"只支持zarr格式的数据文件，当前文件: {data_path}")
+            raise ValueError(f"Only zarr format data files are supported, current file: {data_path}")
         
         return ReplayBuffer.copy_from_path(data_path, keys=self.data_keys)
 
     def get_validation_dataset(self):
-        """创建验证集"""
+        """Create validation set"""
         val_set = copy.copy(self)
         val_set.sampler = SequenceSampler(
             replay_buffer=self.replay_buffer, 
@@ -100,7 +100,7 @@ class AUVTrackingDataset(BaseImageDataset):
         normalizer = LinearNormalizer()
         normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)
         
-        # 图像标准化器
+        # Image normalizer
         normalizer['camera_image'] = get_image_range_normalizer()
         
         return normalizer
@@ -109,26 +109,26 @@ class AUVTrackingDataset(BaseImageDataset):
         return len(self.sampler)
 
     def _sample_to_data(self, sample):
-        """转换采样数据为模型输入格式"""
-        # 基本观测字典
+        """Convert sampled data to model input format"""
+        # Basic observation dictionary
         obs = {}
         
-        # 处理图像数据
+        # Process image data
         if 'camera_image' in self.data_keys:
             images = sample['camera_image']  # (T, H, W, C)
             obs['camera_image'] = images.astype(np.float32)
         
-        # 处理声纳数据
+        # Process sonar data
         if 'sonar_image' in self.data_keys:
             sonar = sample['sonar_data'].astype(np.float32)
-            # 归一化声纳数据到[0,1]
+            # Normalize sonar data to [0,1]
             obs['sonar'] = sonar / self.sonar_range
         
-        # 处理状态
+        # Process state
         if 'state' in self.data_keys:
             obs['state'] = sample['state']
         
-        # 动作数据
+        # Action data
         action = sample['action'].astype(np.float32)
         
         return {
@@ -137,14 +137,14 @@ class AUVTrackingDataset(BaseImageDataset):
         }
     
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        """获取训练样本"""
+        """Get training sample"""
         sample = self.sampler.sample_sequence(idx)
         data = self._sample_to_data(sample)
         torch_data = dict_apply(data, torch.from_numpy)
         return torch_data
 
     def get_dataset_stats(self) -> Dict:
-        """获取数据集统计信息"""
+        """Get dataset statistics"""
         stats = {
             'n_episodes': self.replay_buffer.n_episodes,
             'total_steps': len(self.replay_buffer),
@@ -165,17 +165,17 @@ class AUVTrackingDataset(BaseImageDataset):
         return stats
 
     def visualize_sample(self, idx: int = 0):
-        """可视化数据样本"""
+        """Visualize data sample"""
         sample = self[idx]
         
-        print(f"=== 数据样本 {idx} ===")
-        print(f"观测数据:")
+        print(f"=== Data Sample {idx} ===")
+        print(f"Observation data:")
         for key, value in sample['obs'].items():
             print(f"  {key}: {value.shape}")
         
-        print(f"动作数据: {sample['action'].shape}")
+        print(f"Action data: {sample['action'].shape}")
         
-        # 如果有图像，可以保存第一帧
+        # If there are images, save the first frame
         if 'camera_image' in sample['obs']:
             import matplotlib.pyplot as plt
             image = sample['obs']['camera_image'][0].permute(1, 2, 0).numpy()
@@ -184,4 +184,4 @@ class AUVTrackingDataset(BaseImageDataset):
             plt.title(f"Sample {idx} - First Frame")
             plt.axis('off')
             plt.savefig(f'sample_{idx}_image.png')
-            print(f"  图像已保存: sample_{idx}_image.png")
+            print(f"  Image saved: sample_{idx}_image.png")

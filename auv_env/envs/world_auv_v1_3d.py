@@ -57,7 +57,7 @@ class WorldAuv3DV1(WorldBase3D):
         self.target_limit = [np.concatenate((self.bottom_corner, np.array([-1, -1, -1]))),
                                         np.concatenate((self.top_corner, np.array([1, 1, 1])))]
         # observation_space:
-        # target distance、angle、协方差行列式值、bool; agent 自身定位;
+        # target distance, angle, covariance determinant value, bool; agent self-localization;
         state_lower_bound = np.concatenate(([0.0, -np.pi, -np.pi/2, -50.0, 0.0] * self.num_targets,
                                             [0.0, -np.pi, -np.pi/2]))
         state_upper_bound = np.concatenate(([600.0, np.pi, np.pi/2, 50.0, 2.0] * self.num_targets,
@@ -104,7 +104,7 @@ class WorldAuv3DV1(WorldBase3D):
 
     def state_func(self, observed, action):
         '''
-        在父类的step中调用该函数对self.state进行更新
+        Called in the parent class's step method to update self.state
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         if self.agent.rangefinder.min_distance < self.config['agent']['sensor_r']:
@@ -134,7 +134,7 @@ class WorldAuv3DV1(WorldBase3D):
         # images = np.stack(self.image_buffer.get_buffer()[-1])
         images = np.array(self.image_buffer.get_buffer()[-1])
         if images.dtype == np.uint8:
-            images = images.astype(np.float32) / 255.0  # 转换为0-1范围
+            images = images.astype(np.float32) / 255.0  # Convert to 0-1 range
         self.obs = {'images': images, 'state': state_observation}
         return copy.deepcopy({'images': images, 'state': state_observation})
         # Update the visit map for the evaluation purpose.

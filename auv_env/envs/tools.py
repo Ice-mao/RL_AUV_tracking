@@ -9,8 +9,8 @@ from auv_env import util
 
 class KeyBoardCmd:
     """
-        # 实现键盘控制的类
-        for example:
+    Class for implementing keyboard control
+    for example:
         from auv_env.envs.tools import KeyBoardCmd
         kb_cmd = KeyBoardCmd(force=10)
         if 'q' in kb_cmd.pressed_keys:
@@ -71,8 +71,8 @@ class KeyBoardCmd:
 
 class ImagingSonar:
     """
-        成像声呐进行进一步算法处理的类
-        note:返回的图像，第二个维度代表一个角度上的所有图像返回值
+    Class for further algorithm processing of imaging sonar
+    note: For the returned image, the second dimension represents all image return values at one angle
          ———————>y
         |
         |
@@ -88,8 +88,8 @@ class ImagingSonar:
         self.maxR = config['RangeMax']
         self.binsR = config['RangeBins']  # 256
         self.binsA = config['AzimuthBins']  # 256
-        self.zmax = (self.binsR - 10) / self.binsR * (self.maxR - self.minR) + self.minR  # 选取一个合适的更新范围
-        self.getimage = False  # world初始化成功，开始收到声呐数据之后为True
+        self.zmax = (self.binsR - 10) / self.binsR * (self.maxR - self.minR) + self.minR  # Select appropriate update range
+        self.getimage = False  # True after world initialization succeeds and sonar data starts being received
         self.__get_plot_ready()
 
     def __get_plot_ready(self):
@@ -110,22 +110,22 @@ class ImagingSonar:
 
     def sonar_filter(self):
         # TODO:follow the paper
-        # 加入了噪声
+        # With noise added
         # matrix = (self.s * 255).astype(np.uint8)
-        # matrix = cv2.medianBlur(matrix, 2)  # 中值滤波
-        # # otsu_threshold, _ = cv2.threshold(matrix, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)  # 动态阈值
+        # matrix = cv2.medianBlur(matrix, 2)  # Median filtering
+        # # otsu_threshold, _ = cv2.threshold(matrix, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)  # Dynamic threshold
         # # _, self.s = cv2.threshold(matrix, 1 * otsu_threshold, 255, cv2.THRESH_BINARY)
         # otsu_threshold, self.s = cv2.threshold(self.s, 0, 255, cv2.THRESH_OTSU)
         # self.s = self.s / 255
         # self.s[128:255, :] = 0
-        # 不加入噪声
+        # Without noise added
         self.s = (self.s * 255).astype(np.uint8)
         # otsu_threshold, self.s = cv2.threshold(self.s, 1, 255, cv2.THRESH_BINARY)
         otsu_threshold, self.s = cv2.threshold(self.s, 0, 255, cv2.THRESH_OTSU)
         self.s = self.s / 255
 
     def update(self, state):
-        "每个tick更新声呐数据"
+        "Update sonar data every tick"
         if "ImagingSonar" in state:
             self.s = state['ImagingSonar']
             self.sonar_filter()
@@ -134,7 +134,7 @@ class ImagingSonar:
             self.getimage = False
 
     def draw_pic(self, state):
-        "绘制声呐图像"
+        "Draw sonar image"
         self.update(state)
         if self.getimage:
             self.plot.set_array(self.s.ravel())
@@ -142,9 +142,9 @@ class ImagingSonar:
             self.fig.canvas.flush_events()
 
     # def determine_borderline(self, state, pose, angle):
-    #     # 建立边界地图，但不是栅格地图
+    #     # Build boundary map, but not a grid map
     #     if 'ImagingSonar' in state:
-    #         # 加入了噪声
+    #         # Added noise
     #         # self.s[128:255,:] = 0
     #         self.s = state['ImagingSonar']
     #         x_coordinates, y_coordinates = np.where(self.s)
@@ -166,21 +166,21 @@ class ImagingSonar:
         nearest_distances_y = []
         nearest_distances = []
 
-        # 生成所有坐标信息
+        # Generate all coordinate information
         self.s2map = np.empty(self.s.shape, dtype=object)
         for i in range(self.s.shape[0]):
             for j in range(self.s.shape[1]):
                 self.s2map[i, j] = ((i / self.binsR * (self.maxR - self.minR) + self.minR,
                                      -self.azi / 2 + j / self.binsA * (self.azi)))
 
-        x_coordinates, y_coordinates = np.where(self.s)  # x是距离变化，y是角度变换
-        # 映射图像中每一个障碍物的坐标到机器人物理坐标
+        x_coordinates, y_coordinates = np.where(self.s)  # x is distance variation, y is angle variation
+        # Map each obstacle coordinate from the image to robot physical coordinates
         self.distance = x_coordinates / self.binsR * (self.maxR - self.minR) + self.minR
         self.angle = -self.azi / 2 + y_coordinates / self.binsA * (self.azi)
         distances_x = pose[0] + self.distance * np.cos((angle + self.angle) * np.pi / 180)
         distances_y = pose[1] + self.distance * np.sin((angle + self.angle) * np.pi / 180)
 
-        # 生成每个角度下最近的障碍物坐标,如果没有识别出障碍物，则假设最远位置有障碍物
+        # Generate the nearest obstacle coordinates for each angle, if no obstacle is detected, assume there is an obstacle at the farthest position
         for i in range(self.s.shape[1]):
             dis_index = np.argmax(self.s[:, i] > 0.1)
             if dis_index == 0:
@@ -211,7 +211,7 @@ class PoseLocation:
         self.angle = np.degrees(np.arctan2(self.s[1, 0], self.s[0, 0]))
         if self.angle < 0:
             self.angle = 360 + self.angle
-        self.direction = self.angle * np.pi / 180  # 用rad表示的方位角
+        self.direction = self.angle * np.pi / 180  # Azimuth angle in radians
 
 
 class RangeFinder:
@@ -290,11 +290,11 @@ class RangeFinder:
         nearest_distances_y = []
         nearest_distances = []
 
-        # 投影到全局坐标系下
+        # Project to global coordinate system
         distances_x = pose[0] + self.data * np.cos((angle + self.angle) * np.pi / 180)
         distances_y = pose[1] + self.data * np.sin((angle + self.angle) * np.pi / 180)
 
-        # # 生成每个角度下最近的障碍物坐标,如果没有识别出障碍物，则假设最远位置有障碍物
+        # # Generate the nearest obstacle coordinates for each angle, if no obstacle is detected, assume there is an obstacle at the farthest position
         # for i in range(self.s.shape[1]):
         #     dis_index = np.argmax(self.s[:, i] > 0.1)
         #     if dis_index == 0:
@@ -476,53 +476,53 @@ class Plotter:
         self.fig.canvas.flush_events()
 
 if __name__=='__main__':
-    # --- CameraBuffer 示例 ---
-    print("--- 测试 CameraBuffer ---")
+    # --- CameraBuffer Example ---
+    print("--- Testing CameraBuffer ---")
     cam_buffer_size = 5
     cam_image_shape = (3, 224, 224)
     cam_buffer = CameraBuffer(cam_buffer_size, cam_image_shape, time_gap=0.1)
 
-    # 查看初始状态
-    print(f"初始状态: {cam_buffer}")
+    # Check initial state
+    print(f"Initial state: {cam_buffer}")
     initial_cam_images = cam_buffer.get_buffer()
-    print(f"初始缓冲区中有 {len(initial_cam_images)} 张图像")
-    print(f"第一张空图像的形状: {initial_cam_images[0].shape}, 类型: {initial_cam_images[0].dtype}")
+    print(f"Initially {len(initial_cam_images)} images in buffer")
+    print(f"Shape of first empty image: {initial_cam_images[0].shape}, type: {initial_cam_images[0].dtype}")
 
-    # 添加一些随机相机图像 (模拟 HoloOcean RGBA 输出)
+    # Add some random camera images (simulating HoloOcean RGBA output)
     for i in range(7):
-        # 模拟一个 480x640 的 4 通道图像
+        # Simulate a 480x640 4-channel image
         new_cam_image = np.random.randint(0, 256, (480, 640, 4), dtype=np.uint8)
         cam_buffer.add_image(new_cam_image, t=i * 0.1)
-        print(f"添加第 {i + 1} 张相机图像后: {cam_buffer}")
+        print(f"After adding camera image {i + 1}: {cam_buffer}")
 
     final_cam_images = cam_buffer.get_buffer()
-    print(f"\n最终相机缓冲区中有 {len(final_cam_images)} 张图像")
-    print(f"最后一幅图像的形状: {final_cam_images[-1].shape}, 类型: {final_cam_images[-1].dtype}")
+    print(f"\nFinal camera buffer contains {len(final_cam_images)} images")
+    print(f"Shape of last image: {final_cam_images[-1].shape}, type: {final_cam_images[-1].dtype}")
     assert final_cam_images[-1].shape == cam_image_shape
     assert final_cam_images[-1].dtype == np.uint8
     print("-" * 25)
 
-    # --- SonarBuffer 示例 ---
-    print("\n--- 测试 SonarBuffer ---")
+    # --- SonarBuffer Example ---
+    print("\n--- Testing SonarBuffer ---")
     sonar_buffer_size = 4
     sonar_image_shape = (1, 128, 128)
     sonar_buffer = SonarBuffer(sonar_buffer_size, sonar_image_shape, time_gap=0.2)
 
-    # 查看初始状态
-    print(f"初始状态: {sonar_buffer}")
+    # Check initial state
+    print(f"Initial state: {sonar_buffer}")
     initial_sonar_images = sonar_buffer.get_buffer()
-    print(f"初始缓冲区中有 {len(initial_sonar_images)} 张图像")
-    print(f"第一张空图像的形状: {initial_sonar_images[0].shape}, 类型: {initial_sonar_images[0].dtype}")
+    print(f"Initially {len(initial_sonar_images)} images in buffer")
+    print(f"Shape of first empty image: {initial_sonar_images[0].shape}, type: {initial_sonar_images[0].dtype}")
 
-    # 添加一些随机声呐图像 (模拟 0-1 浮点数输出)
+    # Add some random sonar images (simulating 0-1 float output)
     for i in range(6):
-        new_sonar_image = np.random.rand(256, 256) # 模拟原始声呐数据
+        new_sonar_image = np.random.rand(256, 256) # Simulate raw sonar data
         sonar_buffer.add_image(new_sonar_image, t=i * 0.2)
-        print(f"添加第 {i + 1} 张声呐图像后: {sonar_buffer}")
+        print(f"After adding sonar image {i + 1}: {sonar_buffer}")
 
     final_sonar_images = sonar_buffer.get_buffer()
-    print(f"\n最终声呐缓冲区中有 {len(final_sonar_images)} 张图像")
-    print(f"最后一幅图像的形状: {final_sonar_images[-1].shape}, 类型: {final_sonar_images[-1].dtype}")
+    print(f"\nFinal sonar buffer contains {len(final_sonar_images)} images")
+    print(f"Shape of last image: {final_sonar_images[-1].shape}, type: {final_sonar_images[-1].dtype}")
     assert final_sonar_images[-1].shape == sonar_image_shape
     assert final_sonar_images[-1].dtype == np.uint8
     print("-" * 25)

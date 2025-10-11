@@ -106,7 +106,7 @@ class WorldAuv3DV0(WorldBase3D):
 
     def state_func(self, observed, action):
         '''
-        在父类的step中调用该函数对self.state进行更新
+        Called in the parent class's step method to update self.state
         For 3D: RL state: [r, theta, gamma, log det(Sigma), observed] * nb_targets, [o_r, o_theta, o_gamma]
         For 2D: RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
@@ -140,29 +140,29 @@ class WorldAuv3DV0(WorldBase3D):
     
     def get_info(self, action, done) -> dict:
         """
-        重写父类的get_info方法，收集每一步的详细数据用于记录和分析
+        Override the parent class's get_info method to collect detailed step data for logging and analysis
         
         Parameters:
         -----------
         action : np.array
-            当前步的动作
+            Current step action
         done : bool
-            回合是否结束
+            Whether the episode is finished
             
         Returns:
         --------
         info : dict
-            包含详细步骤信息的字典
+            Dictionary containing detailed step information
         """
         info = {
             'action': action.tolist(),
             'is_collision': self.is_col,
             'done': done,
-            # 智能体信息
+            # Agent information
             'agent_pos': self.agent.est_state.vec[:3].tolist(),
-            # 目标信息
+            # Target information
             'targets': self.targets[0].state.vec[:3].tolist(),
-            # Belief信息
+            # Belief information
             'belief_targets': self.belief_targets[0].state[:3].tolist(),
         }
         return info

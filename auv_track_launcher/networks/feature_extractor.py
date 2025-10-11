@@ -26,7 +26,6 @@ class CustomCNN(BaseFeaturesExtractor):
     :param observation_space: (gym.Space)
     :param features_dim: (int) Number of features extracted.
         This corresponds to the number of unit for the last layer.
-    任务输入的图像信息为5*28*28
     """
 
     def __init__(self, observation_space: spaces.Box, features_dim: int = 512):
@@ -58,7 +57,6 @@ class CustomCNN(BaseFeaturesExtractor):
         )
 
         # self.lstm = nn.LSTM(1000 + 8, 512, batch_first=True)
-        #  初始化网络
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -74,8 +72,6 @@ class CustomCNN(BaseFeaturesExtractor):
             #     nn.init.xavier_normal_(m.weight)
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        # preprocessing:
-        # 如果不使用cuda，则需要改成torch.FloatTensor
         map = observations[:, :65535].type(torch.cuda.FloatTensor)
         state = observations[:, 65535:].type(torch.cuda.FloatTensor)
         return self._forward_impl(map, state)
@@ -145,7 +141,6 @@ class PPO_withgridmap(BaseFeaturesExtractor):
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         # preprocessing:
-        # 如果不使用cuda，则需要改成torch.FloatTensor
         map = observations[:, :4096].type(torch.cuda.FloatTensor)
         state = observations[:, 4096:].type(torch.cuda.FloatTensor)
         return self._forward_impl(map, state)

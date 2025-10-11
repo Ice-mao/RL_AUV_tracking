@@ -2,17 +2,14 @@
 # Can be merged with a main environment config
 
 training:
-  device: "cuda:1"
+  device: "cuda"
   seed: 41
-  nb_envs: 5
+  nb_envs: 2
   timesteps: 2000000
   save_freq: 200000
   log_dir: "log"
   log_freq: 20000
-  resume_path: "log/AUVTracking_v0/PID/SAC/07-28_16/rl_model_2000000_steps.zip"
-  # 09-04_16
-  # log/AUVTracking_v0/PID/SAC/07-28_16/rl_model_2000000_steps.zip
-  # resume_path: "/home/dell-t3660tow/data/RL/RL_AUV_tracking/models/sac_04-29_13/rl_model_480000_steps.zip"
+  resume_path: "model.zip"
 policy:
   net_arch:
     pi: [256, 256, 256]
@@ -21,8 +18,8 @@ policy:
 policy_hparams:
   policy: "SAC"
   lr: 0.0001
-  buffer_size: 100000
-  batch_size: 256
+  buffer_size: 10000
+  batch_size: 128
   gamma: 0.99
   tau: 0.004
   noise_std: 0.12
@@ -38,8 +35,8 @@ policy_hparams:
     type: "ReplayBuffer"  # Options: "ReplayBuffer", "HerReplayBuffer"
     # HER specific parameters (only used if type is "HerReplayBuffer")
     her_kwargs:
-      n_sampled_goal: 4  # 每个真实转换生成多少个虚拟转换
-      goal_selection_strategy: "future"  # 目标选择策略: "future", "final", "episode", "random"
+      n_sampled_goal: 4
+      goal_selection_strategy: "future"  #"future", "final", "episode", "random"
 
   # Collect settings
   step_per_collect: 5

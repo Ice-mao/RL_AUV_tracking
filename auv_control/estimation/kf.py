@@ -118,7 +118,7 @@ class KFbelief(object):
                 Hmat = np.array([[diff_pred[0], diff_pred[1]],
                                  [-diff_pred[1] / r_pred, diff_pred[0] / r_pred]]) / r_pred
             elif self.dim == 4:
-                # 观测测量矩阵
+                # Observation measurement matrix
                 Hmat = np.array([[diff_pred[0], diff_pred[1], 0.0, 0.0],
                                  [-diff_pred[1] / r_pred, diff_pred[0] / r_pred, 0.0, 0.0]]) / r_pred
             else:
@@ -137,7 +137,7 @@ class KFbelief(object):
                 + self.obs_noise_func((r_pred, alpha_pred))
         
         K = np.matmul(np.matmul(self.cov, Hmat.T), LA.inv(R))
-        C = np.eye(self.dim) - np.matmul(K, Hmat)  # 简易更新协方差矩阵：P_hat = (I- K_k*H_k)*P_check
+        C = np.eye(self.dim) - np.matmul(K, Hmat)  # Simple covariance update: P_hat = (I - K_k*H_k)*P_check
 
         self.cov = np.matmul(C, self.cov)
         self.state = np.clip(self.state + np.matmul(K, innov), self.limit[0], self.limit[1])
@@ -205,7 +205,7 @@ class KFbelief(object):
             innov[1] = wrap_around(innov[1])  # wrap azimuth
             innov[2] = wrap_around(innov[2])  # wrap elevation
             
-            # 3D noise calculation - 使用预测值而不是观测值，保持与update方法一致
+            # 3D noise calculation - Use predicted values instead of observed values, consistent with update method
             R = np.matmul(np.matmul(Hmat, self.cov), Hmat.T) \
                 + self.obs_noise_func((r_pred, theta_pred, gamma_pred))
             
@@ -219,7 +219,7 @@ class KFbelief(object):
                 Hmat = np.array([[diff_pred[0], diff_pred[1]],
                                  [-diff_pred[1] / r_pred, diff_pred[0] / r_pred]]) / r_pred
             elif self.dim == 4:
-                # 观测测量矩阵
+                # Observation measurement matrix
                 Hmat = np.array([[diff_pred[0], diff_pred[1], 0.0, 0.0],
                                  [-diff_pred[1] / r_pred, diff_pred[0] / r_pred, 0.0, 0.0]]) / r_pred
             else:
@@ -234,7 +234,7 @@ class KFbelief(object):
                 + self.obs_noise_func((r_pred, alpha_pred))
 
         K = np.matmul(np.matmul(self.cov, Hmat.T), LA.inv(R))
-        C = np.eye(self.dim) - np.matmul(K, Hmat)  # 简易更新协方差矩阵：P_hat = (I- K_k*H_k)*P_check
+        C = np.eye(self.dim) - np.matmul(K, Hmat)  # Simple covariance update: P_hat = (I - K_k*H_k)*P_check
 
         return np.matmul(C, self.cov), np.clip(self.state + np.matmul(K, innov), self.limit[0], self.limit[1])
 
@@ -357,7 +357,7 @@ class UKFbelief(object):
 
     def update(self, z_t, x_t):
         """
-        z_t:(r,theta) //target相对于agent的极坐标
+        z_t:(r,theta) // target's polar coordinates relative to agent
         x_t:agent.state(x,y,theta)
         """
         # Kalman Filter Update
@@ -467,7 +467,7 @@ def transform_2d(vec, theta_base, xy_base=[0.0, 0.0]):
     frame_xy with ang.
     R^T * (vec - frame_xy).
     R is a rotation matrix of the frame w.r.t the global frame.
-    这是一个向量从世界坐标系到agent坐标系的坐标变换函数
+    This is a coordinate transformation function from world coordinate system to agent coordinate system
     """
     assert (len(vec) == 2)
     return np.matmul([[np.cos(theta_base), np.sin(theta_base)],
@@ -477,7 +477,7 @@ def transform_2d(vec, theta_base, xy_base=[0.0, 0.0]):
 
 def cartesian2polar(xy):
     """
-    笛卡尔坐标系坐标转极坐标系坐标
+    Convert Cartesian coordinates to polar coordinates
     """
     r = np.sqrt(np.sum(xy ** 2))
     alpha = np.arctan2(xy[1], xy[0])
@@ -492,195 +492,3 @@ def wrap_around(x):
         return x + 2 * np.pi
     else:
         return x
-    
-if "__main__" == __name__:
-    print("=== 3D卡尔曼滤波器测试 ===")
-    
-    # 定义3D观测噪声函数
-    def obs_noise_3d(z):
-        """3D球坐标观测噪声矩阵"""
-        # z = [r, theta, gamma]
-        return np.diag([0.1**2, 0.05**2, 0.05**2])  # 距离、方位角、俯仰角的噪声方差
-    
-    def obs_noise_2d(z):
-        """2D极坐标观测噪声矩阵"""
-        # z = (r, alpha)
-        return np.diag([0.1**2, 0.05**2])  # 距离、角度的噪声方差
-    
-    # 测试场景设置
-    print("\n1. 初始化3D KF")
-    
-    # 状态限制 [x_min, y_min, z_min, vx_min, vy_min, vz_min], [x_max, y_max, z_max, vx_max, vy_max, vz_max]
-    limit_3d = [np.array([-100, -100, -50, -5, -5, -5]), 
-                np.array([100, 100, 10, 5, 5, 5])]
-    
-    # 状态转移矩阵A (6x6) - 简单的恒速模型
-    dt = 0.1
-    A_3d = np.array([
-        [1, 0, 0, dt, 0, 0],   # x = x + vx*dt
-        [0, 1, 0, 0, dt, 0],   # y = y + vy*dt  
-        [0, 0, 1, 0, 0, dt],   # z = z + vz*dt
-        [0, 0, 0, 1, 0, 0],    # vx = vx
-        [0, 0, 0, 0, 1, 0],    # vy = vy
-        [0, 0, 0, 0, 0, 1]     # vz = vz
-    ])
-    
-    # 过程噪声矩阵W (6x6)
-    W_3d = np.diag([0.01, 0.01, 0.01, 0.1, 0.1, 0.1])
-    
-    # 创建3D KF
-    kf_3d = KFbelief(dim=6, limit=limit_3d, A=A_3d, W=W_3d, obs_noise_func=obs_noise_3d)
-    
-    # 初始状态：目标在(10, 5, 3)位置，速度(1, 0.5, 0.1)
-    init_state_3d = np.array([10.0, 5.0, 3.0, 1.0, 0.5, 0.1])
-    init_cov_3d = 1.0
-    kf_3d.reset(init_state_3d, init_cov_3d)
-    
-    print(f"初始状态: {init_state_3d}")
-    print(f"初始协方差矩阵: \n{kf_3d.cov}")
-    
-    # 智能体状态 [x, y, z, yaw]
-    agent_state = np.array([0.0, 0.0, 0.0, 0.0])  # 原点，朝向x轴正方向
-    
-    print("\n2. 测试3D球坐标转换")
-    
-    # 计算理论观测值
-    r_true, theta_true, gamma_true = relative_distance_spherical(
-        init_state_3d[:3], agent_state[:3], agent_state[3])
-    print(f"理论观测值: r={r_true:.3f}m, θ={np.rad2deg(theta_true):.1f}°, γ={np.rad2deg(gamma_true):.1f}°")
-    
-    # 添加噪声的观测
-    z_obs = np.array([r_true, theta_true, gamma_true]) + np.array([0.05, 0.02, 0.01])
-    print(f"带噪声观测: r={z_obs[0]:.3f}m, θ={np.rad2deg(z_obs[1]):.1f}°, γ={np.rad2deg(z_obs[2]):.1f}°")
-    
-    print("\n3. 测试KF预测步骤")
-    print(f"预测前状态: {kf_3d.state}")
-    kf_3d.predict()
-    print(f"预测后状态: {kf_3d.state}")
-    
-    print("\n4. 测试KF更新步骤")
-    print(f"更新前状态: {kf_3d.state}")
-    print(f"更新前协方差对角线: {np.diag(kf_3d.cov)}")
-    
-    kf_3d.update(z_obs, agent_state)
-    
-    print(f"更新后状态: {kf_3d.state}")
-    print(f"更新后协方差对角线: {np.diag(kf_3d.cov)}")
-    
-    print("\n5. 测试贪婪更新")
-    
-    # 测试greedy_update方法
-    new_cov, new_state = kf_3d.greedy_update(z_obs, agent_state)
-    print(f"贪婪更新结果状态: {new_state}")
-    print(f"贪婪更新结果协方差对角线: {np.diag(new_cov)}")
-    
-    print("\n6. 多步跟踪仿真")
-    
-    # 重新初始化
-    kf_3d.reset(init_state_3d, init_cov_3d)
-    
-    # 模拟目标运动和观测
-    true_positions = []
-    estimated_positions = []
-    
-    # 真实目标状态
-    true_state = init_state_3d.copy()
-    
-    for step in range(10):
-        # 目标真实运动（使用相同的A矩阵）
-        true_state = np.matmul(A_3d, true_state) + np.random.multivariate_normal(np.zeros(6), W_3d)
-        true_positions.append(true_state[:3].copy())
-        
-        # KF预测
-        kf_3d.predict()
-        
-        # 生成观测
-        r_true, theta_true, gamma_true = relative_distance_spherical(
-            true_state[:3], agent_state[:3], agent_state[3])
-        
-        # 添加观测噪声
-        obs_noise = np.random.multivariate_normal(np.zeros(3), obs_noise_3d([r_true, theta_true, gamma_true]))
-        z_noisy = np.array([r_true, theta_true, gamma_true]) + obs_noise
-        
-        # KF更新
-        kf_3d.update(z_noisy, agent_state)
-        estimated_positions.append(kf_3d.state[:3].copy())
-        
-        print(f"步骤{step+1}: 真实位置[{true_state[0]:.2f}, {true_state[1]:.2f}, {true_state[2]:.2f}], 估计位置[{kf_3d.state[0]:.2f}, {kf_3d.state[1]:.2f}, {kf_3d.state[2]:.2f}]")
-    
-    print("\n7. 跟踪误差统计")
-    
-    true_positions = np.array(true_positions)
-    estimated_positions = np.array(estimated_positions)
-    
-    position_errors = np.linalg.norm(true_positions - estimated_positions, axis=1)
-    print(f"平均位置误差: {np.mean(position_errors):.3f}m")
-    print(f"最大位置误差: {np.max(position_errors):.3f}m")
-    print(f"最终估计状态: {kf_3d.state}")
-    print(f"最终协方差行列式: {np.linalg.det(kf_3d.cov):.6f}")
-    
-    print("\n8. 边界情况测试")
-    
-    # 测试目标在智能体正上方的情况（奇点）
-    print("测试奇点情况：目标在智能体正上方")
-    overhead_target = np.array([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])
-    kf_3d.reset(overhead_target, 1.0)
-    
-    r_overhead, theta_overhead, gamma_overhead = relative_distance_spherical(
-        overhead_target[:3], agent_state[:3], agent_state[3])
-    z_overhead = np.array([r_overhead, theta_overhead, gamma_overhead])
-    
-    print(f"正上方观测: r={r_overhead:.3f}m, θ={np.rad2deg(theta_overhead):.1f}°, γ={np.rad2deg(gamma_overhead):.1f}°")
-    
-    try:
-        kf_3d.update(z_overhead, agent_state)
-        print("奇点情况处理成功")
-        print(f"更新后状态: {kf_3d.state}")
-    except Exception as e:
-        print(f"奇点情况出现错误: {e}")
-    
-    # 测试目标非常接近智能体的情况
-    print("\n测试近距离情况：目标非常接近智能体")
-    close_target = np.array([0.001, 0.001, 0.001, 0.0, 0.0, 0.0])
-    kf_3d.reset(close_target, 1.0)
-    
-    r_close, theta_close, gamma_close = relative_distance_spherical(
-        close_target[:3], agent_state[:3], agent_state[3])
-    z_close = np.array([r_close, theta_close, gamma_close])
-    
-    print(f"近距离观测: r={r_close:.6f}m, θ={np.rad2deg(theta_close):.1f}°, γ={np.rad2deg(gamma_close):.1f}°")
-    
-    try:
-        kf_3d.update(z_close, agent_state)
-        print("近距离情况处理成功")
-        print(f"更新后状态: {kf_3d.state}")
-    except Exception as e:
-        print(f"近距离情况出现错误: {e}")
-    
-    print("\n=== 与2D KF对比测试 ===")
-    
-    # 创建2D KF进行对比
-    limit_2d = [np.array([-100, -100]), np.array([100, 100])]
-    A_2d = np.eye(2)
-    W_2d = np.diag([0.01, 0.01])
-    
-    kf_2d = KFbelief(dim=2, limit=limit_2d, A=A_2d, W=W_2d, obs_noise_func=obs_noise_2d)
-    
-    # 使用相同的x,y位置进行2D测试
-    init_state_2d = np.array([10.0, 5.0])
-    kf_2d.reset(init_state_2d, 1.0)
-    
-    # 2D观测（忽略z坐标）
-    agent_state_2d = np.array([0.0, 0.0, 0.0])
-    r_2d, alpha_2d = relative_distance_polar(init_state_2d, agent_state_2d[:2], agent_state_2d[2])
-    z_2d = np.array([r_2d, alpha_2d])
-    
-    print(f"2D观测: r={r_2d:.3f}m, α={np.rad2deg(alpha_2d):.1f}°")
-    print(f"3D观测投影到2D: r={r_true:.3f}m, θ={np.rad2deg(theta_true):.1f}°")
-    print(f"2D与3D水平距离差异: {abs(r_2d - np.sqrt(r_true**2 - 3.0**2)):.6f}m")
-    
-    kf_2d.update(z_2d, agent_state_2d)
-    print(f"2D KF更新后状态: {kf_2d.state}")
-    print(f"3D KF水平位置: {kf_3d.state[:2]}")
-    
-    print("\n=== 测试完成 ===")

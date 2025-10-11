@@ -112,9 +112,9 @@ class RRT_2d(BasePlanner):
                     count = num_point
                     self.curves.append(bezier.Curve(nodes, degree=tmp_num + 1))
 
-        # 定义控制点
+        # Define control points
 
-        # 在曲线上采样点
+        # Sample points on curves
         num_sample_points = 2 * num_point
         num_curve = len(self.curves)
         pick_point = int(num_sample_points / num_curve) + 1
@@ -191,7 +191,7 @@ class RRT_2d(BasePlanner):
         #     self.reset(true_state)
         dis = np.linalg.norm(self.path[:, self.desire_path_num][: 2] - true_state[:2])
         if dis < 0.3:
-            # 到达
+            # Reached target
             self.count = 0
             self.desire_path_num += 1
             if self.render:
@@ -291,20 +291,20 @@ class RRT_2d(BasePlanner):
         import matplotlib.pyplot as plt
         from scipy.interpolate import splev, splprep
 
-        # 假设已有的路径点
+        # Assume existing path points
         # self.path.save
-        # 进行样条插值拟合
+        # Perform spline interpolation fitting
         x = self.path[:, 0]
         y = self.path[:, 1]
         tck, u = splprep([x, y], s=0)
         x1, y1 = splev(u, tck)
         plt.plot(x1, y1, 'r-', x, y, 'bo')
-        # # 从拟合的曲线上采样得到路径点
+        # # Sample path points from fitted curve
         # num_samples = 100
         # sample_points = np.linspace(0, self.path.shape[0] - 1, num_samples)
         # sampled_path_points = np.column_stack((cs(sample_points), cs(sample_points, 1)))
         #
-        # # 绘制贝塞尔曲线和采样得到的路径点
+        # # Draw Bezier curves and sampled path points
         # plt.figure()
         # plt.plot(x, y, 'o', label='Original Path Points')
         # plt.plot(cs(sample_points), cs(sample_points, 1), '-', label='Cubic Spline')

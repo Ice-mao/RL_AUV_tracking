@@ -6,16 +6,16 @@ class CmdVel:
         self.linear = type('', (), {'x': 0.0, 'y': 0.0, 'z': 0.0})()
         self.angular = type('', (), {'x': 0.0, 'y': 0.0, 'z': 0.0})()
 
-# base NED coordinates, use negetive for util
+# base NED coordinates, use negative for util
 class PID:
     # basically for HoveringROV
     def __init__(self, robo_type="HoveringAUV"):
-        # ----------- 水下机器人参数 -----------#
+        # ----------- Underwater Robot Parameters -----------#
         self.gravity = 9.81
         self.cob = np.array([0, 0, 5.0]) / 100
         self.rho = 997
 
-        # 不同的机器人参数
+        # Different robot parameters
         if robo_type == "HoveringAUV":
             self.m = 31.02
             self.thruster_p = np.array([[18.18, -22.14, -4],
@@ -35,7 +35,7 @@ class PID:
             self.Ki_ang_z = 0.2
             self.Kd_ang_z = 0.8
             self.Kp_depth = 10.0
-            # Z方向（垂直）PID参数
+            # Z direction (vertical) PID parameters
             self.Kp_lin_z = 10
             self.Ki_lin_z = 0.5
             self.Kd_lin_z = 0.3
@@ -60,7 +60,7 @@ class PID:
             self.Kp_ang_z = 10
             self.Ki_ang_z = 0.05
             self.Kd_ang_z = 0.2
-            # Z方向（垂直）PID参数
+            # Z direction (vertical) PID parameters
             self.Kp_depth = 15.0
             self.Kp_lin_z = 100
             self.Ki_lin_z = 0.3
@@ -69,12 +69,12 @@ class PID:
             raise ValueError(f"Unknown robo_type: {robo_type}")
         
         self.V = self.m / self.rho # volume
-        # 调整推进器位置（相对于质心）
+        # Adjust thruster positions (relative to center of mass)
         self.com = (self.thruster_p[0] + self.thruster_p[2]) / 2
         self.com[2] = self.thruster_p[-1][2]
         self.thruster_p -= self.com
 
-        # 推进器方向
+        # Thruster directions
         self.thruster_d = np.array([[0, 0, 1],
                                   [0, 0, 1],
                                   [0, 0, 1],
@@ -84,7 +84,7 @@ class PID:
                                   [np.sqrt(2), np.sqrt(2), 0],
                                   [np.sqrt(2), -np.sqrt(2), 0]])
 
-        # 推力分配矩阵
+        # Thrust allocation matrix
         self.M = np.zeros((6, 8))
         for i in range(8):
             self.M[:3, i] = self.thruster_d[i]
@@ -92,13 +92,13 @@ class PID:
 
         self.Minv = self.M.T @ np.linalg.inv(self.M @ self.M.T)
 
-        # ----------- PID控制参数 -----------#
-        # 积分项上限，防止积分饱和
+        # ----------- PID Control Parameters -----------#
+        # Integral term limits to prevent integral windup
         self.lin_x_int_limit = 2.0
         self.lin_z_int_limit = 2.0
         self.ang_z_int_limit = 1.0
         
-        # 误差累积和上一次误差
+        # Error accumulation and previous error
         self.lin_x_error_sum = 0.0
         self.lin_z_error_sum = 0.0
         self.ang_z_error_sum = 0.0
@@ -106,15 +106,15 @@ class PID:
         self.lin_z_last_error = 0.0
         self.ang_z_last_error = 0.0
         
-        # 深度控制PID参数（可选，用于保持恒定深度）
-        self.depth_target = None  # 初始深度目标为None
+        # Depth control PID parameters (optional, for maintaining constant depth)
+        self.depth_target = None  # Initial depth target is None
         
     def set_depth_target(self, depth):
-        """设置深度保持目标"""
+        """Set depth holding target"""
         self.depth_target = depth
         
     def reset(self):
-        """重置PID控制器状态"""
+        """Reset PID controller state"""
         self.lin_x_error_sum = 0.0
         self.lin_z_error_sum = 0.0
         self.ang_z_error_sum = 0.0
@@ -125,87 +125,87 @@ class PID:
         
     def compute_control(self, current_state, cmd_vel):
         """
-        根据cmd_vel计算PID控制输出
+        Calculate PID control output based on cmd_vel
         
-        参数:
-        - current_state: 当前状态 (包含位置、速度、姿态等)
-        - cmd_vel: 包含linear.x和angular.z的目标速度
+        Parameters:
+        - current_state: Current state (including position, velocity, attitude, etc.)
+        - cmd_vel: Target velocity containing linear.x and angular.z
         
-        返回:
-        - 推进器控制输出 (8个推进器的力)
+        Returns:
+        - Thruster control output (forces for 8 thrusters)
         """
-        # 提取当前速度状态
+        # Extract current velocity state
         body_vel = current_state.body_velocity
         body_ang_vel = current_state.body_angular_velocity
         current_lin_x = body_vel[0]
         current_lin_z = body_vel[2]
         current_ang_z = body_ang_vel[2]
 
-        # 提取目标速度
+        # Extract target velocity
         target_lin_x = cmd_vel.linear.x
         target_lin_z = cmd_vel.linear.z
         target_ang_z = cmd_vel.angular.z
         
-        # 计算时间间隔
+        # Calculate time interval
         dt = 0.01
             
-        # 计算线速度误差
+        # Calculate linear velocity error
         lin_x_error = target_lin_x - current_lin_x
         lin_z_error = target_lin_z - current_lin_z
         
-        # X方向PID控制
+        # X direction PID control
         # if abs(lin_x_error) < 0.01:
         #     lin_x_error = 0
             # self.lin_x_error_sum = 0
-        # 计算积分项
+        # Calculate integral term
         self.lin_x_error_sum += lin_x_error * dt
-        # 限制积分项，防止积分饱和
+        # Limit integral term to prevent integral windup
         self.lin_x_error_sum = np.clip(self.lin_x_error_sum, -self.lin_x_int_limit, self.lin_x_int_limit)
-        # 计算微分项
+        # Calculate derivative term
         lin_x_error_diff = (lin_x_error - self.lin_x_last_error) / dt
         self.lin_x_last_error = lin_x_error
-        # 计算前向PID输出
+        # Calculate forward PID output
         lin_x_pid_output = (self.Kp_lin_x * lin_x_error + 
                           self.Ki_lin_x * self.lin_x_error_sum + 
                           self.Kd_lin_x * lin_x_error_diff)
         
-        # Z方向PID控制
-        if abs(lin_z_error) < 0.005:  # 减小死区
+        # Z direction PID control
+        if abs(lin_z_error) < 0.005:  # Reduce dead zone
             lin_z_error = 0
             self.lin_z_error_sum = 0
-        # 计算积分项
+        # Calculate integral term
         self.lin_z_error_sum += lin_z_error * dt
-        # 限制积分项，防止积分饱和
+        # Limit integral term to prevent integral windup
         self.lin_z_error_sum = np.clip(self.lin_z_error_sum, -self.lin_z_int_limit, self.lin_z_int_limit)
-        # 计算微分项
+        # Calculate derivative term
         lin_z_error_diff = (lin_z_error - self.lin_z_last_error) / dt
         self.lin_z_last_error = lin_z_error
-        # 计算垂直PID输出
+        # Calculate vertical PID output
         lin_z_pid_output = (self.Kp_lin_z * lin_z_error + 
                           self.Ki_lin_z * self.lin_z_error_sum + 
                           self.Kd_lin_z * lin_z_error_diff)
         
-        # 计算角速度误差
+        # Calculate angular velocity error
         ang_z_error = target_ang_z - current_ang_z
         if abs(ang_z_error) < 0.005:
             ang_z_error = 0
             self.ang_z_error_sum = 0
-        # 计算积分项
+        # Calculate integral term
         self.ang_z_error_sum += ang_z_error * dt
-        # 限制积分项，防止积分饱和
+        # Limit integral term to prevent integral windup
         self.ang_z_error_sum = np.clip(self.ang_z_error_sum, -self.ang_z_int_limit, self.ang_z_int_limit)
-        # 计算微分项
+        # Calculate derivative term
         ang_z_error_diff = (ang_z_error - self.ang_z_last_error) / dt
         self.ang_z_last_error = ang_z_error
-        # 计算角速度PID输出
+        # Calculate angular velocity PID output
         ang_z_pid_output = (self.Kp_ang_z * ang_z_error + 
                           self.Ki_ang_z * self.ang_z_error_sum + 
                           self.Kd_ang_z * ang_z_error_diff)
         
-        # 创建六维控制向量 [Fx, Fy, Fz, Tx, Ty, Tz] (NED坐标系)
+        # Create six-dimensional control vector [Fx, Fy, Fz, Tx, Ty, Tz] (NED coordinate system)
         u_til = np.zeros(6)
-        u_til[0] = lin_x_pid_output  # X方向力
-        u_til[5] = -ang_z_pid_output  # Z方向力矩
+        u_til[0] = lin_x_pid_output  # X direction force
+        u_til[5] = -ang_z_pid_output  # Z direction torque
         
         if self.depth_target is not None:
             current_depth = current_state.vec[2]
@@ -214,29 +214,29 @@ class PID:
         else:
             u_til[2] = -lin_z_pid_output
         
-        # 补偿浮力力矩（如果需要）
-        # 从状态中获取旋转矩阵
+        # Compensate buoyancy torque (if needed)
+        # Get rotation matrix from state
         rotation_matrix = current_state.mat[:3, :3]
         u_til[3:] += np.cross(rotation_matrix.T @ np.array([0, 0, 1]),
                             self.cob) * self.V * self.rho * self.gravity
         
-        # 将力转换到机体坐标系
+        # Convert forces to body coordinate system
         # u_til[:3] = rotation_matrix.T @ u_til[:3]
         
-        # 将力矩转换为推进器输出
+        # Convert torques to thruster output
         thruster_forces = self.Minv @ u_til
         
         return thruster_forces
         
     def u(self, x, cmd_vel):
         """
-        与原LQR接口兼容的方法
+        Method compatible with the original LQR interface
         
-        参数:
-        - x: 当前状态
-        - cmd_vel: 包含linear.x和angular.z的目标速度对象
+        Parameters:
+        - x: Current state
+        - cmd_vel: Target velocity object containing linear.x and angular.z
         
-        返回:
-        - 推进器控制输出
+        Returns:
+        - Thruster control output
         """
         return self.compute_control(x, cmd_vel)

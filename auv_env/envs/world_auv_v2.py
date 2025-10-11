@@ -37,7 +37,7 @@ class WorldAuvV2(WorldBase):
         """
         observed = []
         cmd_vel = CmdVel()
-        # 归一化展开
+        # Normalize and expand
         cmd_vel.linear.x = action_waypoint[0] * self.action_range_scale[0]
         cmd_vel.angular.z = action_waypoint[1] * self.action_range_scale[1]
         for j in range(10):
@@ -93,7 +93,7 @@ class WorldAuvV2(WorldBase):
                                        high=np.float32(self.config['action_range_high']),
                                        dtype=np.float32)
         # STATE:
-        # target distance、angle、协方差行列式值、bool; agent 自身定位; last action waypoint;
+        # target distance, angle, covariance determinant value, bool; agent self-localization; last action waypoint;
         state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
                                                             # [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
                                             [0.0, -np.pi, -1.0, -1.0]))
@@ -101,7 +101,7 @@ class WorldAuvV2(WorldBase):
                                                             # [self.top_corner[0], self.top_corner[1], np.pi])),
                                             [self.config['agent']['sensor_r'], np.pi, 1.0, 1.0]))
 
-        # target distance、angle、协方差行列式值、bool;agent 自身定位;
+        # target distance, angle, covariance determinant value, bool; agent self-localization;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
@@ -169,7 +169,7 @@ class WorldAuvV2(WorldBase):
 
     def state_func(self, observed, action_waypoint):
         '''
-        在父类的step中调用该函数对self.state进行更新
+        Called in the parent class's step method to update self.state
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         # Find the closest obstacle coordinate.

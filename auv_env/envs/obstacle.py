@@ -31,10 +31,10 @@ obstacles = {
 def rotate_point(point, center, angle):
     angle_rad = np.radians(angle)
 
-    # 计算点相对于中心的偏移量
+    # Calculate point offset relative to center
     offset = np.array(point) - np.array(center)
 
-    # 构建旋转矩阵
+    # Build rotation matrix
     # In HoloOcean,x and y is contrary to the Cartesian coordinate system
     rotation_matrix = np.array([[np.sin(angle_rad), np.cos(angle_rad)],
                                 [np.cos(angle_rad), -np.sin(angle_rad)]])
@@ -42,10 +42,10 @@ def rotate_point(point, center, angle):
     #                             [-np.sin(angle_rad), -np.cos(angle_rad)]])
     # rotation_matrix = np.array([[np.cos(angle_rad), -np.sin(angle_rad)],
     #                             [np.sin(angle_rad), -np.cos(angle_rad)]])
-    # 计算旋转后的偏移量
+    # Calculate rotated offset
     new_offset = np.dot(rotation_matrix, offset)
 
-    # 将旋转后的偏移量添加到中心点的坐标上，得到旋转后的点的坐标
+    # Add rotated offset to center coordinates to get rotated point coordinates
     new_point = np.array(center) + new_offset
 
     return new_point
@@ -128,14 +128,14 @@ class Obstacle:
                                        thickness=5.0, lifetime=0.0)
                 self.polygons.append(Polygon(points))
 
-                # 使用边框点的中心作为3D障碍物的位置
+                # Use center of bounding box points as 3D obstacle position
                 loc_center = rotate_point(obstacle['center'][j], self.sub_center, self.rot_angs[i])
                 loc = loc_center + np.array(self.sub_coordinates[i])
                 loc = np.append(loc, self.fix_depth)
                 
-                # 使用与边框相同的坐标，不进行任何翻转
-                # loc[0] *= -1  # 注释掉x坐标翻转
-                # loc[1] *= -1  # 注释掉y坐标翻转
+                # Use same coordinates as bounding box, no flipping
+                # loc[0] *= -1  # Comment out x coordinate flipping
+                # loc[1] *= -1  # Comment out y coordinate flipping
                 _scale = [obstacle['scale'][j][0] * self.res, obstacle['scale'][j][1] * self.res,
                           obstacle['scale'][j][2] * 3]
                 self.env.spawn_prop(prop_type="box", scale=_scale, location=loc.tolist(),
@@ -173,7 +173,7 @@ class Obstacle:
             point1[:2] + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
             theta = np.random.uniform(-np.pi, np.pi)
             point2[:2] + np.array([margin * np.cos(theta), -margin * np.sin(theta)])
-            # 定义线段
+            # Define line segment
             line = LineString([point1, point2])
 
             for polygon in self.polygons:

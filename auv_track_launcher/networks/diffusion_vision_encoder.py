@@ -43,15 +43,13 @@ class Encoder(nn.Module):
         return encoding
     
 if __name__ == "__main__":
-    # 参数设置
     batch_size = 4
     num_images = 5  # n+1 张图片
     image_size = (3, 224, 224)  # 符合 ResNet 的输入要求
 
-    # 随机生成输入数据
     images = torch.rand(batch_size, num_images, *image_size)  # [batch_size, num_images, 3, 224, 224]
 
     model = Encoder()
-    output = model(images)  # 输出编码结果
+    output = model(images)
 
     print("输出编码结果的形状:", output.shape)  # [batch_size, tcn_output_dim]

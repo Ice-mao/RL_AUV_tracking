@@ -63,7 +63,7 @@ class WorldAuvV0Sample(WorldBase):
             raise ValueError("Unknown target dimension: {}".format(self.config['target']['target_dim']))
         
         # observation_space:
-        # target distance、angle、协方差行列式值、bool; agent 自身定位;
+        # target distance, angle, covariance determinant value, bool; agent self-localization;
         # state_lower_bound = np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets,
         #                                                     # [self.bottom_corner[0], self.bottom_corner[1], -np.pi])),
         #                                     [0.0, -np.pi]))
@@ -77,7 +77,7 @@ class WorldAuvV0Sample(WorldBase):
         state_upper_bound = np.concatenate((np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets,
                                                             [self.top_corner[0], self.top_corner[1], np.pi])),
                                             [self.config['agent']['sensor_r'], np.pi]))
-        # target distance、angle、协方差行列式值、bool;agent 自身定位;
+        # target distance, angle, covariance determinant value, bool; agent self-localization;
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
@@ -113,7 +113,7 @@ class WorldAuvV0Sample(WorldBase):
 
     def state_func(self, observed, action):
         '''
-        在父类的step中调用该函数对self.state进行更新
+        Called in the parent class's step method to update self.state
         RL state: [d, alpha, log det(Sigma), observed] * nb_targets, [o_d, o_alpha]
         '''
         # Find the closest obstacle coordinate.

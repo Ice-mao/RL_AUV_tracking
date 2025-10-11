@@ -19,7 +19,6 @@ from auv_control.control import CmdVel
 from auv_control.estimation import KFbelief, UKFbelief
 from auv_control.planning.local_planner import TrajectoryPlanner, TrajectoryBuffer
 
-from auv_env.maps import map_utils
 import auv_env.util as util
 from auv_env.envs.obstacle import Obstacle
 from auv_env.envs.agent import AgentAuv, AgentAuvTarget, AgentAuvManual
@@ -123,7 +122,7 @@ class WorldBase:
 
     def step(self, action):
         if self.controller == 'LQR':
-            # 从RL action生成目标knot
+            # Generate target knot from RL action
             r = action[0] * self.action_range_scale[0]
             theta = action[1] * self.action_range_scale[1]
             target_pos = util.polar_distance_global(np.array([r, theta]), self.agent.est_state.vec[:2],
@@ -131,10 +130,10 @@ class WorldBase:
             angle = action[2] * self.action_range_scale[2]
             target_yaw = self.agent.est_state.vec[8] + np.rad2deg(angle)
             
-            # 目标knot: [x, y, yaw_radians]
+            # Target knot: [x, y, yaw_radians]
             self.target_knot = np.array([target_pos[0], target_pos[1], np.radians(target_yaw)])
             
-            # 当前状态
+            # Current state
             current_state = np.array([
                 self.agent.est_state.vec[0],  # x
                 self.agent.est_state.vec[1],  # y
@@ -147,18 +146,18 @@ class WorldBase:
 
             # visualization
             if self.config['draw_traj']:
-                # 绘制平滑轨迹上的每个点
+                # Draw each point on the smooth trajectory
                 for i, waypoint in enumerate(smooth_trajectory):
                     self.ocean.draw_point(
                         loc=[waypoint[0], waypoint[1], -5.0],  # [x, y, z]
-                        color=[0, 255, 0],  # 绿色
+                        color=[0, 255, 0],  # Green
                         thickness=5.0,
                         lifetime=1.0
                     )
-                # 绘制目标knot (用红色标出最终目标)
+                # Draw target knot (mark final target in red)
                 self.ocean.draw_point(
                     loc=[self.target_knot[0], self.target_knot[1], -5.0],
-                    color=[255, 0, 0],  # 红色
+                    color=[255, 0, 0],  # Red
                     thickness=8.0,
                     lifetime=1.0
                 )
@@ -181,7 +180,7 @@ class WorldBase:
                     self.target_u = np.zeros(8)
                     self.ocean.act(target, self.target_u)
             
-            # 为LQR获取当前tick对应的路径点
+            # Get current tick's waypoint for LQR
             if self.controller == 'LQR':
                 desired_waypoint = self.trajectory_buffer.get_current_waypoint()
                 if desired_waypoint is not None:
@@ -191,14 +190,14 @@ class WorldBase:
                         np.rad2deg(desired_waypoint[2])  # target yaw in degrees
                     ])
                 else:
-                    # 如果轨迹用完，保持最后的目标位置
+                    # If trajectory is exhausted, maintain the last target position
                     self.action = np.array([
                         self.target_knot[0], 
                         self.target_knot[1], 
                         np.rad2deg(self.target_knot[2])
                     ])
             
-            # 更新agent
+            # Update agent
             self.u = self.agent.update(self.action, self.fix_depth, self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()
@@ -485,19 +484,19 @@ class WorldBase:
         return is_valid, rand_xy_global, util.wrap_around(rand_ang + frame_theta)
 
     def observation_noise(self, z):
-        # 测量噪声矩阵，假设独立
+        # Measurement noise matrix, assuming independence
         obs_noise_cov = np.array([[self.config['agent']['sensor_r_sd'] * self.config['agent']['sensor_r_sd'], 0.0],
                                   [0.0, self.config['agent']['sensor_b_sd'] * self.config['agent']['sensor_b_sd']]])
         return obs_noise_cov
 
     def observation(self, target):
         """
-        返回是否观测到目标，以及测量值
+        Returns whether the target is observed and the measurement values
         """
         r, alpha = util.relative_distance_polar(target.state.vec[:2],
                                                 xy_base=self.agent.state.vec[:2],
                                                 theta_base=np.radians(self.agent.state.vec[8]))
-        # 判断是否观察到目标
+        # Determine if the target is observed
         observed = (r <= self.config['agent']['sensor_r']) \
                    & (abs(alpha) <= self.config['agent']['fov'] / 2 / 180 * np.pi) \
                    & self.obstacles.check_obstacle_block(target.state.vec[:2], self.agent.state.vec[:2],
@@ -505,7 +504,7 @@ class WorldBase:
         z = None
         if observed:
             z = np.array([r, alpha])
-            z += np.random.multivariate_normal(np.zeros(2, ), self.observation_noise(z))  # 加入噪声
+            z += np.random.multivariate_normal(np.zeros(2, ), self.observation_noise(z))  # Add noise
         return observed, z
 
     def observe_and_update_belief(self):

@@ -45,7 +45,7 @@ class Display2D(Wrapper):
         for i in range(len(self.env_core.targets)):
             self.traj_y[i][0].append(target_true_pos[i][0])
             self.traj_y[i][1].append(target_true_pos[i][1])
-        # 如果需要调试，可视化训练进度，则可以进行render
+        # Render for debugging and visualizing training progress if needed
         self.render()
         # self.render_test()
         return self.env.step(action)
@@ -284,26 +284,26 @@ class Display3D(Wrapper):
         
         # Create figure for 3D visualization
         self.fig = plt.figure(self.figID, figsize=(12, 10))
-        self.ax = None  # 保存3D axes对象
+        self.ax = None  # Save 3D axes object
         self.n_frames = 0
         self.skip = skip
         self.c_cf = np.sqrt(-2 * np.log(1 - confidence))
         self.traj_num = 0
         
-        # 保存视角信息，用于保持用户的旋转状态
-        # 调整默认视角：更高的仰角可以从上方俯视，避免轨迹被遮挡
-        self.view_elev = 35  # 默认仰角（从25提高到35度，更俯视）
-        self.view_azim = -60  # 默认方位角（调整角度以获得更好的视野）
+        # Save view information to maintain user's rotation state
+        # Adjust default view: higher elevation angle for overhead view, avoiding trajectory occlusion
+        self.view_elev = 35  # Default elevation angle (increased from 25 to 35 degrees for better overhead view)
+        self.view_azim = -60  # Default azimuth angle (adjusted for better field of view)
         
         # Color scheme for better visualization
         self.colors = {
-            'agent': '#1f77b4',         # 蓝色
-            'agent_est': '#17becf',     # 青色
-            'target': '#d62728',        # 红色
-            'belief': '#2ca02c',        # 绿色
-            'trajectory': '#ff7f0e',    # 橙色
-            'sensor_fov': '#7bccc4',    # 浅绿色
-            'obstacle': "#2F2E2E",      # 深灰色
+            'agent': '#1f77b4',         # Blue
+            'agent_est': '#17becf',     # Cyan
+            'target': '#d62728',        # Red
+            'belief': '#2ca02c',        # Green
+            'trajectory': '#ff7f0e',    # Orange
+            'sensor_fov': '#7bccc4',    # Light green
+            'obstacle': "#2F2E2E",      # Dark gray
         }
 
     def close(self):
@@ -336,13 +336,13 @@ class Display3D(Wrapper):
         target_cov = [self.env_core.belief_targets[i].cov for i in range(num_targets)]
 
         if self.n_frames % self.skip == 0:
-            # 如果axes已存在，保存当前视角
+            # If axes already exist, save current view angle
             if self.ax is not None:
                 try:
                     self.view_elev = self.ax.elev
                     self.view_azim = self.ax.azim
                 except:
-                    pass  # 如果获取失败，使用默认值
+                    pass  # If getting view angle fails, use default values
             
             self.fig.clf()
             
@@ -352,7 +352,7 @@ class Display3D(Wrapper):
             # ========== 3D View ==========
             self._render_3d_view(self.ax, state, est_state, target_true_pos, target_b_state, target_cov, num_targets)
             
-            # 恢复之前的视角
+            # Restore previous view angle
             self.ax.view_init(elev=self.view_elev, azim=self.view_azim)
             
             if not record:
@@ -368,11 +368,11 @@ class Display3D(Wrapper):
         """Render the main 3D perspective view"""
         ax.set_title("3D Perspective View", fontsize=12, fontweight='bold', pad=10)
         
-        # 减少网格线密度，设置更简洁的风格
+        # Reduce grid line density for cleaner style
         ax.set_facecolor('white')
         ax.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
         
-        # 减少刻度数量以减少网格线
+        # Reduce number of ticks to minimize grid lines
         ax.xaxis.set_major_locator(plt.MaxNLocator(5))
         ax.yaxis.set_major_locator(plt.MaxNLocator(5))
         ax.zaxis.set_major_locator(plt.MaxNLocator(5))
@@ -394,11 +394,11 @@ class Display3D(Wrapper):
         # Draw targets
         if hasattr(self.env_core, 'targets'):
             for i in range(num_targets):
-                # Target trajectory - 改回原来的深红色，提高zorder确保在障碍物上层
+                # Target trajectory - restored to original dark red, increased zorder to ensure above obstacles
                 if len(self.traj_y) > i and len(self.traj_y[i][0]) > 0:
                     ax.plot(self.traj_y[i][0], self.traj_y[i][1], self.traj_y[i][2], 
-                           'r-', linewidth=2.5, alpha=0.9,  # 增加线宽和不透明度
-                           label='Target Path' if i == 0 else "", zorder=10)  # 高zorder确保在最上层
+                           'r-', linewidth=2.5, alpha=0.9,  # Increased line width and opacity
+                           label='Target Path' if i == 0 else "", zorder=10)  # High zorder to ensure topmost layer
                 
                 # Target belief (simplified as sphere)
                 if len(target_cov) > i and target_cov[i].shape[0] >= 3:
@@ -416,11 +416,11 @@ class Display3D(Wrapper):
                           label='Belief' if i == 0 else "", 
                           edgecolors='darkgreen', linewidth=1.5, zorder=4)
 
-        # Draw agent trajectory - 改回原来的深蓝色，提高zorder确保在障碍物上层
+        # Draw agent trajectory - restored to original dark blue, increased zorder to ensure above obstacles
         if len(self.traj[0]) > 1:
             ax.plot(self.traj[0], self.traj[1], self.traj[2], 
-                   'b-', linewidth=2.5, alpha=0.9,  # 增加线宽和不透明度
-                   label='AUV Path', zorder=10)  # 高zorder确保在最上层
+                   'b-', linewidth=2.5, alpha=0.9,  # Increased line width and opacity
+                   label='AUV Path', zorder=10)  # High zorder to ensure topmost layer
         
         # Current agent position
         ax.scatter(state[0], state[1], state[2], 
@@ -446,8 +446,6 @@ class Display3D(Wrapper):
         
         # Add legend with better positioning
         ax.legend(loc='upper left', fontsize=8, framealpha=0.9)
-        
-        # 注意：视角由render函数中统一设置，以保持用户的交互状态
 
     def _draw_3d_obstacles(self, ax):
         """Draw 3D obstacles with professional appearance for paper publication"""
@@ -483,13 +481,13 @@ class Display3D(Wrapper):
                 ]
                 
                 # Create solid obstacle with realistic appearance
-                # 使用浅灰色和较低的透明度，更适合论文展示且不会过度遮挡轨迹
+                # Use light gray and lower transparency, better for paper presentation without excessive trajectory occlusion
                 poly3d = Poly3DCollection(faces, 
-                                         facecolors="#B0B0B0",  # 浅灰色
-                                         edgecolors='#707070',  # 中灰色边框
+                                         facecolors="#B0B0B0",  # Light gray
+                                         edgecolors='#707070',  # Medium gray border
                                          linewidths=1.0, 
-                                         alpha=0.5,  # 降低不透明度，避免遮挡轨迹
-                                         zorder=0)  # 低zorder，确保在轨迹下层
+                                         alpha=0.5,  # Reduced opacity to avoid trajectory occlusion
+                                         zorder=0)  # Low zorder to ensure below trajectories
                 ax.add_collection3d(poly3d)
 
     def _draw_belief_ellipsoid(self, ax, center, cov_matrix):
@@ -569,7 +567,7 @@ class Display3D(Wrapper):
         # Draw targets
         if hasattr(self.env_core, 'targets'):
             for i in range(num_targets):
-                # Target trajectory - 改回原来的深红色
+                # Target trajectory - restored to original dark red
                 if len(self.traj_y) > i and len(self.traj_y[i][0]) > 0:
                     ax.plot(self.traj_y[i][0], self.traj_y[i][1], 
                            'r-', linewidth=2, alpha=0.8)
@@ -588,7 +586,7 @@ class Display3D(Wrapper):
                           c='green', s=80, marker='s', alpha=0.6, 
                           edgecolors='darkgreen', linewidth=1.5, zorder=4)
         
-        # Draw agent trajectory - 改回原来的深蓝色
+        # Draw agent trajectory - restored to original dark blue
         if len(self.traj[0]) > 1:
             ax.plot(self.traj[0], self.traj[1], 
                    'b-', linewidth=2, alpha=0.8, zorder=3)
@@ -648,7 +646,7 @@ class Display3D(Wrapper):
         # Draw targets
         if hasattr(self.env_core, 'targets'):
             for i in range(num_targets):
-                # Target trajectory - 改回原来的深红色
+                # Target trajectory - restored to original dark red
                 if len(self.traj_y) > i and len(self.traj_y[i][0]) > 0:
                     ax.plot(self.traj_y[i][0], self.traj_y[i][2], 
                            'r-', linewidth=2, alpha=0.8)
@@ -663,7 +661,7 @@ class Display3D(Wrapper):
                           c='green', s=80, marker='s', alpha=0.6, 
                           edgecolors='darkgreen', linewidth=1.5, zorder=4)
         
-        # Draw agent trajectory - 改回原来的深蓝色
+        # Draw agent trajectory - restored to original dark blue
         if len(self.traj[0]) > 1:
             ax.plot(self.traj[0], self.traj[2], 
                    'b-', linewidth=2, alpha=0.8, zorder=3)

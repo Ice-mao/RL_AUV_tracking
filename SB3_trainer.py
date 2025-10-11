@@ -251,7 +251,6 @@ def eval_greedy(model_dir, config: dict):
     :param model_dir:
     :return:
     """
-    eval_config = load_config(os.path.join(ROOT_DIR, 'configs/eval_tracking_config.yml'))
     env_name = config['env']['name']
 
     env = auv_env.make(env_name,
