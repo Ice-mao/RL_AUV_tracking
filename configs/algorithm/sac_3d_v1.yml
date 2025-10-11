@@ -24,7 +24,7 @@ policy:
 
 policy_hparams:
   policy: "SAC"
-  lr: 0.0002
+  lr: 0.0001
   buffer_size: 10000
   batch_size: 256
   gamma: 0.99

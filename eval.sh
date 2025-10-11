@@ -5,7 +5,7 @@ export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 # Change these variables to easily switch between experiments
 
 # 1. Choose the policy: "PPO" or "SAC"
-ALG_CONFIG="configs/algorithm/sac_3d_v0_test.yml"
+ALG_CONFIG="configs/algorithm/sac_3d_v0.yml"
 # "configs/algorithm/ppo_v1.yml"
 # "configs/algorithm/ppo.yml"
 # ppo_3d_v0
@@ -13,7 +13,7 @@ ALG_CONFIG="configs/algorithm/sac_3d_v0_test.yml"
 # sac
 
 # 2. Choose the environment config
-ENV_CONFIG="configs/envs/3d_v0_config_test.yml"
+ENV_CONFIG="configs/envs/3d_v0_config.yml"
 # "configs/envs/v0_config.yml"
 # "configs/envs/v1_config.yml"
 # "configs/envs/3d_v0_config.yml"
@@ -22,8 +22,8 @@ ENV_CONFIG="configs/envs/3d_v0_config_test.yml"
 CHOICE="2"
 
 # 4. Param
-EVAL="0"
-SHOW_VIEWPORT="0"
+EVAL="1"
+SHOW_VIEWPORT="1"
 
 echo "================================================="
 echo "Running experiment with the following settings:"

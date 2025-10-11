@@ -5,18 +5,20 @@ export PYTHONPATH=$PYTHONPATH:/data/RL/RL_AUV_tracking/RL_AUV_tracking/
 # Change these variables to easily switch between experiments
 
 # 1. Choose the policy: "PPO" or "SAC"
-ALG_CONFIG="configs/algorithm/sac_3d_v0_test.yml"
+ALG_CONFIG="configs/algorithm/sac_3d_v1.yml"
 # "configs/algorithm/ppo_v1.yml"
 # "configs/algorithm/ppo.yml"
 # ppo_3d_v0
 # sac_3d_v0
+# sac_3d_v1
 # sac
 
 # 2. Choose the environment config
-ENV_CONFIG="configs/envs/3d_v0_config_test.yml"
+ENV_CONFIG="configs/envs/3d_v1_config.yml"
 # "configs/envs/v0_config.yml"
 # "configs/envs/v1_config.yml"
 # "configs/envs/3d_v0_config.yml"
+# 3d_v1_config
 # 3d_v0_config_test
 
 # 3. Choose the action: "0" (train), "1" (keep train), "2" (eval)

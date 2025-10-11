@@ -62,7 +62,7 @@ class Obstacle3D:
             self.rot_angs_layer1 = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
             self.rot_angs_layer2 = [np.random.choice(np.arange(-10, 10, 1) / 10. * 180) for _ in range(self.num_obstacles)]
         else:
-            self.chosen_idx_layer1 = np.array([4, 5, 0, 7])
+            self.chosen_idx_layer1 = np.array([7, 0, 4, 5])
             self.chosen_idx_layer2 = np.array([1, 2, 3, 6])
             self.rot_angs_layer1 = np.array([36.0, -72.0, -144.0, 0.0])
             self.rot_angs_layer2 = np.array([45.0, -90.0, 0.0, 90.0])

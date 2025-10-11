@@ -283,11 +283,28 @@ class Display3D(Wrapper):
         self.size = self.env_core.size
         
         # Create figure for 3D visualization
-        self.fig = plt.figure(self.figID, figsize=(12, 8))
+        self.fig = plt.figure(self.figID, figsize=(12, 10))
+        self.ax = None  # 保存3D axes对象
         self.n_frames = 0
         self.skip = skip
         self.c_cf = np.sqrt(-2 * np.log(1 - confidence))
         self.traj_num = 0
+        
+        # 保存视角信息，用于保持用户的旋转状态
+        # 调整默认视角：更高的仰角可以从上方俯视，避免轨迹被遮挡
+        self.view_elev = 35  # 默认仰角（从25提高到35度，更俯视）
+        self.view_azim = -60  # 默认方位角（调整角度以获得更好的视野）
+        
+        # Color scheme for better visualization
+        self.colors = {
+            'agent': '#1f77b4',         # 蓝色
+            'agent_est': '#17becf',     # 青色
+            'target': '#d62728',        # 红色
+            'belief': '#2ca02c',        # 绿色
+            'trajectory': '#ff7f0e',    # 橙色
+            'sensor_fov': '#7bccc4',    # 浅绿色
+            'obstacle': "#2F2E2E",      # 深灰色
+        }
 
     def close(self):
         plt.close(self.fig)
@@ -319,23 +336,56 @@ class Display3D(Wrapper):
         target_cov = [self.env_core.belief_targets[i].cov for i in range(num_targets)]
 
         if self.n_frames % self.skip == 0:
+            # 如果axes已存在，保存当前视角
+            if self.ax is not None:
+                try:
+                    self.view_elev = self.ax.elev
+                    self.view_azim = self.ax.azim
+                except:
+                    pass  # 如果获取失败，使用默认值
+            
             self.fig.clf()
             
-            # Create single 3D view
-            ax_3d = self.fig.add_subplot(111, projection='3d')
+            # Create single 3D view with interactive controls
+            self.ax = self.fig.add_subplot(111, projection='3d')
 
             # ========== 3D View ==========
-            self._render_3d_view(ax_3d, state, est_state, target_true_pos, target_b_state, target_cov, num_targets)
+            self._render_3d_view(self.ax, state, est_state, target_true_pos, target_b_state, target_cov, num_targets)
+            
+            # 恢复之前的视角
+            self.ax.view_init(elev=self.view_elev, azim=self.view_azim)
             
             if not record:
-                plt.draw()
+                # Enable interactive mode for mouse rotation
+                plt.ion()
+                self.fig.canvas.draw()
+                self.fig.canvas.flush_events()
                 plt.pause(0.01)
 
         self.n_frames += 1
 
     def _render_3d_view(self, ax, state, est_state, target_true_pos, target_b_state, target_cov, num_targets):
         """Render the main 3D perspective view"""
-        ax.set_title("3D AUV Tracking Environment")
+        ax.set_title("3D Perspective View", fontsize=12, fontweight='bold', pad=10)
+        
+        # 减少网格线密度，设置更简洁的风格
+        ax.set_facecolor('white')
+        ax.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
+        
+        # 减少刻度数量以减少网格线
+        ax.xaxis.set_major_locator(plt.MaxNLocator(5))
+        ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+        ax.zaxis.set_major_locator(plt.MaxNLocator(5))
+        
+        ax.xaxis.pane.fill = False
+        ax.yaxis.pane.fill = False
+        ax.zaxis.pane.fill = False
+        ax.xaxis.pane.set_edgecolor('lightgray')
+        ax.yaxis.pane.set_edgecolor('lightgray')
+        ax.zaxis.pane.set_edgecolor('lightgray')
+        ax.xaxis.pane.set_alpha(0.1)
+        ax.yaxis.pane.set_alpha(0.1)
+        ax.zaxis.pane.set_alpha(0.1)
         
         # Draw obstacles if available
         if hasattr(self.env_core, 'obstacles'):
@@ -344,59 +394,68 @@ class Display3D(Wrapper):
         # Draw targets
         if hasattr(self.env_core, 'targets'):
             for i in range(num_targets):
-                # Target trajectory (红色轨迹点)
+                # Target trajectory - 改回原来的深红色，提高zorder确保在障碍物上层
                 if len(self.traj_y) > i and len(self.traj_y[i][0]) > 0:
                     ax.plot(self.traj_y[i][0], self.traj_y[i][1], self.traj_y[i][2], 
-                           'r.', markersize=2, alpha=0.6, label='Target Trajectory' if i == 0 else "")
+                           'r-', linewidth=2.5, alpha=0.9,  # 增加线宽和不透明度
+                           label='Target Path' if i == 0 else "", zorder=10)  # 高zorder确保在最上层
                 
-                # Target belief (projected as sphere)
+                # Target belief (simplified as sphere)
                 if len(target_cov) > i and target_cov[i].shape[0] >= 3:
                     self._draw_belief_ellipsoid(ax, target_b_state[i][:3], target_cov[i][:3, :3])
                 
-                # Current target position (红色圆点)
+                # Current target position
                 ax.scatter(target_true_pos[i][0], target_true_pos[i][1], target_true_pos[i][2], 
-                          c='red', s=80, marker='o', label=f'Target {i}' if i == 0 else "", edgecolors='darkred')
+                          c='red', s=100, marker='o', 
+                          label='Target' if i == 0 else "", 
+                          edgecolors='darkred', linewidth=2, zorder=5)
                 
-                # Target belief center (绿色方块)
+                # Target belief center
                 ax.scatter(target_b_state[i][0], target_b_state[i][1], target_b_state[i][2], 
-                          c='green', s=100, marker='s', alpha=0.7, 
-                          label='Target Belief' if i == 0 else "", edgecolors='darkgreen')
+                          c='green', s=80, marker='s', alpha=0.6, 
+                          label='Belief' if i == 0 else "", 
+                          edgecolors='darkgreen', linewidth=1.5, zorder=4)
 
-        # Draw agent
-        # Agent trajectory (蓝色轨迹点)
+        # Draw agent trajectory - 改回原来的深蓝色，提高zorder确保在障碍物上层
         if len(self.traj[0]) > 1:
-            ax.plot(self.traj[0], self.traj[1], self.traj[2], 'b-', linewidth=2, alpha=0.7, label='AUV Path')
+            ax.plot(self.traj[0], self.traj[1], self.traj[2], 
+                   'b-', linewidth=2.5, alpha=0.9,  # 增加线宽和不透明度
+                   label='AUV Path', zorder=10)  # 高zorder确保在最上层
         
-        # Current agent position (蓝色三角形)
-        ax.scatter(state[0], state[1], state[2], c='blue', s=150, marker='^', 
-                  label='AUV', edgecolors='darkblue', linewidth=2)
+        # Current agent position
+        ax.scatter(state[0], state[1], state[2], 
+                  c='blue', s=150, marker='^', 
+                  label='AUV', edgecolors='darkblue', linewidth=2, zorder=6)
         
-        # Agent estimated position (青色三角形)
-        ax.scatter(est_state[0], est_state[1], est_state[2], c='cyan', s=120, marker='^', 
-                  alpha=0.6, label='AUV Estimate', edgecolors='darkcyan')
+        # Agent estimated position
+        ax.scatter(est_state[0], est_state[1], est_state[2], 
+                  c='cyan', s=120, marker='^', 
+                  alpha=0.5, label='AUV Est.', 
+                  edgecolors='darkcyan', linewidth=1.5, zorder=5)
         
-        # Draw agent orientation and sensor FOV (绿色视场角锥体)
+        # Draw agent sensor FOV
         self._draw_3d_sensor_fov(ax, state)
         
         # Set 3D view limits
         ax.set_xlim(self.mapmin[0] - 1, self.mapmax[0] + 1)
         ax.set_ylim(self.mapmin[1] - 1, self.mapmax[1] + 1)
         ax.set_zlim(self.mapmin[2] - 1, self.mapmax[2] + 1)
-        ax.set_xlabel('X (meters)')
-        ax.set_ylabel('Y (meters)')
-        ax.set_zlabel('Z - Depth (meters)')
+        ax.set_xlabel('X (m)', fontsize=10)
+        ax.set_ylabel('Y (m)', fontsize=10)
+        ax.set_zlabel('Z (m)', fontsize=10)
         
-        # Add legend
-        ax.legend(loc='upper left', bbox_to_anchor=(0, 1))
+        # Add legend with better positioning
+        ax.legend(loc='upper left', fontsize=8, framealpha=0.9)
         
-        # Enable mouse interaction
-        ax.mouse_init()
+        # 注意：视角由render函数中统一设置，以保持用户的交互状态
 
     def _draw_3d_obstacles(self, ax):
-        """Draw 3D obstacles as simple rectangular blocks"""
+        """Draw 3D obstacles with professional appearance for paper publication"""
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        
         for i, layer in enumerate([self.env_core.obstacles.polygons_layer1, self.env_core.obstacles.polygons_layer2]):
             for polygon in layer:
-                # Get polygon bounding box (assuming rectangular obstacles)
+                # Get polygon bounding box
                 x_coords, y_coords = polygon.exterior.xy
                 x_coords = list(x_coords[:-1])  # Remove duplicate last point
                 y_coords = list(y_coords[:-1])
@@ -405,26 +464,33 @@ class Display3D(Wrapper):
                 z_min = self.env_core.obstacles.fix_depths[i] - 1
                 z_max = self.env_core.obstacles.fix_depths[i] + 1
 
-                # Draw a simple rectangular box using plot3D lines
                 # Define the 8 vertices of the box
-                vertices = [
+                vertices = np.array([
                     [x_coords[0], y_coords[0], z_min], [x_coords[1], y_coords[1], z_min],
                     [x_coords[2], y_coords[2], z_min], [x_coords[3], y_coords[3], z_min],
                     [x_coords[0], y_coords[0], z_max], [x_coords[1], y_coords[1], z_max], 
                     [x_coords[2], y_coords[2], z_max], [x_coords[3], y_coords[3], z_max]
+                ])
+                
+                # Define the 6 faces of the box
+                faces = [
+                    [vertices[0], vertices[1], vertices[2], vertices[3]],  # bottom
+                    [vertices[4], vertices[5], vertices[6], vertices[7]],  # top
+                    [vertices[0], vertices[1], vertices[5], vertices[4]],  # front
+                    [vertices[2], vertices[3], vertices[7], vertices[6]],  # back
+                    [vertices[0], vertices[3], vertices[7], vertices[4]],  # left
+                    [vertices[1], vertices[2], vertices[6], vertices[5]],  # right
                 ]
                 
-                # Draw the 12 edges of the box
-                edges = [
-                    [0, 1], [1, 2], [2, 3], [3, 0],  # bottom face edges
-                    [4, 5], [5, 6], [6, 7], [7, 4],  # top face edges
-                    [0, 4], [1, 5], [2, 6], [3, 7]   # vertical edges
-                ]
-                
-                for edge in edges:
-                    start, end = vertices[edge[0]], vertices[edge[1]]
-                    ax.plot3D([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], 
-                             'k-', linewidth=2, alpha=0.8)
+                # Create solid obstacle with realistic appearance
+                # 使用浅灰色和较低的透明度，更适合论文展示且不会过度遮挡轨迹
+                poly3d = Poly3DCollection(faces, 
+                                         facecolors="#B0B0B0",  # 浅灰色
+                                         edgecolors='#707070',  # 中灰色边框
+                                         linewidths=1.0, 
+                                         alpha=0.5,  # 降低不透明度，避免遮挡轨迹
+                                         zorder=0)  # 低zorder，确保在轨迹下层
+                ax.add_collection3d(poly3d)
 
     def _draw_belief_ellipsoid(self, ax, center, cov_matrix):
         """Draw 3D belief ellipsoid (simplified as sphere)"""
@@ -441,7 +507,7 @@ class Display3D(Wrapper):
         ax.plot_surface(x, y, z, alpha=0.3, color='green')
 
     def _draw_3d_sensor_fov(self, ax, state):
-        """Draw 3D sensor field of view as a simple filled cone with edge lines"""
+        """Draw 3D sensor field of view as a cone"""
         if 'agent' in self.config and 'sensor_r' in self.config['agent']:
             sensor_range = self.config['agent']['sensor_r']
             h_fov = self.config['agent']['fov'] * np.pi / 180  # horizontal FOV
@@ -451,20 +517,17 @@ class Display3D(Wrapper):
             pos = state[:3]
             yaw = np.radians(state[8])
             
-            # Create simple cone surface
-            n_theta = 16  # angular resolution
-            n_r = 5       # radial resolution
+            # Draw FOV cone with more points for better visualization
+            n_points = 16  # number of points around the cone base
             
-            # Create cone vertices
-            vertices = [pos]  # cone tip at agent position
-            
-            # Generate cone base points in a circle
-            for i in range(n_theta):
-                angle = 2 * np.pi * i / n_theta
+            # Generate cone base points
+            cone_points = []
+            for i in range(n_points):
+                angle = 2 * np.pi * i / n_points
                 
-                # Calculate direction for this angle within FOV
-                h_angle = h_fov * 0.7 * np.cos(angle)  # scale to fit within FOV
-                v_angle = v_fov * 0.7 * np.sin(angle)  # scale to fit within FOV
+                # Calculate direction within FOV
+                h_angle = (h_fov / 2) * np.cos(angle)
+                v_angle = (v_fov / 2) * np.sin(angle)
                 
                 direction = np.array([
                     np.cos(yaw + h_angle) * np.cos(v_angle),
@@ -473,30 +536,197 @@ class Display3D(Wrapper):
                 ])
                 
                 end_point = pos + sensor_range * direction
-                vertices.append(end_point)
+                cone_points.append(end_point)
             
-            # Draw cone surface using triangles
-            for i in range(n_theta):
-                next_i = (i + 1) % n_theta
-                
-                # Create triangle from tip to two adjacent base points
-                triangle_x = [pos[0], vertices[i+1][0], vertices[next_i+1][0]]
-                triangle_y = [pos[1], vertices[i+1][1], vertices[next_i+1][1]]
-                triangle_z = [pos[2], vertices[i+1][2], vertices[next_i+1][2]]
-                
-                ax.plot_trisurf(triangle_x, triangle_y, triangle_z, 
-                               color='green', alpha=0.2, shade=True)
+            # Draw cone edges from tip to base points
+            for i in range(0, n_points, 4):  # Draw every 4th line to reduce clutter
+                ax.plot3D([pos[0], cone_points[i][0]], 
+                         [pos[1], cone_points[i][1]], 
+                         [pos[2], cone_points[i][2]], 
+                         color='green', linewidth=1.5, alpha=0.5, zorder=2)
             
-            # Draw four edge lines (generatrices) from tip to base points
-            # Choose 4 evenly spaced points on the base circle for edge lines
-            edge_indices = [0, n_theta//4, n_theta//2, 3*n_theta//4]
-            for idx in edge_indices:
-                if idx < len(vertices) - 1:  # Make sure we don't go out of bounds
-                    edge_point = vertices[idx + 1]  # +1 because vertices[0] is the tip
-                    ax.plot3D([pos[0], edge_point[0]], 
-                             [pos[1], edge_point[1]], 
-                             [pos[2], edge_point[2]], 
-                             'g-', linewidth=1.5, alpha=0.8)
+            # Draw cone base circle
+            for i in range(n_points):
+                next_i = (i + 1) % n_points
+                ax.plot3D([cone_points[i][0], cone_points[next_i][0]], 
+                         [cone_points[i][1], cone_points[next_i][1]], 
+                         [cone_points[i][2], cone_points[next_i][2]], 
+                         color='green', linewidth=1, alpha=0.4, zorder=2)
+    
+    def _render_top_view(self, ax, state, est_state, target_true_pos, target_b_state, target_cov, num_targets):
+        """Render top view (X-Y plane, looking down on Z axis)"""
+        ax.set_title("Top View (X-Y Plane)", fontsize=12, fontweight='bold', pad=10)
+        ax.set_facecolor('#f8f8f8')
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        
+        # Draw obstacles (project onto X-Y plane)
+        if hasattr(self.env_core, 'obstacles'):
+            for layer in [self.env_core.obstacles.polygons_layer1, self.env_core.obstacles.polygons_layer2]:
+                for polygon in layer:
+                    x_coords, y_coords = polygon.exterior.xy
+                    ax.fill(x_coords, y_coords, color=self.colors['obstacle'], alpha=0.5, edgecolor='black', linewidth=1.5)
+        
+        # Draw targets
+        if hasattr(self.env_core, 'targets'):
+            for i in range(num_targets):
+                # Target trajectory - 改回原来的深红色
+                if len(self.traj_y) > i and len(self.traj_y[i][0]) > 0:
+                    ax.plot(self.traj_y[i][0], self.traj_y[i][1], 
+                           'r-', linewidth=2, alpha=0.8)
+                
+                # Target belief ellipse
+                if len(target_cov) > i and target_cov[i].shape[0] >= 2:
+                    self._draw_belief_ellipse_2d(ax, target_b_state[i][:2], target_cov[i][:2, :2])
+                
+                # Current target position
+                ax.scatter(target_true_pos[i][0], target_true_pos[i][1], 
+                          c='red', s=100, marker='o', 
+                          edgecolors='darkred', linewidth=2, zorder=5)
+                
+                # Target belief center
+                ax.scatter(target_b_state[i][0], target_b_state[i][1], 
+                          c='green', s=80, marker='s', alpha=0.6, 
+                          edgecolors='darkgreen', linewidth=1.5, zorder=4)
+        
+        # Draw agent trajectory - 改回原来的深蓝色
+        if len(self.traj[0]) > 1:
+            ax.plot(self.traj[0], self.traj[1], 
+                   'b-', linewidth=2, alpha=0.8, zorder=3)
+        
+        # Current agent position with orientation arrow
+        ax.scatter(state[0], state[1], 
+                  c='blue', s=150, marker='^', 
+                  edgecolors='darkblue', linewidth=2, zorder=6)
+        
+        # Agent estimated position
+        ax.scatter(est_state[0], est_state[1], 
+                  c='cyan', s=120, marker='^', 
+                  alpha=0.5, edgecolors='darkcyan', linewidth=1.5, zorder=5)
+        
+        # Draw orientation arrow
+        arrow_length = 5
+        yaw = np.radians(state[8])
+        ax.arrow(state[0], state[1], 
+                arrow_length * np.cos(yaw), arrow_length * np.sin(yaw),
+                head_width=2, head_length=1.5, fc='blue', 
+                ec='blue', alpha=0.8, linewidth=2, zorder=6)
+        
+        # Draw sensor FOV in 2D
+        if 'agent' in self.config and 'sensor_r' in self.config['agent']:
+            self._draw_2d_sensor_fov(ax, state)
+        
+        # Set limits and labels
+        ax.set_xlim(self.mapmin[0] - 2, self.mapmax[0] + 2)
+        ax.set_ylim(self.mapmin[1] - 2, self.mapmax[1] + 2)
+        ax.set_xlabel('X (m)', fontsize=10)
+        ax.set_ylabel('Y (m)', fontsize=10)
+        ax.set_aspect('equal', 'box')
+    
+    def _render_side_view(self, ax, state, est_state, target_true_pos, target_b_state, target_cov, num_targets):
+        """Render side view (X-Z plane, looking along Y axis)"""
+        ax.set_title("Side View (X-Z Plane)", fontsize=12, fontweight='bold', pad=10)
+        ax.set_facecolor('#f8f8f8')
+        ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        
+        # Draw environment boundaries
+        ax.axhline(y=self.mapmin[2], color='gray', linestyle='--', alpha=0.3, linewidth=1)
+        ax.axhline(y=self.mapmax[2], color='gray', linestyle='--', alpha=0.3, linewidth=1)
+        
+        # Draw obstacles (project onto X-Z plane - simplified as rectangles)
+        if hasattr(self.env_core, 'obstacles'):
+            for i, layer in enumerate([self.env_core.obstacles.polygons_layer1, 
+                                      self.env_core.obstacles.polygons_layer2]):
+                z_depth = self.env_core.obstacles.fix_depths[i]
+                for polygon in layer:
+                    x_coords, y_coords = polygon.exterior.xy
+                    x_min, x_max = min(x_coords), max(x_coords)
+                    # Draw as rectangle at fixed depth
+                    ax.add_patch(patches.Rectangle((x_min, z_depth - 1), x_max - x_min, 2,
+                                                   facecolor=self.colors['obstacle'], 
+                                                   edgecolor='black', alpha=0.5, linewidth=1.5))
+        
+        # Draw targets
+        if hasattr(self.env_core, 'targets'):
+            for i in range(num_targets):
+                # Target trajectory - 改回原来的深红色
+                if len(self.traj_y) > i and len(self.traj_y[i][0]) > 0:
+                    ax.plot(self.traj_y[i][0], self.traj_y[i][2], 
+                           'r-', linewidth=2, alpha=0.8)
+                
+                # Current target position
+                ax.scatter(target_true_pos[i][0], target_true_pos[i][2], 
+                          c='red', s=100, marker='o', 
+                          edgecolors='darkred', linewidth=2, zorder=5)
+                
+                # Target belief center
+                ax.scatter(target_b_state[i][0], target_b_state[i][2], 
+                          c='green', s=80, marker='s', alpha=0.6, 
+                          edgecolors='darkgreen', linewidth=1.5, zorder=4)
+        
+        # Draw agent trajectory - 改回原来的深蓝色
+        if len(self.traj[0]) > 1:
+            ax.plot(self.traj[0], self.traj[2], 
+                   'b-', linewidth=2, alpha=0.8, zorder=3)
+        
+        # Current agent position
+        ax.scatter(state[0], state[2], 
+                  c='blue', s=150, marker='^', 
+                  edgecolors='darkblue', linewidth=2, zorder=6)
+        
+        # Agent estimated position
+        ax.scatter(est_state[0], est_state[2], 
+                  c='cyan', s=120, marker='^', 
+                  alpha=0.5, edgecolors='darkcyan', linewidth=1.5, zorder=5)
+        
+        # Set limits and labels
+        ax.set_xlim(self.mapmin[0] - 2, self.mapmax[0] + 2)
+        ax.set_ylim(self.mapmin[2] - 2, self.mapmax[2] + 2)
+        ax.set_xlabel('X (m)', fontsize=10)
+        ax.set_ylabel('Z (m)', fontsize=10)
+        ax.set_aspect('equal', 'box')
+    
+    def _draw_belief_ellipse_2d(self, ax, center, cov_matrix):
+        """Draw 2D belief ellipse for top view"""
+        try:
+            eig_val, eig_vec = LA.eig(cov_matrix)
+            angle = 180 / np.pi * np.arctan2(np.real(eig_vec[0][1]), np.real(eig_vec[0][0]))
+            ellipse = patches.Ellipse(
+                (center[0], center[1]),
+                2 * np.sqrt(np.real(eig_val[0])) * self.c_cf,
+                2 * np.sqrt(np.real(eig_val[1])) * self.c_cf,
+                angle=angle, fill=True, zorder=2,
+                facecolor=self.colors['belief'], alpha=0.3,
+                edgecolor=self.colors['belief'], linewidth=1.5)
+            ax.add_patch(ellipse)
+        except:
+            # If eigenvalue decomposition fails, draw a circle
+            radius = np.sqrt(np.trace(cov_matrix)) * self.c_cf / 2
+            circle = patches.Circle((center[0], center[1]), radius, 
+                                   facecolor=self.colors['belief'], alpha=0.3,
+                                   edgecolor=self.colors['belief'], linewidth=1.5)
+            ax.add_patch(circle)
+    
+    def _draw_2d_sensor_fov(self, ax, state):
+        """Draw 2D sensor field of view for top view"""
+        sensor_range = self.config['agent']['sensor_r']
+        fov = self.config['agent']['fov']
+        yaw = state[8]
+        
+        # Draw sensor arc
+        sensor_arc = patches.Wedge((state[0], state[1]), sensor_range,
+                                  theta1=yaw - fov/2, theta2=yaw + fov/2,
+                                  facecolor=self.colors['sensor_fov'], 
+                                  edgecolor=self.colors['sensor_fov'],
+                                  alpha=0.3, linewidth=1.5, zorder=2)
+        ax.add_patch(sensor_arc)
+        
+        # Draw FOV boundary lines
+        for angle_offset in [-fov/2, fov/2]:
+            angle_rad = np.radians(yaw + angle_offset)
+            end_x = state[0] + sensor_range * np.cos(angle_rad)
+            end_y = state[1] + sensor_range * np.sin(angle_rad)
+            ax.plot([state[0], end_x], [state[1], end_y], 
+                   color=self.colors['sensor_fov'], linewidth=1.5, alpha=0.6, zorder=2)
     
     def reset(self, **kwargs):
         self.traj_num += 1
