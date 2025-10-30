@@ -4,6 +4,8 @@ Using **reinforcement learning(RL)** to train **an AUV agent** to tracking the t
 
 ---
 
+UTracker: Learning Visuomotor Policies for Underwater Active
+Target Tracking via Imitation Learning and Diffusion Model (***October 2025***)
 ## 🛠️ Installation
 
 1.  **Clone the repository:**
