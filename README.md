@@ -1,6 +1,11 @@
 # RL_AUV_tracking
 
-Using **reinforcement learning(RL)** to train **an AUV agent** to tracking the target in the unknown underwater scenario in **HoloOcean**(support for 2.0.0).
+Using **Reinforcement Learning (RL)** to train **an AUV agent** to tracking the target in the unknown underwater scenario in **HoloOcean**(support for 2.0.0).
+
+---
+
+***UTracker***: Learning Visuomotor Policies for Underwater Active
+Target Tracking via Imitation Learning and Diffusion Model (***October 2025, under review***)
 
 ## 🛠️ Installation
 
