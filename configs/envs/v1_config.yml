@@ -15,6 +15,9 @@ env:
   margin2wall: 1.0
   num_targets: 1
 
+obs:
+  image: [64, 64]
+
 scenario:
   size: [40, 40, 20]
   bottom_corner: [-20, -20, -20]
@@ -28,8 +31,15 @@ agent:
       control_frequency: 2
       random_lp: false
       l_p: [50, [10, 20, 30, 50, 75, 100, 200]]
+      l_v: 0.01
+      l_r: [0.01, 0.01, 0.05]
+      r_f: 0.02
+      r_t: 0.5
     PID:
       action_dim: 2
+      control_frequency: 10
+    KEYBOARD:
+      action_dim: 3
       control_frequency: 10
   random: false
   use_sonar: false
@@ -53,6 +63,10 @@ target:
     LQR:
       random_lp: false
       l_p: [50, [10, 20, 30, 50, 75, 100, 200]]
+      l_v: 0.01
+      l_r: [0.01, 0.01, 0.005]
+      r_f: 0.15
+      r_t: 1.5
     Manual:
       force: 10
   measurement_disfactor: 0.9

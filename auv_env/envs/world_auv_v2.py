@@ -105,7 +105,7 @@ class WorldAuvV2(WorldBase):
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
-            "images": spaces.Box(low=-3, high=3, shape=(5, 3, 224, 224), dtype=np.float32),
+            "image": spaces.Box(low=0, high=255, shape=(3, 224, 224), dtype=np.uint8),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
@@ -192,16 +192,17 @@ class WorldAuvV2(WorldBase):
         state_observation.extend(obstacles_pt)
         state_observation.extend(action_waypoint.tolist())  # dim:2
         state_observation = np.array(state_observation)
-        images = np.stack(self.image_buffer.get_buffer())
+        # images = np.stack(self.image_buffer.get_buffer())
         # images = util.image_preprocess(images)
-        self.obs = {'images': images, 'state': state_observation}
-        return copy.deepcopy({'images': images, 'state': state_observation})
+        image = self.image_buffer.get_buffer()[-1]
+        self.obs = {'image': image, 'state': state_observation}
+        return copy.deepcopy({'image': image, 'state': state_observation})
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
 
     def state_func_images(self):
-        return self.obs['images']
+        return self.obs['image']
 
     def state_func_state(self):
         return self.obs['state']
