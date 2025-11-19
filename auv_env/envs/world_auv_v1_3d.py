@@ -65,7 +65,7 @@ class WorldAuv3DV1(WorldBase3D):
         
         self.observation_space = spaces.Dict({
             # "image": spaces.Box(low=0, high=255, shape=(5, 3, 224, 224), dtype=np.float32),
-            "image": spaces.Box(low=0, high=255, shape=(3, 224, 224), dtype=np.uint8),
+            "image": spaces.Box(low=0, high=255, shape=(3,)+tuple(self.config['obs']['image']), dtype=np.uint8),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 

@@ -68,7 +68,7 @@ class WorldAuvV1(WorldBase):
         # self.limit['state'] = [np.concatenate(([0.0, -np.pi, -50.0, 0.0] * self.num_targets, [0.0, -np.pi])),
         #                        np.concatenate(([600.0, np.pi, 50.0, 2.0] * self.num_targets, [self.sensor_r, np.pi]))]
         self.observation_space = spaces.Dict({
-            "image": spaces.Box(low=0, high=255, shape=(3, 224, 224), dtype=np.uint8),
+            "image": spaces.Box(low=0, high=255, shape=(3,)+tuple(self.config['obs']['image']), dtype=np.uint8),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
