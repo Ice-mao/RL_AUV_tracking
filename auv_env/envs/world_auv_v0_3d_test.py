@@ -80,8 +80,8 @@ class WorldAuv3DV0Test(WorldBase3D):
         r_detcov_std = - np.std(np.log(detcov))
 
         reward = reward_param["c_mean"] * r_detcov_mean + reward_param["c_std"] * r_detcov_std
-        # if is_col:
-        #     reward = np.min([0.0, reward]) - reward_param["c_penalty"] * 1.0
+        if is_col:
+            reward = np.min([0.0, reward]) - reward_param["c_penalty"] * 1.0
         
         self.reward_queue.append(reward)
         

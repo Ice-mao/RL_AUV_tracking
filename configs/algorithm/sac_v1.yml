@@ -4,7 +4,7 @@
 training:
   device: "cuda:1"
   seed: 42
-  nb_envs: 10
+  nb_envs: 6
   timesteps: 5000000
   save_freq: 500000
   log_dir: "log"
@@ -13,23 +13,23 @@ training:
 
 policy:
   net_arch:
-    pi: [256, 256]
-    qf: [256, 128]
+    pi: [512, 256, 256]
+    qf: [512, 256]
   
   features_extractor:
     type: "auv_track_launcher.networks.feature_network.Encoder"
     kwargs:
-      features_dim: 256
-      resnet_output_dim: 256
+      features_dim: 512
+      resnet_output_dim: 128
 
 policy_hparams:
   policy: "SAC"
   lr: 0.0001
   buffer_size: 10000
-  batch_size: 256
+  batch_size: 128
   gamma: 0.99
   tau: 0.005
-  noise_std: 0.05
+  noise_std: 0.12
   start_timesteps: 1000
   
   # SAC specific

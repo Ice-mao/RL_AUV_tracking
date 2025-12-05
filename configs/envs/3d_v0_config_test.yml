@@ -12,7 +12,7 @@ env:
   insight: [true, [true, false]]
   noblock: true
   control_period: 0.2
-  margin: 0.5
+  margin: 0.8
   margin2wall: 1.0
   num_targets: 1
 
@@ -22,7 +22,7 @@ scenario:
   fix_depth: [-5, -15]
 
 agent:
-  controller: 'PID' # LQR , KEYBOARD
+  controller: 'LQR' # LQR , KEYBOARD
   controller_config:
     LQR:
       action_dim: 4
