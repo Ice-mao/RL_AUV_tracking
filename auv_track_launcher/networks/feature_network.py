@@ -22,6 +22,11 @@ class Encoder(BaseFeaturesExtractor):
     def __init__(self, observation_space: spaces.Dict, features_dim: int = 512, resnet_output_dim=64):
         super().__init__(observation_space, 1)
         self.resnet = EncoderResNet(encoder_dim=resnet_output_dim)
+        
+        for param in self.resnet.parameters():
+            param.requires_grad = False
+        self.resnet.eval()
+        
         # num_channels = [128, 64]
         # self.tcn = TemporalConvNet(num_inputs=resnet_output_dim, num_channels=num_channels, kernel_size=2,
         #                            dropout=0.2)
@@ -33,7 +38,7 @@ class Encoder(BaseFeaturesExtractor):
         self._features_dim = features_dim
 
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        images = observations['images']
+        images = observations['image']
         # 输入 images: [batch_size, 3, H, W]
         batch_size, C, H, W = images.size()
         feature = self.resnet(images)  # 提取特征: [batch_size, resnet_output_dim]

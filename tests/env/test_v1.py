@@ -20,7 +20,7 @@ def main():
     env = auv_env.make("AUVTracking_v1", 
                        config=config,
                        eval=True, t_steps=200,
-                       show_viewport=True,
+                       show_viewport=False,
                        )
 
     obs, info = env.reset()

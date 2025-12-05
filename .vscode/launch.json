@@ -51,6 +51,22 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "train_vision",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/SB3_trainer.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--env_config", "configs/envs/v1_config.yml",
+                "--alg_config", "configs/algorithm/sac_v1.yml",
+                "--choice", "0"
+            ],
+            "env": {
+                "PYTHONPATH": "/data/RL/RL_AUV_tracking/RL_AUV_tracking/"
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Eval",
             "type": "debugpy",
             "request": "launch",

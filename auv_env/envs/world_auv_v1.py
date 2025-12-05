@@ -23,6 +23,7 @@ class WorldAuvV1(WorldBase):
     """
     def __init__(self, config, map, show):
         self.obs = {}
+        self.reward_queue = deque(maxlen=100)
         self.image_buffer = CameraBuffer(5, (3,)+tuple(config['obs']['image']), time_gap=0.1)
         super().__init__(config, map, show)
 
@@ -100,6 +101,7 @@ class WorldAuvV1(WorldBase):
             avg_reward = np.mean(self.reward_queue)
             if avg_reward < -3.5:
                 done_by_reward = True
+                reward -= reward_param["c_penalty"] * 1.0
 
         done = is_col or done_by_reward
 

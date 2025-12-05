@@ -4,7 +4,7 @@ install/
 examples/imitation/test
 tests/
 auv_baseline/SeqTrackv2/**
-.vscode/
+# .vscode/
 
 global*
 *.pyc

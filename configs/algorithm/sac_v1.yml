@@ -2,9 +2,9 @@
 # Can be merged with a main environment config
 
 training:
-  device: "cuda:1"
+  device: "cuda:2"
   seed: 42
-  nb_envs: 6
+  nb_envs: 4
   timesteps: 5000000
   save_freq: 500000
   log_dir: "log"
@@ -19,14 +19,14 @@ policy:
   features_extractor:
     type: "auv_track_launcher.networks.feature_network.Encoder"
     kwargs:
-      features_dim: 512
+      features_dim: 256
       resnet_output_dim: 128
 
 policy_hparams:
   policy: "SAC"
   lr: 0.0001
-  buffer_size: 10000
-  batch_size: 128
+  buffer_size: 100000
+  batch_size: 256
   gamma: 0.99
   tau: 0.005
   noise_std: 0.12

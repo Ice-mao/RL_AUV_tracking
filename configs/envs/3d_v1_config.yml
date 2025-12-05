@@ -1,6 +1,6 @@
 version: v1
 name: AUVTracking3D_v1
-render: true # print
+render: false # print
 draw_traj: false
 eval_fixed: false
 map: 'SimpleUnderwater-Bluerov2_RGB'
@@ -91,7 +91,7 @@ action_range_scale: [[0.5, 3.14159/2, 0.3, 3.14159/20], [1.0, 0.3, 0.3]]
 reward_param:
   c_mean: 0.2
   c_std: 0.0
-  c_penalty: 5.0
+  c_penalty: 20.0
   k_3: 0.0
   k_4: 0.0
   k_5: 0.0
