@@ -64,8 +64,8 @@ class WorldAuv3DV1(WorldBase3D):
                                             [self.config['agent']['sensor_r'], np.pi, np.pi/2]))
         
         self.observation_space = spaces.Dict({
-            # "images": spaces.Box(low=0, high=255, shape=(5, 3, 224, 224), dtype=np.float32),
-            "images": spaces.Box(low=0, high=1, shape=(3, 224, 224), dtype=np.float32),
+            # "image": spaces.Box(low=0, high=255, shape=(5, 3, 224, 224), dtype=np.float32),
+            "image": spaces.Box(low=0, high=255, shape=(3,)+tuple(self.config['obs']['image']), dtype=np.uint8),
             "state": spaces.Box(low=state_lower_bound, high=state_upper_bound, dtype=np.float32),
         })
 
@@ -132,17 +132,17 @@ class WorldAuv3DV1(WorldBase3D):
         state_observation = np.array(state_observation)
 
         # images = np.stack(self.image_buffer.get_buffer()[-1])
-        images = np.array(self.image_buffer.get_buffer()[-1])
-        if images.dtype == np.uint8:
-            images = images.astype(np.float32) / 255.0  # Convert to 0-1 range
-        self.obs = {'images': images, 'state': state_observation}
-        return copy.deepcopy({'images': images, 'state': state_observation})
+        image = np.array(self.image_buffer.get_buffer()[-1])
+        # if images.dtype == np.uint8:
+        #     images = images.astype(np.float32) / 255.0  # Convert to 0-1 range
+        self.obs = {'image': image, 'state': state_observation}
+        return copy.deepcopy({'image': image, 'state': state_observation})
         # Update the visit map for the evaluation purpose.
         # if self.MAP.visit_map is not None:
         #     self.MAP.update_visit_freq_map(self.agent.state, 1.0, observed=bool(np.mean(observed)))
 
     def state_func_images(self):
-        return self.obs['images']
+        return self.obs['image']
 
     def state_func_state(self):
         return self.obs['state']

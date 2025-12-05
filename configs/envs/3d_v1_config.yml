@@ -16,6 +16,9 @@ env:
   margin2wall: 1.0
   num_targets: 1
 
+obs:
+  image: [64, 64]
+
 scenario:
   size: [40, 40, 20]
   bottom_corner: [-20, -20, -20]

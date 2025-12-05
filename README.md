@@ -2,7 +2,6 @@
 
 Using **reinforcement learning(RL)** to train **an AUV agent** to tracking the target in the unknown underwater scenario in [**HoloOcean**](https://byu-holoocean.github.io/holoocean-docs/v2.0.0/index.html) (support for 2.0.0).
 
----
 
 UTracker: Learning Visuomotor Policies for Underwater Active
 Target Tracking via Imitation Learning and Diffusion Model (***October 2025***)
@@ -70,29 +69,28 @@ This project provides three Gymnasium-compatible environments for AUV target tra
 - **Observation Type**: `Dict`
 - **Components**:
   - `'state'`: `Box(6, dtype=float32)` - AUV state vector
-  - `'rgb'`: `Box((5, 3, 224, 224), dtype=uint8)` - RGB camera image
+  - `'image'`: `Box((3, 224, 224), dtype=uint8)` - RGB camera image
 - **Ranges**:
-  - State: `[-inf, inf]` for position, `[-π, π]` for angles
-  - RGB: `[0, 255]` for pixel values
+  - state: `[-inf, inf]` for position, `[-π, π]` for angles
+  - image: `[0, 255]` for pixel values
 
 #### AUVTracking_v2
 - **Observation Type**: `Dict`
 - **Components**:
   - `'state'`: `Box(6, dtype=float32)` - AUV state vector
-  - `'rgb'`: `Box((5, 3, 224, 224), dtype=uint8)` - RGB camera image
-  - `'sonar'`: `Box((5, 1, 128, 128), dtype=uint8)` - Sonar depth map
+  - `'image'`: `Box((3, 224, 224), dtype=uint8)` - RGB camera image
+  - `'sonar'`: `Box((1, 128, 128), dtype=uint8)` - Sonar depth map
 - **Ranges**:
-  - State: `[-inf, inf]` for position, `[-π, π]` for angles
-  - RGB: `[0, 255]` for pixel values
-  - Sonar: `[0, 255]` for pixel values
+  - state: `[-inf, inf]` for position, `[-π, π]` for angles
+  - image: `[0, 255]` for pixel values
+  - sonar: `[0, 255]` for pixel values
 
 ### Action Spaces
 
 #### LQR Control
 - **Action Type**: `Box(3, dtype=float32)`
 - **Components**: Waypoint in the robot coordinate system:[$r$, $\theta$, $\gamma$]
-- **Range**: $r$:`[0.0, 1.0]`,
-others:`[-1.0, 1.0]`
+- **Range**: $r$:`[0.0, 1.0]`, others:`[-1.0, 1.0]`
 
 #### PID Control
 - **Action Type**: `Box(2, dtype=float32)`
