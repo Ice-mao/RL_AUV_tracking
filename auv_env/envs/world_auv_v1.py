@@ -15,6 +15,7 @@ from auv_env.envs.tools import CameraBuffer
 from gymnasium import spaces
 import logging
 import copy
+from collections import deque
 
 class WorldAuvV1(WorldBase):
     """
@@ -27,6 +28,7 @@ class WorldAuvV1(WorldBase):
 
     def reset(self, seed=None, **kwargs):
         self.image_buffer.reset()
+        self.reward_queue.clear()
         return super().reset(seed=seed, **kwargs)
 
     def set_limits(self):
@@ -90,9 +92,20 @@ class WorldAuvV1(WorldBase):
         reward = reward_param["c_mean"] * r_detcov_mean + reward_param["c_std"] * r_detcov_std
         if is_col:
             reward = np.min([0.0, reward]) - reward_param["c_penalty"] * 1.0
+        
+        self.reward_queue.append(reward)
+        
+        done_by_reward = False
+        if len(self.reward_queue) == 100:
+            avg_reward = np.mean(self.reward_queue)
+            if avg_reward < -3.5:
+                done_by_reward = True
+
+        done = is_col or done_by_reward
+
         if self.config['render']:
             print('reward:', reward)
-        return reward, False, r_detcov_mean, r_detcov_std
+        return reward, done, r_detcov_mean, r_detcov_std
 
     def state_func(self, observed, action):
         '''

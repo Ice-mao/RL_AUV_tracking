@@ -84,9 +84,7 @@ def filter_episodes_by_length(input_path, output_path, min_length, keys=None):
 
         # Save as zarr format
         output_buffer.save_to_path(
-            output_path,
-            chunks={'camera_image': (1, 3, 224, 224), 'state': (1, -1)},  # Adjust as needed
-            compressors='default'
+            output_path
         )
         
         print(f"✅ Successfully saved filtered dataset to {output_path}")
@@ -103,23 +101,23 @@ def filter_episodes_by_length(input_path, output_path, min_length, keys=None):
         return False
 
 def main():
-    parser = argparse.ArgumentParser(description='Filter episodes with insufficient length from dataset')
+    parser = argparse.ArgumentParser(description='过滤数据集中长度不足的episode')
     parser.add_argument('--input', type=str, required=True,
-                       help='Input dataset path (.zarr)')
+                       help='输入数据集路径 (.zarr)')
     parser.add_argument('--output', type=str, required=True,
-                       help='Output dataset path (.zarr)')
+                       help='输出数据集路径 (.zarr)')
     parser.add_argument('--min_length', type=int, default=500,
-                       help='Minimum episode length threshold (default: 500)')
+                       help='最小episode长度阈值 (默认: 500)')
     parser.add_argument('--keys', nargs='+', default=None,
-                       help='List of data keys to keep (default: keep all keys)')
-
+                       help='要保留的数据键名列表 (默认: 保留所有键)')
+    
     args = parser.parse_args()
-
-    print("=== Episode Length Filtering Tool ===")
-    print(f"Input dataset: {args.input}")
-    print(f"Output dataset: {args.output}")
-    print(f"Minimum length threshold: {args.min_length}")
-    print(f"Keys to keep: {args.keys if args.keys else 'all keys'}")
+    
+    print("=== Episode长度过滤工具 ===")
+    print(f"输入数据集: {args.input}")
+    print(f"输出数据集: {args.output}")
+    print(f"最小长度阈值: {args.min_length}")
+    print(f"保留的键: {args.keys if args.keys else '所有键'}")
     print()
     
     success = filter_episodes_by_length(
@@ -130,17 +128,17 @@ def main():
     )
     
     if success:
-        print(f"\n🎉 Dataset filtering completed!")
+        print(f"\n🎉 数据集过滤完成!")
     else:
-        print(f"\n💥 Dataset filtering failed!")
+        print(f"\n💥 数据集过滤失败!")
 
 if __name__ == "__main__":
-    # Example usage (if no command line arguments are provided)
+    # 示例用法（如果没有命令行参数）
     if len(sys.argv) == 1:
-        print("Example usage:")
+        print("示例用法:")
         print("python examples/sample/filter_episodes_by_length.py --input log/sample/simple/auv_data_partial_20.zarr --output log/sample/simple/auv_data_filtered.zarr --min_length 500")
         print()
-        print("Testing with default parameters...")
+        print("使用默认参数进行测试...")
         
         success = filter_episodes_by_length(
             input_path="log/sample/simple/auv_data_partial_20.zarr",
@@ -150,6 +148,6 @@ if __name__ == "__main__":
         )
         
         if success:
-            print(f"\n🎉 Testing completed successfully!")
+            print(f"\n🎉 默认测试完成!")
     else:
         main()
