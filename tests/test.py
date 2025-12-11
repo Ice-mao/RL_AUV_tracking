@@ -1,7 +1,7 @@
 import holoocean
 import numpy as np
 
-env = holoocean.make("OpenWater-Bluerov2_RGB", show_viewport=True)
+env = holoocean.make("SimpleUnderwater-Bluerov2_RGB", show_viewport=True)
 
 # The hovering AUV takes a command for each thruster
 command = np.array([10,10,10,10,0,0,0,0])

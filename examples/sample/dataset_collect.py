@@ -23,13 +23,14 @@ def collect_auv_data(collect, n_episodes=50):
                        config=config,
                        eval=False,
                        t_steps=1000,
-                       show_viewport=True,
+                       show_viewport=False,
                     )
 
     model_path = "log/AUVTracking3D_v0/LQR/SAC/08-31_18/rl_model_1800000_steps.zip"
     model = SAC.load(model_path, device='cuda', env=StateOnlyWrapper(env))
     
     print(f"开始采集 {n_episodes} 个episodes")
+    num = 0
     for episode in range(n_episodes):
         print(f"\nEpisode {episode + 1}/{n_episodes}")
         
@@ -43,14 +44,20 @@ def collect_auv_data(collect, n_episodes=50):
             if terminate or truncate:
                 break
         
-        collector.finish_episode()
-        if (episode + 1) % 10 == 0:
-            collector.save_data(f"auv_data_partial_{episode + 1}.zarr")
+        flag = collector.finish_episode()
+        num += 1 if flag else 0
+        print(f"当前有效episode数量: {num}")
+        if (num) % 50 == 0:
+            collector.save_data(f"auv_data_partial_{num}.zarr")
 
     collector.save_data("auv_data_final.zarr")
 
 
 if __name__ == '__main__':
-    # collector = AUVCollector(save_dir="log/sample/simple", exist_replay_path="log/sample/auv_data/auv_data_final.zarr")
-    collector = AUVCollector(save_dir="log/sample/simple", exist_replay_path=None)
-    collect_auv_data(collector, n_episodes=100)
+    collector = AUVCollector(
+        save_dir="log/sample/3d_auv_data",
+        exist_replay_path=None,
+        min_length=300,      # episode长度小于300则舍弃
+        truncate_tail=100    # 舍弃最后100步(跟踪效果不好的部分)
+    )
+    collect_auv_data(collector, n_episodes=250)  # 采集250个，预期得到200+有效episode

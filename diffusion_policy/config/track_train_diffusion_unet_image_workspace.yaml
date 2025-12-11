@@ -64,7 +64,7 @@ policy:
   obs_as_global_cond: ${obs_as_global_cond}
   # crop_shape: null
   diffusion_step_embed_dim: 128
-  down_dims: [512, 1024, 2048]
+  down_dims: [256, 512, 1024] #[512, 1024, 2048]
   kernel_size: 5
   n_groups: 8
   cond_predict_scale: True
@@ -102,7 +102,7 @@ optimizer:
   weight_decay: 1.0e-6
 
 training:
-  device: "cuda:5"
+  device: "cuda"
   seed: 42
   debug: False
   resume: False

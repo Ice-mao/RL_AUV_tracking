@@ -4,22 +4,18 @@ shape_meta: &shape_meta
   # acceptable types: rgb, low_dim
   obs:
     camera_image:
-      shape: [5, 3, 64, 64]
+      shape: [3, 64, 64]  # 单帧图像，Dataset会返回(horizon, 3, 64, 64)
       type: rgb
-    # state: # distance to target
-    #   shape: [8]
-    #   type: low_dim
   action:
     shape: [4]
 
 dataset:
-  # _target_: diffusion_policy.dataset.auv_tracking_dataset.AUVTrackingDataset
   _target_: auv_track_launcher.dataset.auv_tracking_dataset.AUVTrackingDataset
-  data_path: log/sample/simple/auv_data_filtered.zarr
+  data_path: log/sample/3d_auv_data/auv_data_final.zarr
   key: ['action', 'camera_image', 'state']
   horizon: ${horizon}
   pad_before: ${eval:'${n_obs_steps}-1'}
   pad_after: ${eval:'${n_action_steps}-1'}
   seed: 42
-  val_ratio: 0.02
-  max_train_episodes: 90
+  val_ratio: 0.05
+  max_train_episodes: 150  # 限制训练episode数量，加快实验

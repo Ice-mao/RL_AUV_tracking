@@ -103,7 +103,8 @@ class WorldAuvV1(WorldBase):
                 done_by_reward = True
                 reward -= reward_param["c_penalty"] * 1.0
 
-        done = is_col or done_by_reward
+        # done = is_col or done_by_reward
+        done = done_by_reward
 
         if self.config['render']:
             print('reward:', reward)
