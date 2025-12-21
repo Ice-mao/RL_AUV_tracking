@@ -53,7 +53,7 @@ def extract_episode_images(dataset_path, output_dir, episode_idx=0, key='camera_
         print(f"Image data type: {images.dtype}")
 
         # Select the first column of each frame (shape changes from (717, 5, 3, 224, 224) to (717, 3, 224, 224))
-        episode_images = images[:, 0, :, :, :]
+        episode_images = images
         print(f"Shape after selecting first column: {episode_images.shape}")
 
         # Save each frame
@@ -109,7 +109,7 @@ def extract_episode_images(dataset_path, output_dir, episode_idx=0, key='camera_
 
 def main():  
     success = extract_episode_images(
-        dataset_path="log/sample/simple/auv_data_partial_20.zarr",
+        dataset_path="log/sample/3d_auv_data/auv_data_final.zarr",
         output_dir="log/sample/test",
         episode_idx=10,
         key='camera_image'

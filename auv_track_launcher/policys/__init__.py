@@ -1,7 +1,3 @@
-# from drq import DRQAgent
-# agents = {
-#     "bc": BCAgent,
-#     "sac": SACAgent,
-#     "sac_hybrid_single": SACAgentHybridSingleArm,
-#     "sac_hybrid_dual": SACAgentHybridDualArm,
-# }
+from auv_track_launcher.policys.custom_sac_policy import CustomSACPolicy
+
+__all__ = ['CustomSACPolicy']

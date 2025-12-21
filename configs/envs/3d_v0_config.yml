@@ -20,14 +20,14 @@ env:
 scenario:
   size: [40, 40, 20]
   bottom_corner: [-20, -20, -20]
-  fix_depth: [-5, -15]
+  fix_depth: [-5, -10]
 
 agent:
   controller: 'LQR' # LQR , KEYBOARD
   controller_config:
     LQR:
       action_dim: 4
-      control_frequency: 4
+      control_frequency: 5
       random_lp: false
       l_p: [250, [10, 20, 30, 50, 75, 100, 200]]
       l_v: 0.01
@@ -50,7 +50,7 @@ agent:
     resolution: 0.1
   sensor_r: 4.0
   fov: 100
-  h_fov: 40
+  h_fov: 20
   sensor_r_sd: 0.2
   sensor_b_sd: 0.01
   sensor_e_sd: 0.01

@@ -37,7 +37,7 @@ class TargetTrackingBase(gym.Env):
         # init some params
         self.num_targets = config['env']['num_targets']
         # init the scenario
-        self.world = world_class(map=map, show=show_viewport, config=self.config)
+        self.world = world_class(map=map, show=show_viewport, config=self.config)#, verbose=True)
         # # init the action space
         self.action_space = self.world.action_space
         self.observation_space = self.world.observation_space

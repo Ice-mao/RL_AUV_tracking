@@ -101,7 +101,7 @@ class WorldAuvV1(WorldBase):
             avg_reward = np.mean(self.reward_queue)
             if avg_reward < -3.5:
                 done_by_reward = True
-                reward -= reward_param["c_penalty"] * 1.0
+                reward -= reward_param["c_penalty"] * 10.0
 
         # done = is_col or done_by_reward
         done = done_by_reward

@@ -47,7 +47,9 @@ def train_bc(args):
     # 加载数据集
     print(f"Loading dataset from: {args.data_path}")
     train_dataset = BCDataset(args.data_path, val_ratio=args.val_ratio,
-                               is_val=False, seed=args.seed)
+                               is_val=False, seed=args.seed,
+                               use_augmentation=args.use_augmentation,
+                               aug_prob=args.aug_prob)
     val_dataset = BCDataset(args.data_path, val_ratio=args.val_ratio,
                              is_val=True, seed=args.seed)
 
@@ -212,6 +214,10 @@ def main():
                         help='数据集路径')
     parser.add_argument('--val_ratio', type=float, default=0.1,
                         help='验证集比例')
+    parser.add_argument('--use_augmentation', action='store_true', default=False,
+                        help='启用数据增强（镜像翻转来平衡左右偏差）')
+    parser.add_argument('--aug_prob', type=float, default=0.5,
+                        help='数据增强概率')
 
     # 模型参数
     parser.add_argument('--action_dim', type=int, default=4,

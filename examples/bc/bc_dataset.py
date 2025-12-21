@@ -6,6 +6,7 @@ BC Dataset - 单步图像-动作对数据集
 import torch
 from torch.utils.data import Dataset
 import numpy as np
+import random
 from diffusion_policy.common.replay_buffer import ReplayBuffer
 
 
@@ -15,16 +16,22 @@ class BCDataset(Dataset):
     从 zarr 格式的 replay buffer 加载数据
     按 episode 划分训练/验证集（避免数据泄漏）
     返回单步的 (image, action) 对
+    支持数据增强（镜像翻转）来平衡左右偏差
     """
 
-    def __init__(self, data_path, val_ratio=0.1, is_val=False, seed=42):
+    def __init__(self, data_path, val_ratio=0.1, is_val=False, seed=42,
+                 use_augmentation=False, aug_prob=0.5):
         """
         Args:
             data_path: zarr 数据集路径
             val_ratio: 验证集比例（按 episode 数量）
             is_val: 是否返回验证集
             seed: 随机种子
+            use_augmentation: 是否使用数据增强（镜像翻转）
+            aug_prob: 数据增强概率
         """
+        self.use_augmentation = use_augmentation
+        self.aug_prob = aug_prob
         self.keys = ['camera_image', 'action']
         self.replay_buffer = ReplayBuffer.copy_from_path(data_path, keys=self.keys)
 
@@ -56,6 +63,8 @@ class BCDataset(Dataset):
         print(f"BCDataset: 总 episodes={n_episodes}, 总步数={self.n_steps}")
         print(f"  {'验证' if is_val else '训练'}集: {len(selected_episodes)} episodes, "
               f"{len(self.indices)} 步")
+        if use_augmentation and not is_val:
+            print(f"  数据增强已启用: 镜像翻转概率={aug_prob}")
 
     def __len__(self):
         return len(self.indices)
@@ -77,6 +86,14 @@ class BCDataset(Dataset):
 
         # 图像归一化到 [0, 1]
         image = image.astype(np.float32) / 255.0
+
+        # 数据增强：镜像翻转（仅训练集）
+        if self.use_augmentation and random.random() < self.aug_prob:
+            # 左右翻转图像 (CHW format，翻转W维度)
+            image = np.flip(image, axis=2).copy()
+            # 翻转转向动作 (action[1] 是 yaw 转向角)
+            action = action.copy()
+            action[1] = -action[1]
 
         return {
             'obs': torch.from_numpy(image),

@@ -18,14 +18,21 @@ policy:
 
 policy_hparams:
   policy: "SAC"
-  lr: 0.0001
+  lr: 0.0002
   buffer_size: 500000
-  batch_size: 256
+  batch_size: 512
   gamma: 0.99
   tau: 0.005
   noise_std: 0.12
   start_timesteps: 50000
   
+  replay_buffer:
+    type: "ReplayBuffer"  # Options: "ReplayBuffer", "HerReplayBuffer"
+    # HER specific parameters (only used if type is "HerReplayBuffer")
+    her_kwargs:
+      n_sampled_goal: 4
+      goal_selection_strategy: "future"  #"future", "final", "episode", "random"
+
   # SAC specific
   auto_alpha: true
   alpha: 0.2

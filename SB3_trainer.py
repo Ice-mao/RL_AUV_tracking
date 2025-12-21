@@ -98,7 +98,15 @@ def learn(env, log_dir, env_config, alg_config):
     policy_params = alg_config['policy_hparams']
     training_params = alg_config['training']
 
-    if policy_params['policy'] == 'SAC':
+    if policy_params['policy'] == 'SAC' or policy_params['policy'] == 'CustomSACPolicy':
+        # 检查是否使用自定义 policy
+        policy_class = None
+        if 'policy_path' in policy_params:
+            # 动态导入自定义 policy
+            module_path, class_name = policy_params['policy_path'].rsplit('.', 1)
+            module = importlib.import_module(module_path)
+            policy_class = getattr(module, class_name)
+
         # policy network
         features_extractor_class, fe_kwargs = get_features_extractor(alg_config)
         policy_kwargs = dict(
@@ -107,9 +115,9 @@ def learn(env, log_dir, env_config, alg_config):
         if features_extractor_class:
             policy_kwargs['features_extractor_class'] = features_extractor_class
             policy_kwargs['features_extractor_kwargs'] = fe_kwargs
-            policy_type = 'MultiInputPolicy'
+            policy_type = policy_class if policy_class else 'MultiInputPolicy'
         else:
-            policy_type = 'MlpPolicy'
+            policy_type = policy_class if policy_class else 'MlpPolicy'
 
         # action noise 
         action_noise = create_action_noise(env_config)
@@ -197,12 +205,54 @@ def keep_learn(env, log_dir, model_name, config):
     device = torch.device(training_params['device'])
     callback = make_callback(log_dir, config)
 
-    if policy_params['policy'] == 'SAC':
+    if policy_params['policy'] == 'SAC' or policy_params['policy'] == 'CustomSACPolicy':
+        # Prepare parameters that can be modified during continue training
+        load_kwargs = {
+            'learning_rate': policy_params.get('lr', None),
+            'buffer_size': policy_params.get('buffer_size', None),
+            'batch_size': policy_params.get('batch_size', None),
+            'tau': policy_params.get('tau', None),
+            'gamma': policy_params.get('gamma', None),
+        }
+        # Remove None values to only override specified parameters
+        load_kwargs = {k: v for k, v in load_kwargs.items() if v is not None}
+
         model = SAC.load(model_name, device=device, env=env,
-                         custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+                         custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space},
+                         **load_kwargs)
+
+        # Load corresponding replay buffer
+        replay_buffer_path = model_name.replace('.zip', '_replay_buffer.pkl').replace('rl_model', 'rl_model_replay_buffer')
+        if os.path.exists(replay_buffer_path):
+            model.load_replay_buffer(replay_buffer_path)
+            print(f"Loaded replay buffer from {replay_buffer_path}")
+        else:
+            print(f"Warning: Replay buffer not found at {replay_buffer_path}")
+
+        # Print updated parameters
+        if load_kwargs:
+            print(f"Updated parameters: {load_kwargs}")
+
     elif policy_params['policy'] == 'PPO':
+        # Prepare parameters that can be modified during continue training
+        load_kwargs = {
+            'learning_rate': policy_params.get('lr', None),
+            'batch_size': training_params.get('batch_size', None),
+            'n_steps': policy_params.get('n_steps', None),
+            'gamma': policy_params.get('gamma', None),
+            'gae_lambda': policy_params.get('gae_lambda', None),
+            'clip_range': policy_params.get('eps_clip', None),
+        }
+        # Remove None values to only override specified parameters
+        load_kwargs = {k: v for k, v in load_kwargs.items() if v is not None}
+
         model = PPO.load(model_name, device=device, env=env,
-                         custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+                         custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space},
+                         **load_kwargs)
+
+        # Print updated parameters
+        if load_kwargs:
+            print(f"Updated parameters: {load_kwargs}")
     else:
         raise ValueError(f"Unknown policy {policy_params['policy']}")
 
@@ -223,7 +273,7 @@ def evaluate(model_name: str, env_config: dict, alg_config: dict):
                         show_viewport=True) 
     policy_name = alg_config['policy_hparams']['policy']
 
-    if policy_name == 'SAC':
+    if policy_name == 'SAC' or policy_name == 'CustomSACPolicy':
         model = SAC.load(model_name, device='cuda', env=env,
                          custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     elif policy_name == 'PPO':

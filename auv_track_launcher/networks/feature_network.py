@@ -22,14 +22,16 @@ class Encoder(BaseFeaturesExtractor):
     def __init__(self, observation_space: spaces.Dict, features_dim: int = 512, resnet_output_dim=64):
         super().__init__(observation_space, 1)
         self.resnet = EncoderResNet(encoder_dim=resnet_output_dim)
-        
-        for param in self.resnet.parameters():
-            param.requires_grad = False
-        self.resnet.eval()
+
+        # 解冻ResNet编码器，允许其学习水下场景特征
+        # for param in self.resnet.parameters():
+        #     param.requires_grad = False
+        # self.resnet.eval()
         
         # num_channels = [128, 64]
         # self.tcn = TemporalConvNet(num_inputs=resnet_output_dim, num_channels=num_channels, kernel_size=2,
         #                            dropout=0.2)
+
         self.trunk = nn.Sequential(nn.Linear(resnet_output_dim, features_dim),
                                    nn.LayerNorm(features_dim), nn.Tanh())
         self.apply(utils.weight_init)
@@ -40,9 +42,20 @@ class Encoder(BaseFeaturesExtractor):
     def forward(self, observations: torch.Tensor) -> torch.Tensor:
         images = observations['image']
         # 输入 images: [batch_size, 3, H, W]
+
+        # 确保输入是float类型并归一化到[0, 1]
+        if images.dtype == torch.uint8:
+            images = images.float() / 255.0
+
+        # ImageNet归一化（ResNet期望的标准）
+        mean = torch.tensor([0.485, 0.456, 0.406], device=images.device).view(1, 3, 1, 1)
+        std = torch.tensor([0.229, 0.224, 0.225], device=images.device).view(1, 3, 1, 1)
+        images = (images - mean) / std
+
         batch_size, C, H, W = images.size()
         feature = self.resnet(images)  # 提取特征: [batch_size, resnet_output_dim]
-        output = self.trunk(feature)
+
+        output = self.trunk(feature)  # [batch_size, features_dim]
         return output
 
 
