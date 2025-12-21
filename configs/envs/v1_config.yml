@@ -25,7 +25,7 @@ scenario:
   fix_depth: -5
 
 agent:
-  controller: 'LQR'
+  controller: 'PID'
   controller_config:
     LQR:
       action_dim: 3
@@ -38,7 +38,7 @@ agent:
       r_t: 0.5
     PID:
       action_dim: 2
-      control_frequency: 10
+      control_frequency: 5
     KEYBOARD:
       action_dim: 3
       control_frequency: 10

@@ -100,7 +100,7 @@ class WorldAuvV0(WorldBase):
             if avg_reward < -3.5:
                 done_by_reward = True
 
-        done = is_col or done_by_reward
+        done = done_by_reward
 
         if self.config['render']:
             print('reward:', reward)

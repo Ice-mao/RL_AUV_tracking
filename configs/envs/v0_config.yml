@@ -10,7 +10,7 @@ env:
   task_random: false
   insight: [true, [true, false]]
   noblock: true
-  control_period: 0.5
+  control_period: 0.2
   margin: 1.0
   margin2wall: 1.0
   num_targets: 1
@@ -18,10 +18,10 @@ env:
 scenario:
   size: [40, 40, 20]
   bottom_corner: [-20, -20, -20]
-  fix_depth: -5
+  fix_depth: -15
 
 agent:
-  controller: 'LQR'
+  controller: 'PID'
   controller_config:
     LQR:
       action_dim: 3
@@ -34,7 +34,7 @@ agent:
       r_t: 0.5
     PID:
       action_dim: 2
-      control_frequency: 10
+      control_frequency: 5
   random: false
   use_sonar: false
   grid:
@@ -57,11 +57,11 @@ target:
   controller_config:
     LQR:
       random_lp: false
-      l_p: [10, [10, 20, 30, 50, 75, 100, 200]]
+      l_p: [50, [10, 20, 30, 50, 75, 100, 200]]
       l_v: 0.01
       l_r: [0.01, 0.01, 0.005]
       r_f: 0.05
-      r_t: 1.0
+      r_t: 2.0
     Manual:
       force: 10
   measurement_disfactor: 0.9

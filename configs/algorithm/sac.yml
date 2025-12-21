@@ -3,13 +3,13 @@
 
 training:
   device: "cuda"
-  seed: 41
-  nb_envs: 2
+  seed: 66
+  nb_envs: 3
   timesteps: 2000000
   save_freq: 200000
   log_dir: "log"
   log_freq: 20000
-  resume_path: "model.zip"
+  resume_path: "log/AUVTracking_v0/PID/SAC/12-20_01/rl_model_1999980_steps.zip"
 policy:
   net_arch:
     pi: [256, 256, 256]
@@ -18,12 +18,12 @@ policy:
 policy_hparams:
   policy: "SAC"
   lr: 0.0001
-  buffer_size: 10000
-  batch_size: 128
+  buffer_size: 20000
+  batch_size: 256
   gamma: 0.99
   tau: 0.004
   noise_std: 0.12
-  start_timesteps: 10000
+  start_timesteps: 5000
   
   # SAC specific
   auto_alpha: true
@@ -39,6 +39,6 @@ policy_hparams:
       goal_selection_strategy: "future"  #"future", "final", "episode", "random"
 
   # Collect settings
-  step_per_collect: 5
+  step_per_collect: 10
   update_per_step: 0.2
-  n_step: 2
+  n_step: 3
