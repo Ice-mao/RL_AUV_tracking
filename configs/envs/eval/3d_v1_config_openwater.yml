@@ -3,7 +3,7 @@ name: AUVTracking3D_v1
 render: false # print
 draw_traj: false
 eval_fixed: false
-map: 'SimpleUnderwater-Bluerov2_RGB'
+map: 'OpenWater-Bluerov2_RGB'
 debug: false
 t_steps: 1000
 
@@ -20,9 +20,9 @@ obs:
   image: [64, 64]
 
 scenario:
-  size: [40, 40, 20]
-  bottom_corner: [-20, -20, -20]
-  fix_depth: [-5, -15]
+  size: [500, 500, 50]
+  bottom_corner: [200, 0, -300]
+  fix_depth: [5, 15]
 
 agent:
   controller: 'PID' # LQR , KEYBOARD
@@ -50,7 +50,7 @@ agent:
     p_occ: 0.8
     p_free: 0.25
     resolution: 0.1
-  sensor_r: 5.0
+  sensor_r: 4.0
   fov: 100
   h_fov: 20
   sensor_r_sd: 0.2
@@ -61,11 +61,11 @@ target:
   target_dim: 6 # 3D target state: [x, y, z, vx, vy, vz]
   random: false
   const_q: [0.5, [0.01, 0.02, 0.05, 0.1, 0.4, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0]]
-  controller: 'LQR'
+  controller: 'Auto'
   controller_config:
     LQR:
       random_lp: false
-      l_p: [50, [10, 20, 30, 50, 75, 100, 200]]
+      l_p: [10, [10, 20, 30, 50, 75, 100, 200]]
       l_v: 0.01
       l_r: [0.01, 0.01, 0.005]
       r_f: 0.15
@@ -102,3 +102,4 @@ reward_param:
   k_3: 0.0
   k_4: 0.0
   k_5: 0.0
+

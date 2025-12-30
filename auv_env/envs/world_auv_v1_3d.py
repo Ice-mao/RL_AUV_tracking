@@ -24,7 +24,9 @@ class WorldAuv3DV1(WorldBase3D):
     def __init__(self, config, map, show):
         self.obs = {}
         self.reward_queue = deque(maxlen=100)
-        self.image_buffer = CameraBuffer(5, (3, 224, 224), time_gap=0.1)
+        # Use image size from config instead of hardcoded 224x224
+        image_size = tuple(config['obs']['image'])
+        self.image_buffer = CameraBuffer(5, (3, image_size[0], image_size[1]), time_gap=0.1)
         super().__init__(config, map, show)
 
     def reset(self, seed=None, **kwargs):
@@ -97,7 +99,7 @@ class WorldAuv3DV1(WorldBase3D):
                 done_by_reward = True
                 reward -= reward_param["c_penalty"] * 1.0
 
-        done = is_col or done_by_reward
+        done = done_by_reward
 
         if self.config['render']:
             print('reward:', reward)

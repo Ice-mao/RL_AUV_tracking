@@ -10,36 +10,57 @@ matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 
 class BenchmarkAnalyzer: 
-    def __init__(self, data_dir: str):
+    def __init__(self, data_dir: str, min_steps: int = 0):
         """      
         Parameters:
         -----------
         data_dir : str
+        min_steps : int, optional
+            Minimum number of steps required for an episode to be included in analysis
         """
         self.data_dir = Path(data_dir)
+        self.min_steps = min_steps
         self.episodes_data = []
         self.load_data()
     
     def load_data(self):
         json_files = list(self.data_dir.glob("*.json"))
         
+        # Filter out report.json and other non-episode files
+        json_files = [f for f in json_files if 'episode' in f.name.lower() or 'rl_' in f.name.lower()]
+        
         if not json_files:
-            print(f"No JSON files found in directory {self.data_dir}")
+            print(f"No episode JSON files found in directory {self.data_dir}")
             return
         
-        print(f"Found {len(json_files)} JSON files")
+        print(f"Found {len(json_files)} episode JSON files")
+        if self.min_steps > 0:
+            print(f"Filtering: only episodes with >= {self.min_steps} steps will be included")
         
-        for json_file in json_files:
+        loaded_count = 0
+        filtered_count = 0
+        
+        for json_file in sorted(json_files):
             try:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     episode_data = json.load(f)
+                    
+                    # Filter by minimum steps
+                    if len(episode_data) < self.min_steps:
+                        filtered_count += 1
+                        continue
+                    
                     self.episodes_data.append({
                         'file': json_file.name,
                         'data': episode_data
                     })
-                print(f"Loaded: {json_file.name} ({len(episode_data)} steps)")
+                    loaded_count += 1
+                    print(f"Loaded: {json_file.name} ({len(episode_data)} steps)")
             except Exception as e:
                 print(f"Error loading file {json_file.name}: {e}")
+        
+        if self.min_steps > 0:
+            print(f"\nFiltering summary: {loaded_count} episodes loaded, {filtered_count} episodes filtered out (< {self.min_steps} steps)")
     
     def calculate_success_rate(self, success_threshold: float = 0.3) -> float:
         """
@@ -94,15 +115,33 @@ class BenchmarkAnalyzer:
             for step in data:
                 try:
                     target_pos = np.array(step['targets'])
-                    belief_pos = np.array(step['belief_targets'])
+                    belief_raw = step['belief_targets']
+                    
+                    # Handle belief_targets that may contain lists (e.g., fix_depth as [5, 15])
+                    belief_pos = []
+                    for i, val in enumerate(belief_raw):
+                        if isinstance(val, (list, tuple, np.ndarray)):
+                            # If it's a list/array, take the first element or mean
+                            if len(val) > 0:
+                                belief_pos.append(float(val[0]) if isinstance(val[0], (int, float)) else float(np.mean(val)))
+                            else:
+                                belief_pos.append(0.0)
+                        else:
+                            belief_pos.append(float(val))
+                    belief_pos = np.array(belief_pos)
+                    
+                    # Ensure same length
+                    min_len = min(len(target_pos), len(belief_pos))
+                    target_pos = target_pos[:min_len]
+                    belief_pos = belief_pos[:min_len]
                     
                     # Calculate Euclidean distance
                     error = np.linalg.norm(target_pos - belief_pos)
                     episode_error_list.append(error)
                     all_errors.append(error)
                     
-                except (KeyError, ValueError) as e:
-                    print(f"Error calculating error: {e}")
+                except (KeyError, ValueError, TypeError) as e:
+                    # Silently skip errors to avoid flooding output
                     continue
             
             if episode_error_list:
@@ -264,7 +303,26 @@ class BenchmarkAnalyzer:
             for step in episode['data']:
                 try:
                     target_pos = np.array(step['targets'])
-                    belief_pos = np.array(step['belief_targets'])
+                    belief_raw = step['belief_targets']
+                    
+                    # Handle belief_targets that may contain lists (e.g., fix_depth as [5, 15])
+                    belief_pos = []
+                    for i, val in enumerate(belief_raw):
+                        if isinstance(val, (list, tuple, np.ndarray)):
+                            # If it's a list/array, take the first element or mean
+                            if len(val) > 0:
+                                belief_pos.append(float(val[0]) if isinstance(val[0], (int, float)) else float(np.mean(val)))
+                            else:
+                                belief_pos.append(0.0)
+                        else:
+                            belief_pos.append(float(val))
+                    belief_pos = np.array(belief_pos)
+                    
+                    # Ensure same length
+                    min_len = min(len(target_pos), len(belief_pos))
+                    target_pos = target_pos[:min_len]
+                    belief_pos = belief_pos[:min_len]
+                    
                     error = np.linalg.norm(target_pos - belief_pos)
                     all_errors.append(error)
                 except:
@@ -287,7 +345,10 @@ class BenchmarkAnalyzer:
         plt.tight_layout()
         
         if save_dir:
-            save_path = Path(save_dir) / "benchmark_metrics.png"
+            save_path = Path(save_dir)
+            # If save_dir is a directory, append filename; if it's already a file path, use it directly
+            if save_path.is_dir() or (not save_path.suffix):
+                save_path = save_path / "benchmark_metrics.png"
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"Chart saved to: {save_path}")
         else:
@@ -310,11 +371,13 @@ def main():
                        help='Report save path')
     parser.add_argument('--save_plots', type=str, default=None,
                        help='Chart save directory')
+    parser.add_argument('--min_steps', type=int, default=0,
+                       help='Minimum number of steps required for an episode to be included (default: 0, no filtering)')
     
     args = parser.parse_args()
     
     # Create analyzer and run analysis
-    analyzer = BenchmarkAnalyzer(args.data_dir)
+    analyzer = BenchmarkAnalyzer(args.data_dir, min_steps=args.min_steps)
     report = analyzer.generate_report(save_path=args.save_report)
     
     if args.save_plots:
@@ -324,10 +387,6 @@ if __name__ == "__main__":
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
-    current_dir = "log/benchmark/RL/dam/"
-    # current_dir = "log/benchmark/greedy/dam/"
-    analyzer = BenchmarkAnalyzer(current_dir)
-    report = analyzer.generate_report()
-
-    analyzer.plot_metrics(save_dir=current_dir)
+    
+    # Use main() function to handle command line arguments
+    main()

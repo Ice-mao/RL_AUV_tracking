@@ -26,7 +26,7 @@ agent:
   controller_config:
     LQR:
       action_dim: 4
-      control_frequency: 4
+      control_frequency: 5
       random_lp: false
       l_p: [200, [10, 20, 30, 50, 75, 100, 200]]
       l_v: 0.01

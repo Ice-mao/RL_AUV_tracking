@@ -21,7 +21,7 @@ from auv_control.planning.local_planner import TrajectoryPlanner, TrajectoryBuff
 
 import auv_env.util as util
 from auv_env.envs.obstacle import Obstacle
-from auv_env.envs.agent import AgentAuv, AgentAuvTarget, AgentAuvManual
+from auv_env.envs.agent import AgentAuv, AgentAuvTarget, AgentAuvManual, AgentAuvTarget2DRangeFinder
 
 
 class TargetTrackingBase(gym.Env):
@@ -198,7 +198,7 @@ class WorldBase:
                     ])
             
             # Update agent
-            self.u = self.agent.update(self.action, self.fix_depth, self.sensors['auv0'])
+            self.u = self.agent.update(self.action, self.fix_depth_scalar, self.sensors['auv0'])
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()
             # update
@@ -243,6 +243,14 @@ class WorldBase:
                     sensor=target_init_state,
                     scene=self.ocean, config=self.config)
                 for _ in range(self.num_targets)]
+        elif self.config['target']['controller'] == 'Auto':
+            # 2D rangefinder-based random target motion
+            self.targets = [AgentAuvTarget2DRangeFinder(dim=3, sampling_period=sampling_period,
+                        sensor=target_init_state, rank=i,
+                        fixed_depth=self.fix_depth_scalar, size=self.size,
+                        bottom_corner=self.bottom_corner, start_time=time, scene=self.ocean,
+                        scenario=self.map, config=self.config)
+                for i in range(self.num_targets)]
         else:
             self.targets = [AgentAuvTarget(dim=3, sampling_period=sampling_period, sensor=target_init_state, rank=i,
                         obstacles=self.obstacles, fixed_depth=self.fix_depth, size=self.size,
@@ -296,6 +304,29 @@ class WorldBase:
         self.target_init_yaw = None
         self.agent_init_pos, self.agent_init_yaw, self.target_init_pos, self.target_init_yaw, self.belief_init_pos \
             = self.get_init_pose_random()
+
+        # Ensure depth is scalar and positions are 3D (Holoocean teleport expects length 3)
+        if np.isscalar(self.fix_depth):
+            fix_z = float(self.fix_depth)
+        elif isinstance(self.fix_depth, (list, tuple, np.ndarray)) and len(self.fix_depth) == 2:
+            fix_z = float(np.mean(self.fix_depth))
+        else:
+            fix_z = -5.0  # fallback
+
+        self.fix_depth_scalar = fix_z
+
+        def _to_xyz(pos):
+            pos = np.array(pos, dtype=float)
+            if pos.shape[0] >= 3:
+                return pos[:3]
+            elif pos.shape[0] == 2:
+                return np.array([pos[0], pos[1], fix_z], dtype=float)
+            else:
+                return np.array([0.0, 0.0, fix_z], dtype=float)
+
+        self.agent_init_pos = _to_xyz(self.agent_init_pos)
+        self.target_init_pos = _to_xyz(self.target_init_pos)
+        self.belief_init_pos = _to_xyz(self.belief_init_pos)
 
         if self.config['eval_fixed']:
             self.agent_init_pos = np.array([35, 35, -15.])

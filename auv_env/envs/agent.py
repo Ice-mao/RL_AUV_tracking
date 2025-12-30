@@ -187,7 +187,13 @@ class AgentAuvTarget(Agent):
         self.rank = rank
         self.size = size
         self.bottom_corner = bottom_corner
-        self.fix_depth = fixed_depth
+        # Normalize fixed depth to scalar
+        if np.isscalar(fixed_depth):
+            self.fix_depth = float(fixed_depth)
+        elif isinstance(fixed_depth, (list, tuple, np.ndarray)):
+            self.fix_depth = float(np.mean(fixed_depth))
+        else:
+            self.fix_depth = -5.0
         self.obstacles = obstacles
         self.scene = scene
         scenario_cfg = holoocean.packagemanager.get_scenario(scenario)
@@ -549,6 +555,124 @@ class AgentAuvTarget3DRangeFinder(Agent):
         return u
 
 
+class AgentAuvTarget2DRangeFinder(Agent):
+    """
+    2D target agent with RangeFinder-based random motion (x, y, yaw, fixed depth).
+    Mirrors the 3D rangefinder target logic but constrained to 2D state (target_dim=4).
+    """
+
+    def __init__(self, rank, dim, sampling_period, sensor, fixed_depth, size, bottom_corner,
+                 start_time, scene, scenario, config):
+        Agent.__init__(self, dim, sampling_period, config)
+        self.rank = rank
+        self.scene = scene
+        self.fix_depth = fixed_depth
+        self.size = size
+        self.bottom_corner = bottom_corner
+
+        scenario_cfg = holoocean.packagemanager.get_scenario(scenario)
+        robo_type = scenario_cfg['agents'][1]['agent_type']
+
+        if self.config['target']['controller'] == 'Auto':
+            lqr_config = self.config['target']['controller_config']['LQR']
+            if lqr_config['random_lp']:
+                l_p = np.random.choice(lqr_config['l_p'][1])
+            else:
+                l_p = lqr_config['l_p'][0]
+            self.controller = LQR(l_p=l_p, l_v=lqr_config['l_v'],
+                                  l_r=lqr_config['l_r'],
+                                  r_f=lqr_config['r_f'],
+                                  r_t=lqr_config['r_t'],
+                                  robo_type=robo_type)
+        else:
+            assert False, "Only Auto controller is supported for 2D RangeFinder target"
+
+        self.state = State(sensor)
+
+        # RangeFinder params (assume target agent has RangeFinderSensor like 3D case)
+        for sensor_cfg in scenario_cfg['agents'][1]['sensors']:
+            if sensor_cfg['sensor_type'] == 'RangeFinderSensor':
+                self.LaserMaxDistance = sensor_cfg["configuration"]['LaserMaxDistance']
+                self.LaserCount = sensor_cfg["configuration"]['LaserCount']
+                self.LaserAngle = sensor_cfg["configuration"]['LaserAngle']
+                self.LaserDebug = sensor_cfg["configuration"]['LaserDebug']
+        self.rangefinder1 = np.zeros((self.LaserCount,))
+        self.rangefinder2 = np.zeros((self.LaserCount,))
+
+        # Motion parameters
+        self.target_waypoint = None
+        self.waypoint_reach_threshold = 0.3
+        self.arrive = True
+
+        # default desired state
+        self.desired_state_vec = sensor if isinstance(sensor, np.ndarray) else np.array(sensor)
+
+    def reset(self, sensor, obstacles, scene, start_time):
+        self.scene = scene
+        self.state = State(sensor)
+        self.target_waypoint = None
+        self.arrive = True
+        # Initialize desired state as 12-dim zero with fix_depth and current yaw
+        desired = np.zeros(12, dtype=float)
+        desired[2] = float(self.fix_depth)
+        desired[8] = self.state.vec[8] if len(self.state.vec) > 8 else 0.0
+        self.desired_state_vec = desired
+        # Re-normalize depth in case config passed a list/array
+        if np.isscalar(self.fix_depth):
+            self.fix_depth = float(self.fix_depth)
+        else:
+            self.fix_depth = float(np.mean(self.fix_depth))
+
+    def update(self, sensors, t):
+        self.time = t
+        self.state = State(sensors)
+        current_pos = self.state.vec[:2]
+        current_yaw = self.state.vec[8] if len(self.state.vec) > 8 else 0.0  # yaw in degrees
+        depth_scalar = float(self.fix_depth)
+
+        if 'rangefinder1' in sensors:
+            self.rangefinder1 = sensors['rangefinder1']
+        if 'rangefinder2' in sensors:
+            self.rangefinder2 = sensors['rangefinder2']
+
+        # Check arrival at current waypoint
+        if self.target_waypoint is not None:
+            self.arrive = np.linalg.norm(current_pos - self.target_waypoint[:2]) < self.waypoint_reach_threshold
+
+        if self.arrive:
+            waypoint_found = False
+            attempt = 0
+            while waypoint_found is False and attempt < 50:
+                attempt += 1
+                idx = np.random.randint(0, 2)
+                count = np.random.randint(0, 7) - 3
+                usable = False
+                if idx == 0 and self.rangefinder1[count] > 2.0:
+                    usable = True
+                elif idx == 1 and self.rangefinder2[count] > 2.0:
+                    usable = True
+                if usable:
+                    r = np.random.uniform(0.5, 1.0)
+                    theta = count * (360 / self.LaserCount)
+                    target_xy = util.polar_distance_global(np.array([r, np.radians(theta)]),
+                                                           current_pos,
+                                                           np.radians(current_yaw))
+                    yaw = np.rad2deg(np.deg2rad(current_yaw + theta))
+                    depth = depth_scalar
+                    desired = np.zeros(12, dtype=float)
+                    desired[0] = target_xy[0]
+                    desired[1] = target_xy[1]
+                    desired[2] = depth
+                    desired[8] = yaw
+                    self.desired_state_vec = desired
+                    self.target_waypoint = np.array([target_xy[0], target_xy[1], depth])
+                    waypoint_found = True
+                    self.scene.draw_point(self.target_waypoint.tolist(), color=[0, 255, 0],
+                                          thickness=20, lifetime=1.0)
+
+        desired_state = State(self.desired_state_vec)
+        u = self.controller.u(self.state, desired_state)
+        return u
 class AgentAuvManual(Agent):
     """
         use for target manual
