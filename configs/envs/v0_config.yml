@@ -85,3 +85,18 @@ reward_param:
   c_std: 0.0
   c_penalty: 5.0
   c_smooth: 1.0
+
+# Ocean current field configuration (disabled by default)
+ocean_current:
+  enabled: true  # Set to true to enable ocean currents
+  type: 'random'  # Options: 'vortex', 'uniform', 'random', 'sine_wave'
+  params:
+    max_velocity: 2.0
+    spatial_scale: 5.0
+    seed: 42
+  visualization:
+    enabled: true
+    draw_at_tick: 100  # or 0 for reset
+    location: [0, 0, -10]
+    dimensions: [40, 40, 20]
+    spacing: 3

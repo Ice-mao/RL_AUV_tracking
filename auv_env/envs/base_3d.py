@@ -80,6 +80,14 @@ class WorldBase3D:
         self.sensors = {}
         self.set_limits()
 
+        # Initialize ocean current field
+        self.current_field_func = None
+        self.current_visualization_enabled = False
+        self.current_visualization_config = None
+        self.current_visualization_drawn = False
+        self.current_tick_count = 0
+        self._init_ocean_current()
+
     def step(self, action):
         if self.controller == 'LQR':
             # Generate 3D target knot from RL action (using NumPy arrays for performance)
@@ -168,8 +176,40 @@ class WorldBase3D:
             
             # Update agent (3D control)
             self.u = self.agent.update(self.action, depth=None, sensors=self.sensors['auv0'])
+
+            # Apply ocean currents to auv0
+            if self.current_field_func is not None:
+                try:
+                    current_time = self.sensors.get('t', 0.0)
+                    agent_location = self.agent.est_state.vec[:3]
+                    current_velocity = self.current_field_func(agent_location, current_time)
+
+                    # Validate and clip extreme values
+                    if isinstance(current_velocity, np.ndarray) and current_velocity.shape == (3,):
+                        if np.all(np.isfinite(current_velocity)):
+                            max_current_speed = 5.0
+                            current_speed = np.linalg.norm(current_velocity)
+                            if current_speed > max_current_speed:
+                                current_velocity = current_velocity * (max_current_speed / current_speed)
+
+                            # Apply via HoloOcean API
+                            self.ocean.set_ocean_currents('auv0', current_velocity.tolist())
+                except Exception as e:
+                    # Silently handle errors to not disrupt training
+                    pass
+
             self.ocean.act("auv0", self.u)
             sensors = self.ocean.tick()
+
+            # Increment tick counter and check if we should draw visualization
+            self.current_tick_count += 1
+            if (self.current_visualization_enabled and
+                not self.current_visualization_drawn):
+                draw_at_tick = self.current_visualization_config.get('draw_at_tick', 100)
+                if draw_at_tick > 0 and self.current_tick_count == draw_at_tick:
+                    self._draw_current_field_visualization(current_time=sensors.get('t', 0.0))
+                    self.current_visualization_drawn = True
+
             # update
             self.sensors['auv0'].update(sensors['auv0'])
             for i in range(self.num_targets):
@@ -245,6 +285,8 @@ class WorldBase3D:
 
     def reset(self, seed=None, **kwargs):
         self.ocean.reset()
+        self.current_tick_count = 0  # Reset tick counter
+        self.current_visualization_drawn = False  # Reset visualization flag
         if self.config['draw_traj']:
             self.ocean.draw_box(self.center.tolist(), (self.size / 2).tolist(), color=[0, 0, 255], thickness=30,
                                 lifetime=0)  # draw the area
@@ -331,6 +373,14 @@ class WorldBase3D:
         # Compute the RL state.
         state = self.state_func(observed, action=np.zeros(self.action_dim))
         info = {'reset_info': 'yes'}
+
+        # Draw current field visualization if enabled and draw_at_tick == 0
+        if self.current_visualization_enabled:
+            draw_at_tick = self.current_visualization_config.get('draw_at_tick', 100)
+            if draw_at_tick == 0:
+                self._draw_current_field_visualization(current_time=self.sensors.get('t', 0.0))
+                self.current_visualization_drawn = True
+
         return state, info
 
     @property
@@ -594,6 +644,74 @@ class WorldBase3D:
                 if not (self.has_discovered[i]):
                     self.has_discovered[i] = 1
         return observed
+
+    def _init_ocean_current(self):
+        """Initialize ocean current field from configuration."""
+        if 'ocean_current' not in self.config:
+            self.current_field_func = None
+            return
+
+        current_config = self.config['ocean_current']
+        if not current_config.get('enabled', False):
+            self.current_field_func = None
+            return
+
+        try:
+            from auv_env.current_fields import create_current_field
+            self.current_field_func = create_current_field(current_config)
+            if self.current_field_func is not None:
+                field_type = current_config.get('type', 'unknown')
+                print(f"Ocean current field enabled: {field_type}")
+
+                # Check if visualization is enabled
+                viz_config = current_config.get('visualization', {})
+                if viz_config.get('enabled', False):
+                    self.current_visualization_enabled = True
+                    self.current_visualization_config = viz_config
+                    print(f"Ocean current visualization enabled")
+        except Exception as e:
+            print(f"Warning: Failed to initialize ocean current: {e}")
+            self.current_field_func = None
+
+    def _draw_current_field_visualization(self, current_time=0.0):
+        """
+        Draw ocean current field visualization using HoloOcean's draw_debug_vector_field.
+        This creates a 3D matrix of vectors showing the current flow.
+        """
+        if not self.current_visualization_enabled or self.current_field_func is None:
+            return
+
+        viz_config = self.current_visualization_config
+
+        # Get visualization parameters
+        location = viz_config.get('location', [0, 0, -10])
+        dimensions = viz_config.get('dimensions', [40, 40, 20])
+        spacing = viz_config.get('spacing', 3)
+        arrow_thickness = viz_config.get('arrow_thickness', 5)
+        arrow_size = viz_config.get('arrow_size', 0.25)
+        lifetime = viz_config.get('lifetime', 0)
+
+        # Create a wrapper function that only takes location as input
+        # (required by draw_debug_vector_field API)
+        def current_field_wrapper(loc):
+            """Wrapper to make current field compatible with HoloOcean API"""
+            return self.current_field_func(np.array(loc), current_time)
+
+        try:
+            # Call HoloOcean's draw_debug_vector_field
+            # Note: Function must be first positional argument (not keyword argument)
+            self.ocean.draw_debug_vector_field(
+                current_field_wrapper,  # Function as first positional argument
+                location=location,
+                vector_field_dimensions=dimensions,
+                spacing=spacing,
+                arrow_thickness=arrow_thickness,
+                arrow_size=arrow_size,
+                lifetime=lifetime
+            )
+            print(f"Current field visualization drawn at location {location}")
+        except Exception as e:
+            print(f"Warning: Failed to draw current field visualization: {e}")
 
 
     @abstractmethod

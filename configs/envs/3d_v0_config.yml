@@ -93,3 +93,41 @@ reward_param:
   k_3: 0.0
   k_4: 0.0
   k_5: 0.0
+
+# Ocean current field configuration (optional)
+# Set enabled to true to apply ocean currents to auv0
+ocean_current:
+  enabled: false  # Set to true to enable ocean currents
+  type: 'random'  # Options: 'vortex', 'uniform', 'random', 'sine_wave'
+  params:
+    max_velocity: 2.0
+    spatial_scale: 5.0
+    seed: 42
+  # Visualization settings for draw_debug_vector_field
+  visualization:
+    enabled: false  # Set to true to visualize current field
+    draw_at_tick: 10  # Draw at reset for immediate visualization (0 = draw at reset)
+    location: [0, 0, -10]  # Center location for vector field visualization
+    dimensions: [40, 40, 20]  # [x, y, z] dimensions of the vector field
+    spacing: 3  # Spacing between vectors (larger spacing = fewer arrows, clearer view)
+    arrow_thickness: 7  # Thickness of the arrows
+    arrow_size: 0.25  # Size scale of arrow heads
+    lifetime: 0  # Lifetime of vectors (0 = permanent)
+    
+    # Uniform field parameters (alternative example - uncomment to use)
+    # velocity: [0.5, 0.0, 0.0]
+    # time_modulation: true
+    # modulation_period: 10.0
+    # modulation_amplitude: 0.5
+    # Random field parameters (alternative example - uncomment to use)
+    # max_velocity: 1.0
+    # spatial_scale: 10.0
+    # temporal_scale: 5.0
+    # seed: 42
+    # correlation_length: 3.0
+    # Sine wave field parameters (alternative example - uncomment to use)
+    # direction: [1, 0, 0]
+    # amplitude: 1.5
+    # wavelength: 8.0
+    # period: 6.0
+    # phase: 0.0

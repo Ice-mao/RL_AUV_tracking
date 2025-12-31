@@ -75,3 +75,14 @@ reward_param:
   k_3: 0.0
   k_4: 0.0
   k_5: 0.0
+
+# Ocean current field configuration (disabled by default)
+ocean_current:
+  enabled: false  # Set to true to enable ocean currents
+  type: 'vortex'  # Options: 'vortex', 'uniform', 'random', 'sine_wave'
+  params:
+    center: [0, 0, -10]
+    strength: 2.0
+    radius: 5.0
+    angular_velocity: 0.1
+    decay_rate: 1.0
