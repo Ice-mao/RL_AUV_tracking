@@ -2,9 +2,18 @@
 
 Using **reinforcement learning(RL)** to train **an AUV agent** to tracking the target in the unknown underwater scenario in [**HoloOcean**](https://byu-holoocean.github.io/holoocean-docs/v2.2.2/index.html) (support for 2.2.2).
 
+---
 
-UTracker: Learning Visuomotor Policies for Underwater Active
-Target Tracking via Imitation Learning and Diffusion Model (***October 2025***)
+## 📄 Paper
+
+**UTracker: Learning Visuomotor Policies for Underwater Active Target Tracking via Imitation Learning and Diffusion Model**
+
+[![IEEE](https://img.shields.io/badge/IEEE-Paper-00629B?logo=ieee&logoColor=white)](https://ieeexplore.ieee.org/abstract/document/11394786)
+[![YouTube](https://img.shields.io/badge/YouTube-Demo_Video-red?logo=youtube&logoColor=white)](https://youtu.be/Gn3o9PeteMo)
+[![Bilibili](https://img.shields.io/badge/Bilibili-Demo_Video-00A1D6?logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV15XfdBhEwJ/)
+
+---
+
 ## 🛠️ Installation
 
 1.  **Clone the repository:**
